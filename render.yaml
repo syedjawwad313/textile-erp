@@ -1,10 +1,5 @@
 ##############################################################################
 # Render Blueprint — Textile & Apparel ERP + MES Platform
-# Docs: https://render.com/docs/blueprint-spec
-#
-# Services:
-#   1. textile-erp-api   — NestJS backend  (apps/api)
-#   2. textile-erp-web   — Next.js frontend (apps/web)
 ##############################################################################
 
 services:
@@ -15,14 +10,13 @@ services:
     region: oregon
     plan: free
 
-    # Build from repo root so workspace packages resolve correctly
     rootDir: .
     buildCommand: >-
       npm install -g pnpm@9.5.0 &&
       pnpm install --frozen-lockfile &&
       pnpm --filter @textile-erp/database exec prisma generate &&
-      pnpm --filter @textile-erp/database exec prisma db push --skip-generate &&
-      pnpm --filter api build
+      pnpm --filter @textile-erp/database run db:deploy &&
+      pnpm --filter api run build
     startCommand: node apps/api/dist/main.js
 
     healthCheckPath: /health
@@ -58,7 +52,7 @@ services:
     buildCommand: >-
       npm install -g pnpm@9.5.0 &&
       pnpm install --frozen-lockfile &&
-      pnpm --filter web build
+      pnpm --filter web run build
     startCommand: node apps/web/.next/standalone/apps/web/server.js
 
     healthCheckPath: /

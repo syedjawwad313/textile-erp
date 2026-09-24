@@ -5,7 +5,9 @@
   "main": "src/client.js",
   "types": "src/client.d.ts",
   "scripts": {
+    "build": "prisma generate",
     "db:push": "prisma db push",
+    "db:deploy": "prisma db push --skip-generate",
     "db:generate": "prisma generate",
     "db:seed": "ts-node prisma/seed.ts"
   },
@@ -20,3 +22,4 @@
     "typescript": "^5.5.4"
   }
 }
+
