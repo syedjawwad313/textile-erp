@@ -1,0 +1,2332 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// -----------------------------------------------------------------------------
+// ENUMS
+// -----------------------------------------------------------------------------
+enum ProductionStatus {
+  PLANNED
+  RELEASED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum OperationStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum EmployeeType {
+  OPERATOR
+  SUPERVISOR
+  QC
+}
+
+enum BundleStatus {
+  CUT
+  IN_SEWING
+  IN_WASHING
+  FINISHED
+  DEFECTIVE
+}
+
+enum DowntimeStatus {
+  ACTIVE
+  RESOLVED
+}
+
+enum ScheduleStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum InspectionResult {
+  PASS
+  FAIL
+}
+
+enum DefectSeverity {
+  MINOR
+  MAJOR
+  CRITICAL
+}
+
+enum DefectStatus {
+  OPEN
+  REWORK
+  REJECTED
+  RESOLVED
+}
+
+enum QualityHoldStatus {
+  ACTIVE
+  RELEASED
+  REJECTED
+}
+
+enum DefectCategory {
+  FABRIC
+  CUTTING
+  SEWING
+  WASHING
+  FINISHING
+  PACKING
+  MEASUREMENT
+  GENERAL
+}
+
+enum InspectionStage {
+  IN_LINE
+  END_LINE
+  PRE_FINAL
+  FINAL_AUDIT
+  FABRIC_INSPECTION
+}
+
+enum AqlAuditStatus {
+  DRAFT
+  PASSED
+  FAILED
+  PENDING_REWORK
+}
+
+enum NcrSource {
+  INLINE_INSPECTION
+  AQL_AUDIT
+  CUSTOMER_COMPLAINT
+  MATERIAL_DEFECT
+  INTERNAL_AUDIT
+}
+
+enum NcrStatus {
+  DRAFT
+  OPEN
+  UNDER_INVESTIGATION
+  CAPA_ASSIGNED
+  VERIFIED
+  CLOSED
+}
+
+enum CapaType {
+  CONTAINMENT
+  CORRECTIVE
+  PREVENTIVE
+}
+
+enum CapaStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  VERIFIED
+}
+
+enum CostingStatus {
+  DRAFT
+  SUBMITTED
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  SUPERSEDED
+}
+
+enum PoStatus {
+  DRAFT
+  PENDING_VERIFICATION
+  VERIFIED
+  APPROVED
+  CONFIRMED
+  CLOSED
+  CANCELLED
+}
+
+enum VpoStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  ISSUED
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CLOSED
+  CANCELLED
+}
+
+enum InventoryTxType {
+  RECEIPT
+  TRANSFER_IN
+  TRANSFER_OUT
+  ISSUE
+  CONSUMPTION
+  RETURN
+  RESERVATION
+  RELEASE_RESERVATION
+  ADJUSTMENT
+  WASTAGE
+  PRODUCTION_OUTPUT
+  REVERSAL
+}
+
+enum GrnStatus {
+  DRAFT
+  RECEIVED
+  INSPECTED
+  ACCEPTED
+  REJECTED
+  CANCELLED
+}
+
+enum RollStatus {
+  RECEIVED
+  IN_INSPECTION
+  AVAILABLE
+  ALLOCATED
+  ON_HOLD
+  ISSUED
+  EXHAUSTED
+  RETURNED_TO_SUPPLIER
+}
+
+enum FabricGradingOption {
+  OPTION_A_STANDARD
+  OPTION_B
+}
+
+enum ReservationStatus {
+  ACTIVE
+  RELEASED
+  CONSUMED
+  CANCELLED
+}
+
+enum RequisitionStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  PARTIALLY_ISSUED
+  ISSUED
+  CANCELLED
+}
+
+enum IssueStatus {
+  DRAFT
+  ISSUED
+  ACKNOWLEDGED
+  CANCELLED
+}
+
+enum ReturnStatus {
+  DRAFT
+  RETURNED
+  ACKNOWLEDGED
+  CANCELLED
+}
+
+enum CartonStatus {
+  DRAFT
+  PACKED
+  STAGED
+  SHIPPED
+  CANCELLED
+}
+
+enum CartonPackingMode {
+  SOLID
+  RATIO
+}
+
+enum PackingListStatus {
+  DRAFT
+  FINALIZED
+  SHIPPED
+  CANCELLED
+}
+
+enum WarehouseType {
+  RAW_MATERIAL
+  FINISHED_GOODS
+  GENERAL
+}
+
+enum BinType {
+  STORAGE
+  STAGING
+  QUARANTINE
+}
+
+enum CartonMovementType {
+  PUTAWAY
+  RELOCATION
+  STAGE
+  UNSTAGE
+  DISPATCH
+}
+
+enum ShipmentStatus {
+  DRAFT
+  STAGED
+  LOADED
+  DISPATCHED
+  DELIVERED
+  CANCELLED
+}
+
+enum CommercialInvoiceStatus {
+  DRAFT
+  ISSUED
+  PAID
+  CANCELLED
+}
+
+enum GatePassStatus {
+  DRAFT
+  APPROVED
+  DISPATCHED
+  CANCELLED
+}
+
+
+// -----------------------------------------------------------------------------
+// IDENTITY & IAM
+// -----------------------------------------------------------------------------
+model Tenant {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  companies             Company[]
+  users                 User[]
+  roles                 Role[]
+  buyers                Buyer[]
+  suppliers             Supplier[]
+  materials             Material[]
+  styles                Style[]
+  warehouses            Warehouse[]
+  inventoryItems        InventoryItem[]
+  inventoryTxns         InventoryTransaction[]
+  auditEvents           AuditEvent[]
+  documents             Document[]
+  costingVersions       CostingVersion[]
+  costingSheets         CostingSheet[]
+  buyerPos              BuyerPo[]
+  vpos                  Vpo[]
+  marginApprovalPolicies MarginApprovalPolicy[]
+  productionOrders      ProductionOrder[]
+  wipTransactions       WipTransaction[]
+  factoryUnits          FactoryUnit[]
+  productionLines       ProductionLine[]
+  machines              Machine[]
+  employees             Employee[]
+  productionPlans       ProductionPlan[]
+  cuttingRecords        CuttingRecord[]
+  bundles               Bundle[]
+  bundleScans           BundleScan[]
+  downtimeEvents        DowntimeEvent[]
+  qualityInspections    QualityInspection[]
+  inspectionDefects     InspectionDefect[]
+  productionOutputs     ProductionOutput[]
+  productionDefects     ProductionDefect[]
+  qualityHolds          QualityHold[]
+  shifts                Shift[]
+  shiftAssignments      ShiftAssignment[]
+  productionSchedules   ProductionSchedule[]
+  defectCatalogs        DefectCatalog[]
+  inspectionPlans       InspectionPlan[]
+  aqlAudits             AqlAudit[]
+  aqlAuditDefects       AqlAuditDefect[]
+  nonConformanceReports NonConformanceReport[]
+  capaActions           CapaAction[]
+  goodsReceiptNotes     GoodsReceiptNote[]
+  grnLines              GrnLine[]
+  fabricRolls           FabricRoll[]
+  fabricRollInspections FabricRollInspection[]
+  materialReservations  MaterialReservation[]
+  materialReservationLines MaterialReservationLine[]
+  materialRequisitions  MaterialRequisition[]
+  materialRequisitionLines MaterialRequisitionLine[]
+  materialIssueNotes    MaterialIssueNote[]
+  materialIssueLines    MaterialIssueLine[]
+  materialReturnNotes   MaterialReturnNote[]
+  materialReturnLines   MaterialReturnLine[]
+  cuttingRecordRolls    CuttingRecordRoll[]
+  cartons               Carton[]
+  cartonItems           CartonItem[]
+  cartonMovements       CartonMovement[]
+  packingLists          PackingList[]
+  shipments             Shipment[]
+  shipmentItems         ShipmentItem[]
+  commercialInvoices    CommercialInvoice[]
+  commercialInvoiceLines CommercialInvoiceLine[]
+  outboundGatePasses    OutboundGatePass[]
+  supplierReturnNotes   SupplierReturnNote[]
+  supplierReturnLines   SupplierReturnLine[]
+  materialReconciliations MaterialReconciliation[]
+  jobCostSummaries      JobCostSummary[]
+  stockAudits           StockAudit[]
+  stockAuditItems       StockAuditItem[]
+  dataImportLogs        DataImportLog[]
+}
+
+model Company {
+  id        String   @id @default(uuid())
+  tenantId  String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant    Tenant         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  factories FactoryUnit[]
+}
+
+model FactoryUnit {
+  id        String   @id @default(uuid())
+  tenantId  String
+  companyId String
+  code      String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  company     Company      @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  departments Department[]
+  productionLines ProductionLine[]
+  machines    Machine[]
+  employees   Employee[]
+  shifts      Shift[]
+
+  @@unique([tenantId, code])
+}
+
+model Department {
+  id            String   @id @default(uuid())
+  factoryUnitId String
+  name          String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  factoryUnit          FactoryUnit           @relation(fields: [factoryUnitId], references: [id], onDelete: Restrict)
+  materialRequisitions MaterialRequisition[]
+}
+
+model ProductionLine {
+  id            String   @id @default(uuid())
+  tenantId      String
+  factoryUnitId String
+  code          String
+  name          String
+  capacity      Decimal  @db.Decimal(12, 4) @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  factoryUnit     FactoryUnit      @relation(fields: [factoryUnitId], references: [id], onDelete: Restrict)
+  productionOrders ProductionOrder[]
+  productionPlans  ProductionPlan[]
+  downtimeEvents   DowntimeEvent[]
+  shiftAssignments ShiftAssignment[]
+  productionSchedules ProductionSchedule[]
+
+  @@unique([tenantId, code])
+}
+
+model Machine {
+  id            String   @id @default(uuid())
+  tenantId      String
+  factoryUnitId String
+  code          String
+  name          String
+  type          String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  factoryUnit    FactoryUnit     @relation(fields: [factoryUnitId], references: [id], onDelete: Restrict)
+  bundleScans    BundleScan[]
+  downtimeEvents DowntimeEvent[]
+  qualityInspections QualityInspection[]
+
+  @@unique([tenantId, code])
+}
+
+model Employee {
+  id            String       @id @default(uuid())
+  tenantId      String
+  factoryUnitId String
+  code          String
+  name          String
+  type          EmployeeType
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  factoryUnit FactoryUnit  @relation(fields: [factoryUnitId], references: [id], onDelete: Restrict)
+  bundleScans BundleScan[]
+  qualityInspections QualityInspection[]
+  producedOutputs    ProductionOutput[]  @relation("ProductionOutputOperator")
+  appliedHolds       QualityHold[]       @relation("QualityHoldApplier")
+  releasedHolds      QualityHold[]       @relation("QualityHoldReleaser")
+  shiftAssignments   ShiftAssignment[]
+  auditedAqls           AqlAudit[]             @relation("AqlAuditor")
+  createdNcrs           NonConformanceReport[] @relation("NcrCreator")
+  assignedNcrs          NonConformanceReport[] @relation("NcrAssignee")
+  assignedCapas         CapaAction[]           @relation("CapaAssignee")
+  verifiedCapas         CapaAction[]           @relation("CapaVerifier")
+  inspectedRolls        FabricRollInspection[] @relation("RollInspector")
+  requestedRequisitions MaterialRequisition[]  @relation("RequisitionRequester")
+  issuedNotes           MaterialIssueNote[]    @relation("IssueStorekeeper")
+  receivedIssueNotes    MaterialIssueNote[]    @relation("IssueReceiver")
+  returnedNotes         MaterialReturnNote[]   @relation("ReturnIssuer")
+  receivedReturnNotes   MaterialReturnNote[]   @relation("ReturnReceiver")
+
+  @@unique([tenantId, code])
+}
+
+model User {
+  id           String   @id @default(uuid())
+  tenantId     String
+  email        String
+  passwordHash String
+  firstName    String
+  lastName     String
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant             Tenant             @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  userRoles          UserRole[]
+  approvedGatePasses   OutboundGatePass[] @relation("GatePassApprovedBy")
+  dispatchedGatePasses OutboundGatePass[] @relation("GatePassDispatchedBy")
+  dataImportLogs       DataImportLog[]
+
+  @@unique([tenantId, email])
+}
+
+model Role {
+  id        String   @id @default(uuid())
+  tenantId  String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  userRoles       UserRole[]
+  rolePermissions RolePermission[]
+
+  @@unique([tenantId, name])
+}
+
+model Permission {
+  id          String   @id @default(uuid())
+  resource    String   // e.g. "COSTING"
+  action      String   // e.g. "APPROVE"
+  description String?
+  createdAt   DateTime @default(now())
+
+  rolePermissions RolePermission[]
+
+  @@unique([resource, action])
+}
+
+model UserRole {
+  userId String
+  roleId String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+// -----------------------------------------------------------------------------
+// COMMERCIAL MASTER DATA
+// -----------------------------------------------------------------------------
+model Buyer {
+  id        String   @id @default(uuid())
+  tenantId  String
+  name      String
+  code      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  buyerPos           BuyerPo[]
+  packingLists       PackingList[]
+  shipments          Shipment[]
+  commercialInvoices CommercialInvoice[]
+
+  @@unique([tenantId, code])
+}
+
+model Supplier {
+  id        String   @id @default(uuid())
+  tenantId  String
+  name      String
+  code      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  vpos   Vpo[]
+  goodsReceiptNotes GoodsReceiptNote[]
+  supplierReturnNotes SupplierReturnNote[]
+
+  @@unique([tenantId, code])
+}
+
+model Material {
+  id          String   @id @default(uuid())
+  tenantId    String
+  code        String
+  name        String
+  category    String   // FABRIC, TRIM, etc.
+  uom         String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  inventoryItems  InventoryItem[]
+  bomLines        BomLine[]
+  vpoLines        VpoLine[]
+  productionBomLines ProductionBomLine[]
+  cuttingRecords     CuttingRecord[]
+  grnLines           GrnLine[]
+  fabricRolls        FabricRoll[]
+  materialReservationLines MaterialReservationLine[]
+  materialRequisitionLines MaterialRequisitionLine[]
+  materialIssueLines MaterialIssueLine[]
+  materialReturnLines MaterialReturnLine[]
+  supplierReturnLines SupplierReturnLine[]
+  stockAuditItems     StockAuditItem[]
+
+  @@unique([tenantId, code])
+}
+
+model Style {
+  id        String   @id @default(uuid())
+  tenantId  String
+  code      String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant        Tenant          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  costingSheets CostingSheet[]
+  buyerPoLines  BuyerPoLine[]
+  inventoryItems InventoryItem[]
+  inspectionPlans InspectionPlan[]
+  cartonItems     CartonItem[]
+  shipmentItems   ShipmentItem[]
+  invoiceLines    CommercialInvoiceLine[]
+
+  @@unique([tenantId, code])
+}
+
+// -----------------------------------------------------------------------------
+// POLICY ENGINE
+// -----------------------------------------------------------------------------
+model MarginApprovalPolicy {
+  id                      String   @id @default(uuid())
+  tenantId                String
+  autoApprovalThreshold   Decimal  @db.Decimal(12, 4) // e.g. 0.25 (25%)
+  manualApprovalThreshold Decimal  @db.Decimal(12, 4) // e.g. 0.15 (15%)
+  lowMarginAction         String   // e.g. BLOCKED, REQUIRES_EXEC
+  effectiveFrom           DateTime @default(now())
+  effectiveTo             DateTime?
+  isActive                Boolean  @default(true)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+}
+
+// -----------------------------------------------------------------------------
+// BOM & COSTING
+// -----------------------------------------------------------------------------
+model CostingSheet {
+  id        String   @id @default(uuid())
+  tenantId  String
+  styleId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant   Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  style    Style            @relation(fields: [styleId], references: [id], onDelete: Restrict)
+  versions CostingVersion[]
+}
+
+model CostingVersion {
+  id             String        @id @default(uuid())
+  tenantId       String
+  costingSheetId String
+  versionNumber  Int
+  status         CostingStatus @default(DRAFT)
+  fabricCost     Decimal       @db.Decimal(12, 4)
+  trimsCost      Decimal       @db.Decimal(12, 4)
+  cmCost         Decimal       @db.Decimal(12, 4)
+  totalCost      Decimal       @db.Decimal(12, 4)
+  sellingPrice   Decimal       @db.Decimal(12, 4)
+  margin         Decimal       @db.Decimal(12, 4)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  tenant       Tenant         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  costingSheet CostingSheet   @relation(fields: [costingSheetId], references: [id], onDelete: Cascade)
+  bomLines     BomLine[]
+}
+
+model BomLine {
+  id               String   @id @default(uuid())
+  costingVersionId String
+  materialId       String
+  consumption      Decimal  @db.Decimal(12, 4)
+  wastagePercent   Decimal  @db.Decimal(12, 4)
+  unitCost         Decimal  @db.Decimal(12, 4)
+  totalCost        Decimal  @db.Decimal(12, 4)
+
+  costingVersion CostingVersion @relation(fields: [costingVersionId], references: [id], onDelete: Cascade)
+  material       Material       @relation(fields: [materialId], references: [id], onDelete: Restrict)
+}
+
+// -----------------------------------------------------------------------------
+// PROCUREMENT (BUYER & SUPPLIER POs)
+// -----------------------------------------------------------------------------
+model BuyerPo {
+  id         String   @id @default(uuid())
+  tenantId   String
+  buyerId    String
+  poNumber   String
+  status     PoStatus @default(DRAFT)
+  orderDate  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  buyer        Buyer         @relation(fields: [buyerId], references: [id], onDelete: Restrict)
+  buyerPoLines BuyerPoLine[]
+  cartons      Carton[]
+  packingLists PackingList[]
+  shipments    Shipment[]
+
+  @@unique([tenantId, poNumber])
+}
+
+model BuyerPoLine {
+  id         String   @id @default(uuid())
+  buyerPoId  String
+  styleId    String
+  quantity   Decimal  @db.Decimal(12, 4)
+  unitPrice  Decimal  @db.Decimal(12, 4)
+  totalPrice Decimal  @db.Decimal(12, 4)
+
+  buyerPo          BuyerPo           @relation(fields: [buyerPoId], references: [id], onDelete: Cascade)
+  style            Style             @relation(fields: [styleId], references: [id], onDelete: Restrict)
+  productionOrders ProductionOrder[]
+}
+
+model Vpo {
+  id         String    @id @default(uuid())
+  tenantId   String
+  supplierId String
+  vpoNumber  String
+  status     VpoStatus @default(DRAFT)
+  orderDate  DateTime
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  vpoLines VpoLine[]
+  goodsReceiptNotes GoodsReceiptNote[]
+  supplierReturnNotes SupplierReturnNote[]
+
+  @@unique([tenantId, vpoNumber])
+}
+
+model VpoLine {
+  id          String   @id @default(uuid())
+  vpoId       String
+  materialId  String
+  quantity    Decimal  @db.Decimal(12, 4)
+  unitCost    Decimal  @db.Decimal(12, 4)
+  totalCost   Decimal  @db.Decimal(12, 4)
+
+  vpo      Vpo      @relation(fields: [vpoId], references: [id], onDelete: Cascade)
+  material Material @relation(fields: [materialId], references: [id], onDelete: Restrict)
+  grnLines GrnLine[]
+}
+
+// -----------------------------------------------------------------------------
+// INVENTORY LEDGER
+// -----------------------------------------------------------------------------
+model Warehouse {
+  id        String   @id @default(uuid())
+  tenantId  String
+  code          String
+  name          String
+  warehouseType WarehouseType @default(GENERAL)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  tenant              Tenant             @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  bins                Bin[]
+  goodsReceiptNotes   GoodsReceiptNote[]
+  fabricRolls         FabricRoll[]
+  cartons             Carton[]
+  fromCartonMovements CartonMovement[]   @relation("FromWarehouseMovements")
+  toCartonMovements   CartonMovement[]   @relation("ToWarehouseMovements")
+  stockAudits         StockAudit[]
+
+  @@unique([tenantId, code])
+}
+
+model Bin {
+  id          String   @id @default(uuid())
+  warehouseId String
+  code        String
+  name        String
+  binType     BinType  @default(STORAGE)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  warehouse           Warehouse              @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  inventoryTxns       InventoryTransaction[]
+  grnLines            GrnLine[]
+  fabricRolls         FabricRoll[]
+  materialIssueLines  MaterialIssueLine[]
+  materialReturnLines MaterialReturnLine[]
+  cartons             Carton[]
+  fromCartonMovements CartonMovement[]       @relation("FromBinMovements")
+  toCartonMovements   CartonMovement[]       @relation("ToBinMovements")
+  supplierReturnLines SupplierReturnLine[]
+  stockAuditItems     StockAuditItem[]
+  
+  @@unique([warehouseId, code])
+}
+
+model InventoryItem {
+  id         String   @id @default(uuid())
+  tenantId   String
+  materialId String?
+  styleId    String?
+  quantity   Decimal  @db.Decimal(12, 4)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  material Material? @relation(fields: [materialId], references: [id], onDelete: Restrict)
+  style    Style?    @relation(fields: [styleId], references: [id], onDelete: Restrict)
+  
+  // Note: We enforce uniqueness on [tenantId, materialId] and [tenantId, styleId] in application logic 
+  // since Prisma doesn't natively support conditional unique indexes (where one is null) perfectly without overlaps.
+  // Actually, we can keep the material unique constraint if we know styles won't collide.
+  // For safety, we will rely on a custom unique constraint if needed, but for now we remove the hardcoded unique.
+}
+
+model InventoryTransaction {
+  id            String          @id @default(uuid())
+  tenantId      String
+  materialId    String?
+  styleId       String?
+  binId         String?
+  type          InventoryTxType
+  quantity      Decimal         @db.Decimal(12, 4)
+  uom           String
+  referenceId   String?  // E.g. VPO ID, Production Order ID
+  actorId       String
+  reason        String?
+  idempotencyKey String?
+  timestamp     DateTime        @default(now())
+
+  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  bin            Bin?            @relation(fields: [binId], references: [id], onDelete: Restrict)
+  cuttingRecords CuttingRecord[]
+
+  @@unique([tenantId, idempotencyKey])
+}
+
+// -----------------------------------------------------------------------------
+// MANUFACTURING EXECUTION SYSTEM (MES) & PRODUCTION
+// -----------------------------------------------------------------------------
+model ProductionOrder {
+  id               String           @id @default(uuid())
+  tenantId         String
+  buyerPoLineId    String
+  productionLineId String?
+  orderNumber      String
+  status           ProductionStatus @default(PLANNED)
+  targetQuantity   Decimal          @db.Decimal(12, 4)
+  completedQty     Decimal          @db.Decimal(12, 4) @default(0)
+  smv              Decimal?         @db.Decimal(12, 4)
+  plannedStartDate DateTime?
+  plannedEndDate   DateTime?
+  idempotencyKey   String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  tenant          Tenant                @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  buyerPoLine     BuyerPoLine           @relation(fields: [buyerPoLineId], references: [id], onDelete: Restrict)
+  productionLine  ProductionLine?       @relation(fields: [productionLineId], references: [id], onDelete: SetNull)
+  
+  operations      ProductionOperation[]
+  bomLines        ProductionBomLine[]
+  wipTransactions WipTransaction[]
+  productionPlans ProductionPlan[]
+  cuttingRecords  CuttingRecord[]
+  bundles         Bundle[]
+  qualityInspections QualityInspection[]
+  productionOutputs  ProductionOutput[]
+  productionDefects  ProductionDefect[]
+  qualityHolds       QualityHold[]
+  productionSchedules ProductionSchedule[]
+  aqlAudits             AqlAudit[]
+  nonConformanceReports NonConformanceReport[]
+  materialReservations  MaterialReservation[]
+  materialRequisitions  MaterialRequisition[]
+  materialIssueNotes    MaterialIssueNote[]
+  materialReturnNotes   MaterialReturnNote[]
+  cartons               Carton[]
+  materialReconciliation MaterialReconciliation?
+  jobCostSummary         JobCostSummary?
+
+  @@unique([tenantId, orderNumber])
+  @@unique([tenantId, idempotencyKey])
+}
+
+model ProductionOperation {
+  id                String          @id @default(uuid())
+  productionOrderId String
+  operationName     String
+  sequence          Int
+  status            OperationStatus @default(PENDING)
+  inputQty          Decimal         @db.Decimal(12, 4) @default(0)
+  outputQty         Decimal         @db.Decimal(12, 4) @default(0)
+  defectiveQty      Decimal         @db.Decimal(12, 4) @default(0)
+  smv               Decimal?        @db.Decimal(12, 4)
+  machineTypeId     String?
+  
+  productionOrder   ProductionOrder @relation(fields: [productionOrderId], references: [id], onDelete: Cascade)
+  wipFrom           WipTransaction[] @relation("FromOperation")
+  wipTo             WipTransaction[] @relation("ToOperation")
+  currentBundles    Bundle[]
+  bundleScans       BundleScan[]
+  qualityInspections QualityInspection[]
+  productionOutputs  ProductionOutput[]
+  productionDefects  ProductionDefect[]
+}
+
+model ProductionBomLine {
+  id                String          @id @default(uuid())
+  productionOrderId String
+  materialId        String
+  quantityPerUnit   Decimal         @db.Decimal(12, 4)
+  totalRequired     Decimal         @db.Decimal(12, 4)
+  
+  productionOrder   ProductionOrder @relation(fields: [productionOrderId], references: [id], onDelete: Cascade)
+  material          Material        @relation(fields: [materialId], references: [id], onDelete: Restrict)
+}
+
+model ProductionPlan {
+  id                String          @id @default(uuid())
+  tenantId          String
+  productionOrderId String
+  productionLineId  String
+  plannedStartDate  DateTime
+  plannedEndDate    DateTime
+  dailyTarget       Decimal?        @db.Decimal(12, 4)
+  smv               Decimal?        @db.Decimal(12, 4)
+  status            String          @default("PLANNED")
+  idempotencyKey    String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  tenant          Tenant          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  productionOrder ProductionOrder @relation(fields: [productionOrderId], references: [id], onDelete: Cascade)
+  productionLine  ProductionLine  @relation(fields: [productionLineId], references: [id], onDelete: Restrict)
+
+  @@unique([tenantId, idempotencyKey])
+}
+
+model CuttingRecord {
+  id                     String               @id @default(uuid())
+  tenantId               String
+  productionOrderId      String
+  inventoryTransactionId String
+  fabricMaterialId       String
+  fabricQuantity         Decimal              @db.Decimal(12, 4)
+  cutQuantity            Decimal              @db.Decimal(12, 4)
+  markerLength           Decimal?             @db.Decimal(12, 4)
+  markerEfficiency       Decimal?             @db.Decimal(12, 4)
+  wastagePercent         Decimal?             @db.Decimal(12, 4)
+  layCount               Int?                 @default(1)
+  idempotencyKey         String
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
+
+  tenant               Tenant               @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  productionOrder      ProductionOrder      @relation(fields: [productionOrderId], references: [id], onDelete: Restrict)
+  inventoryTransaction InventoryTransaction @relation(fields: [inventoryTransactionId], references: [id], onDelete: Restrict)
+  fabricMaterial       Material             @relation(fields: [fabricMaterialId], references: [id], onDelete: Restrict)
+  bundles              Bundle[]
+  cuttingRecordRolls   CuttingRecordRoll[]
+
+  @@unique([tenantId, idempotencyKey])
+}
+
+model Bundle {
+  id                 String              @id @default(uuid())
+  tenantId           String
+  productionOrderId  String
+  cuttingRecordId    String
+  barcode            String
+  bundleSequence     Int?
+  quantity           Decimal             @db.Decimal(12, 4)
+  currentOperationId String?
+  status             BundleStatus        @default(CUT)
+  isQualityHold      Boolean             @default(false)
+  qualityHoldReason  String?
+  idempotencyKey     String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  tenant           Tenant               @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  productionOrder       ProductionOrder      @relation(fields: [productionOrderId], references: [id], onDelete: Cascade)
+  cuttingRecord         CuttingRecord        @relation(fields: [cuttingRecordId], references: [id], onDelete: Restrict)
+  currentOperation      ProductionOperation? @relation(fields: [currentOperationId], references: [id], onDelete: SetNull)
+  scans                 BundleScan[]
+  inspections           QualityInspection[]
+  productionOutputs     ProductionOutput[]
+  productionDefects     ProductionDefect[]
+  qualityHolds          QualityHold[]
+  nonConformanceReports NonConformanceReport[]
+  cartonItems           CartonItem[]
+
+  @@unique([tenantId, barcode])
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId, productionOrderId])
+  @@index([tenantId, cuttingRecordId])
+  @@index([tenantId, isQualityHold])
+}
+
+model BundleScan {
+  id             String              @id @default(uuid())
+  tenantId       String
+  bundleId       String
+  operationId    String
+  employeeId     String
+  machineId      String?
+  timestamp      DateTime            @default(now())
+  idempotencyKey String
+  createdAt      DateTime            @default(now())
+
+  tenant    Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  bundle    Bundle              @relation(fields: [bundleId], references: [id], onDelete: Cascade)
+  operation ProductionOperation @relation(fields: [operationId], references: [id], onDelete: Restrict)
+  employee  Employee            @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  machine   Machine?            @relation(fields: [machineId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId, bundleId])
+  @@index([tenantId, operationId])
+  @@index([tenantId, employeeId])
+  @@index([tenantId, machineId])
+  @@index([tenantId, timestamp])
+}
+
+model WipTransaction {
+  id                String          @id @default(uuid())
+  tenantId          String
+  productionOrderId String
+  fromOperationId   String?
+  toOperationId     String?
+  quantity          Decimal         @db.Decimal(12, 4)
+  type              String          // e.g. MOVE, REJECT
+  actorId           String
+  idempotencyKey    String?
+  timestamp         DateTime        @default(now())
+
+  tenant            Tenant          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  productionOrder   ProductionOrder @relation(fields: [productionOrderId], references: [id], onDelete: Cascade)
+  fromOperation     ProductionOperation? @relation("FromOperation", fields: [fromOperationId], references: [id], onDelete: Restrict)
+  toOperation       ProductionOperation? @relation("ToOperation", fields: [toOperationId], references: [id], onDelete: Restrict)
+
+  @@unique([tenantId, idempotencyKey])
+}
+
+model DowntimeEvent {
+  id               String          @id @default(uuid())
+  tenantId         String
+  productionLineId String
+  machineId        String?
+  reasonCode       String
+  startTime        DateTime        @default(now())
+  endTime          DateTime?
+  status           DowntimeStatus  @default(ACTIVE)
+  remarks          String?
+  idempotencyKey   String
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  tenant         Tenant         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  productionLine ProductionLine @relation(fields: [productionLineId], references: [id], onDelete: Restrict)
+  machine        Machine?       @relation(fields: [machineId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId, productionLineId])
+  @@index([tenantId, machineId])
+  @@index([tenantId, status])
+  @@index([tenantId, startTime])
+  @@index([tenantId, endTime])
+}
+
+model QualityInspection {
+  id                String              @id @default(uuid())
+  tenantId          String
+  bundleId          String
+  productionOrderId String
+  operationId       String
+  inspectorId       String
+  machineId         String?
+  result            InspectionResult
+  inspectedQty      Decimal             @db.Decimal(12, 4)
+  passedQty         Decimal             @db.Decimal(12, 4)
+  rejectedQty       Decimal             @db.Decimal(12, 4) @default(0)
+  notes             String?
+  idempotencyKey    String
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  tenant          Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  bundle          Bundle              @relation(fields: [bundleId], references: [id], onDelete: Cascade)
+  productionOrder ProductionOrder     @relation(fields: [productionOrderId], references: [id], onDelete: Restrict)
+  operation       ProductionOperation @relation(fields: [operationId], references: [id], onDelete: Restrict)
+  inspector       Employee            @relation(fields: [inspectorId], references: [id], onDelete: Restrict)
+  machine         Machine?            @relation(fields: [machineId], references: [id], onDelete: SetNull)
+  defects         InspectionDefect[]
+  nonConformanceReports NonConformanceReport[]
+
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId, bundleId])
+  @@index([tenantId, productionOrderId])
+  @@index([tenantId, operationId])
+  @@index([tenantId, inspectorId])
+  @@index([tenantId, result])
+  @@index([tenantId, createdAt])
+}
+
+model InspectionDefect {
+  id           String         @id @default(uuid())
+  tenantId     String
+  inspectionId String
+  defectCode   String
+  severity     DefectSeverity @default(MAJOR)
+  quantity     Decimal        @db.Decimal(12, 4)
+  notes        String?
+  createdAt    DateTime       @default(now())
+
+  tenant     Tenant            @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  inspection QualityInspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, inspectionId])
+  @@index([tenantId, defectCode])
+}
+
+model ProductionOutput {
+  id                String          @id @default(uuid())
+  tenantId          String
+  productionOrderId String
+  bundleId          String?
+  operationId       String
+  goodQuantity      Decimal         @db.Decimal(12, 4)
+  defectiveQuantity Decimal         @default(0) @db.Decimal(12, 4)
+  operatorId        String?
+  timestamp         DateTime        @default(now())
+  notes             String?
+  idempotencyKey    String
+
+  tenant          Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  productionOrder ProductionOrder     @relation(fields: [productionOrderId], references: [id], onDelete: Cascade)
+  bundle          Bundle?             @relation(fields: [bundleId], references: [id], onDelete: SetNull)
+  operation       ProductionOperation @relation(fields: [operationId], references: [id], onDelete: Restrict)
+  operator        Employee?           @relation("ProductionOutputOperator", fields: [operatorId], references: [id], onDelete: SetNull)
+  defects         ProductionDefect[]
+
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId, productionOrderId])
+  @@index([tenantId, bundleId])
+  @@index([tenantId, operationId])
+  @@index([tenantId, timestamp])
+}
+
+model ProductionDefect {
+  id                 String          @id @default(uuid())
+  tenantId           String
+  productionOrderId  String
+  bundleId           String?
+  operationId        String
+  productionOutputId String?
+  defectCode         String
+  quantity           Decimal         @db.Decimal(12, 4)
+  status             DefectStatus    @default(OPEN)
+  remarks            String?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  tenant           Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  productionOrder  ProductionOrder     @relation(fields: [productionOrderId], references: [id], onDelete: Cascade)
+  bundle           Bundle?             @relation(fields: [bundleId], references: [id], onDelete: SetNull)
+  operation        ProductionOperation @relation(fields: [operationId], references: [id], onDelete: Restrict)
+  productionOutput ProductionOutput?   @relation(fields: [productionOutputId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, productionOrderId])
+  @@index([tenantId, bundleId])
+  @@index([tenantId, defectCode])
+  @@index([tenantId, status])
+}
+
+model QualityHold {
+  id                String            @id @default(uuid())
+  tenantId          String
+  productionOrderId String
+  bundleId          String?
+  reason            String
+  status            QualityHoldStatus @default(ACTIVE)
+  heldById          String?
+  releasedById      String?
+  heldAt            DateTime          @default(now())
+  releasedAt        DateTime?
+  releaseRemarks    String?
+  idempotencyKey    String
+
+  tenant          Tenant          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  productionOrder ProductionOrder @relation(fields: [productionOrderId], references: [id], onDelete: Cascade)
+  bundle          Bundle?         @relation(fields: [bundleId], references: [id], onDelete: SetNull)
+  heldBy          Employee?       @relation("QualityHoldApplier", fields: [heldById], references: [id], onDelete: SetNull)
+  releasedBy      Employee?       @relation("QualityHoldReleaser", fields: [releasedById], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId, productionOrderId])
+  @@index([tenantId, bundleId])
+  @@index([tenantId, status])
+}
+
+// -----------------------------------------------------------------------------
+// MES SHIFTS, ASSIGNMENTS & PRODUCTION SCHEDULING (PHASE 5.8)
+// -----------------------------------------------------------------------------
+model Shift {
+  id            String   @id @default(uuid())
+  tenantId      String
+  factoryUnitId String
+  code          String
+  name          String
+  startTime     String   // "06:00" (HH:mm format, 24-hour)
+  endTime       String   // "14:30" (HH:mm format, overnight if endTime <= startTime)
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant      Tenant               @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  factoryUnit FactoryUnit          @relation(fields: [factoryUnitId], references: [id], onDelete: Restrict)
+  assignments ShiftAssignment[]
+  schedules   ProductionSchedule[]
+
+  @@unique([tenantId, factoryUnitId, code])
+  @@index([tenantId, factoryUnitId])
+  @@index([tenantId, active])
+}
+
+model ShiftAssignment {
+  id               String       @id @default(uuid())
+  tenantId         String
+  shiftId          String
+  employeeId       String
+  productionLineId String?
+  workDate         DateTime     @db.Date
+  role             EmployeeType @default(OPERATOR)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  shift          Shift           @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  employee       Employee        @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  productionLine ProductionLine? @relation(fields: [productionLineId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, shiftId, employeeId, workDate])
+  @@index([tenantId, shiftId])
+  @@index([tenantId, employeeId])
+  @@index([tenantId, productionLineId])
+  @@index([tenantId, workDate])
+}
+
+model ProductionSchedule {
+  id                String         @id @default(uuid())
+  tenantId          String
+  productionOrderId String
+  productionLineId  String
+  shiftId           String?
+  scheduledDate     DateTime       @db.Date
+  scheduledStart    DateTime
+  scheduledEnd      DateTime
+  plannedQuantity   Decimal        @db.Decimal(12, 4)
+  actualQuantity    Decimal        @db.Decimal(12, 4) @default(0)
+  status            ScheduleStatus @default(SCHEDULED)
+  idempotencyKey    String?
+  notes             String?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  tenant          Tenant          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  productionOrder ProductionOrder @relation(fields: [productionOrderId], references: [id], onDelete: Cascade)
+  productionLine  ProductionLine  @relation(fields: [productionLineId], references: [id], onDelete: Restrict)
+  shift           Shift?          @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId, productionOrderId])
+  @@index([tenantId, productionLineId])
+  @@index([tenantId, shiftId])
+  @@index([tenantId, scheduledDate])
+  @@index([tenantId, status])
+  @@index([tenantId, scheduledStart, scheduledEnd])
+}
+
+// -----------------------------------------------------------------------------
+// QUALITY MANAGEMENT (PHASE 6)
+// -----------------------------------------------------------------------------
+model DefectCatalog {
+  id              String         @id @default(uuid())
+  tenantId        String
+  code            String         // e.g. "DEF-SEW-001", "SEAM_PUCKERING"
+  name            String         // e.g. "Seam Puckering"
+  category        DefectCategory
+  defaultSeverity DefectSeverity @default(MAJOR)
+  description     String?
+  active          Boolean        @default(true)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@unique([tenantId, code])
+  @@index([tenantId, category])
+  @@index([tenantId, active])
+}
+
+model InspectionPlan {
+  id              String          @id @default(uuid())
+  tenantId        String
+  styleId         String?         // Specific to style, or general template if null
+  code            String          // e.g. "PLAN-POLO-FINAL"
+  name            String          // e.g. "Polo Shirt Final Inspection Protocol"
+  stage           InspectionStage @default(FINAL_AUDIT)
+  aqlLevel        Decimal         @db.Decimal(4, 2) @default(2.5)
+  inspectionLevel String          @default("LEVEL_II") // "LEVEL_I", "LEVEL_II", "LEVEL_III"
+  active          Boolean         @default(true)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  tenant     Tenant                @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  style      Style?                @relation(fields: [styleId], references: [id], onDelete: SetNull)
+  checklists InspectionChecklist[]
+  aqlAudits  AqlAudit[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId, styleId])
+  @@index([tenantId, stage])
+}
+
+model InspectionChecklist {
+  id         String         @id @default(uuid())
+  planId     String
+  checkpoint String         // e.g. "SPI (Stitches Per Inch) verification"
+  standard   String?        // e.g. "10-12 stitches per inch"
+  tolerance  String?        // e.g. "+/- 1 stitch"
+  severity   DefectSeverity @default(MAJOR)
+  sequence   Int            @default(1)
+
+  plan InspectionPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@index([planId, sequence])
+}
+
+model AqlAudit {
+  id                 String          @id @default(uuid())
+  tenantId           String
+  productionOrderId  String
+  planId             String?
+  auditNumber        String          // e.g. "AUD-2026-0001"
+  stage              InspectionStage @default(FINAL_AUDIT)
+  inspectionLevel    String          @default("LEVEL_II")
+  lotSize            Int
+  sampleSize         Int
+  aqlMajor           Decimal         @db.Decimal(4, 2) @default(2.5)
+  aqlMinor           Decimal         @db.Decimal(4, 2) @default(4.0)
+  maxAllowedCritical Int             @default(0)
+  maxAllowedMajor    Int
+  maxAllowedMinor    Int
+  criticalDefects    Int             @default(0)
+  majorDefects       Int             @default(0)
+  minorDefects       Int             @default(0)
+  status             AqlAuditStatus  @default(DRAFT)
+  auditorId          String
+  auditDate          DateTime        @default(now())
+  notes              String?
+  idempotencyKey     String
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  tenant          Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  productionOrder ProductionOrder        @relation(fields: [productionOrderId], references: [id], onDelete: Restrict)
+  plan            InspectionPlan?        @relation(fields: [planId], references: [id], onDelete: SetNull)
+  auditor         Employee               @relation("AqlAuditor", fields: [auditorId], references: [id], onDelete: Restrict)
+  defects         AqlAuditDefect[]
+  ncrs            NonConformanceReport[]
+
+  @@unique([tenantId, auditNumber])
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId, productionOrderId])
+  @@index([tenantId, status])
+  @@index([tenantId, auditDate])
+}
+
+model AqlAuditDefect {
+  id         String         @id @default(uuid())
+  tenantId   String
+  auditId    String
+  defectCode String
+  severity   DefectSeverity @default(MAJOR)
+  quantity   Int
+  notes      String?
+
+  tenant Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  audit  AqlAudit @relation(fields: [auditId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, auditId])
+  @@index([tenantId, defectCode])
+}
+
+model NonConformanceReport {
+  id                   String         @id @default(uuid())
+  tenantId             String
+  ncrNumber            String         // e.g. "NCR-2026-0001"
+  title                String
+  source               NcrSource
+  severity             DefectSeverity @default(MAJOR)
+  status               NcrStatus      @default(OPEN)
+  productionOrderId    String?
+  bundleId             String?
+  qualityInspectionId  String?
+  aqlAuditId           String?
+  description          String
+  rootCause            String?        // 5-Whys analysis summary
+  containmentAction    String?        // Immediate containment step
+  createdById          String
+  assignedToId         String?
+  targetResolutionDate DateTime?
+  resolvedAt           DateTime?
+  closedAt             DateTime?
+  idempotencyKey       String
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+
+  tenant            Tenant             @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  productionOrder   ProductionOrder?   @relation(fields: [productionOrderId], references: [id], onDelete: SetNull)
+  bundle            Bundle?            @relation(fields: [bundleId], references: [id], onDelete: SetNull)
+  qualityInspection QualityInspection? @relation(fields: [qualityInspectionId], references: [id], onDelete: SetNull)
+  aqlAudit          AqlAudit?          @relation(fields: [aqlAuditId], references: [id], onDelete: SetNull)
+  createdBy         Employee           @relation("NcrCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  assignedTo        Employee?          @relation("NcrAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  capaActions       CapaAction[]
+
+  @@unique([tenantId, ncrNumber])
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId, productionOrderId])
+  @@index([tenantId, status])
+  @@index([tenantId, source])
+}
+
+model CapaAction {
+  id                String     @id @default(uuid())
+  tenantId          String
+  ncrId             String
+  actionType        CapaType   @default(CORRECTIVE)
+  description       String
+  assigneeId        String
+  dueDate           DateTime
+  status            CapaStatus @default(PENDING)
+  completionNotes   String?
+  completedAt       DateTime?
+  verifiedById      String?
+  verifiedAt        DateTime?
+  verificationNotes String?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  tenant     Tenant               @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  ncr        NonConformanceReport @relation(fields: [ncrId], references: [id], onDelete: Cascade)
+  assignee   Employee             @relation("CapaAssignee", fields: [assigneeId], references: [id], onDelete: Restrict)
+  verifiedBy Employee?            @relation("CapaVerifier", fields: [verifiedById], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, ncrId])
+  @@index([tenantId, status])
+  @@index([tenantId, assigneeId])
+}
+
+// -----------------------------------------------------------------------------
+// PLATFORM
+// -----------------------------------------------------------------------------
+model AuditEvent {
+  id          String   @id @default(uuid())
+  tenantId    String
+  actorId     String
+  action      String
+  entity      String
+  entityId    String
+  oldValues   Json?
+  newValues   Json?
+  reason      String?
+  requestId   String?
+  timestamp   DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model Document {
+  id           String   @id @default(uuid())
+  tenantId     String
+  entityType   String
+  entityId     String
+  originalName String
+  storageUrl   String
+  version      Int      @default(1)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+// -----------------------------------------------------------------------------
+// PHASE 7: MATERIAL MANAGEMENT, FABRIC ROLL INVENTORY & WAREHOUSE CONTROL
+// -----------------------------------------------------------------------------
+
+model GoodsReceiptNote {
+  id                    String      @id @default(uuid())
+  tenantId              String
+  grnNumber             String      // e.g. "GRN-2026-0001"
+  vpoId                 String
+  supplierId            String
+  warehouseId           String
+  deliveryChallanNumber String?
+  vehicleNumber         String?
+  gatePassNumber        String?
+  receivedDate          DateTime    @default(now())
+  status                GrnStatus   @default(RECEIVED)
+  notes                 String?
+  idempotencyKey        String
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+
+  tenant       Tenant               @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  vpo          Vpo                  @relation(fields: [vpoId], references: [id], onDelete: Restrict)
+  supplier     Supplier             @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  warehouse    Warehouse            @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  grnLines     GrnLine[]
+  fabricRolls  FabricRoll[]
+  supplierReturnNotes SupplierReturnNote[]
+
+  @@unique([tenantId, grnNumber])
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId, vpoId])
+  @@index([tenantId, supplierId])
+  @@index([tenantId, status])
+}
+
+model GrnLine {
+  id               String       @id @default(uuid())
+  tenantId         String
+  grnId            String
+  vpoLineId        String?
+  materialId       String
+  binId            String?
+  receivedQuantity Decimal      @db.Decimal(12, 4)
+  acceptedQuantity Decimal      @default(0) @db.Decimal(12, 4)
+  rejectedQuantity Decimal      @default(0) @db.Decimal(12, 4)
+  uom              String
+  rejectionReason  String?
+
+  tenant           Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  grn              GoodsReceiptNote @relation(fields: [grnId], references: [id], onDelete: Cascade)
+  vpoLine          VpoLine?         @relation(fields: [vpoLineId], references: [id], onDelete: SetNull)
+  material         Material         @relation(fields: [materialId], references: [id], onDelete: Restrict)
+  bin              Bin?             @relation(fields: [binId], references: [id], onDelete: SetNull)
+  fabricRolls      FabricRoll[]
+
+  @@index([tenantId, grnId])
+  @@index([tenantId, materialId])
+}
+
+model FabricRoll {
+  id               String       @id @default(uuid())
+  tenantId         String
+  rollNumber       String       // e.g. "ROL-2026-0001"
+  materialId       String
+  grnLineId        String?
+  grnId            String?
+  warehouseId      String
+  binId            String?
+  lotNumber        String       // Dye Lot / Batch
+  shade            String?      // Shade code / Lab dip
+  grossLength      Decimal      @db.Decimal(12, 4)
+  netLength        Decimal      @db.Decimal(12, 4)
+  lengthUom        String       @default("YDS")
+  width            Decimal      @db.Decimal(12, 4)
+  cuttableWidth    Decimal?     @db.Decimal(12, 4)
+  widthUom         String       @default("INCH")
+  weightGsm        Decimal?     @db.Decimal(8, 2)
+  shrinkagePercent Decimal?     @db.Decimal(5, 2)
+  status           RollStatus   @default(RECEIVED)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  tenant           Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  material         Material                  @relation(fields: [materialId], references: [id], onDelete: Restrict)
+  grnLine          GrnLine?                  @relation(fields: [grnLineId], references: [id], onDelete: SetNull)
+  grn              GoodsReceiptNote?         @relation(fields: [grnId], references: [id], onDelete: SetNull)
+  warehouse        Warehouse                 @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  bin              Bin?                      @relation(fields: [binId], references: [id], onDelete: SetNull)
+  inspections      FabricRollInspection[]
+  reservationLines MaterialReservationLine[]
+  issueLines       MaterialIssueLine[]
+  returnLines      MaterialReturnLine[]
+  cuttingRolls     CuttingRecordRoll[]
+  supplierReturnLines SupplierReturnLine[]
+  stockAuditItems     StockAuditItem[]
+
+  @@unique([tenantId, rollNumber])
+  @@index([tenantId, materialId])
+  @@index([tenantId, lotNumber])
+  @@index([tenantId, status])
+  @@index([tenantId, warehouseId])
+}
+
+model FabricRollInspection {
+  id                    String              @id @default(uuid())
+  tenantId              String
+  fabricRollId          String
+  gradingOption         FabricGradingOption @default(OPTION_A_STANDARD)
+  inspectedLength       Decimal             @db.Decimal(12, 4)
+  lengthUom             String              @default("YDS") // Canonical ASTM basis: YDS
+  inspectedWidth        Decimal             @db.Decimal(12, 4)
+  widthUom              String              @default("INCH") // Canonical ASTM basis: INCH
+  totalPoints           Int                 @default(0)
+  pointsPer100SqYards   Decimal             @db.Decimal(8, 2) // Canonical ASTM D5430 basis
+  pointsPer100SqMeters  Decimal             @db.Decimal(8, 2) // Metric display conversion
+  acceptanceThreshold   Decimal             @db.Decimal(8, 2) // Customer / Buyer threshold
+  result                InspectionResult    @default(PASS)
+  defectDetails         Json                // Array of { defectType, lengthOrSize, sizeUom, penaltyPoints, notes }
+  notes                 String?
+  inspectedById         String
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  tenant                Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  fabricRoll            FabricRoll          @relation(fields: [fabricRollId], references: [id], onDelete: Cascade)
+  inspectedBy           Employee            @relation("RollInspector", fields: [inspectedById], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, fabricRollId])
+  @@index([tenantId, result])
+}
+
+model MaterialReservation {
+  id                String            @id @default(uuid())
+  tenantId          String
+  reservationNumber String            // e.g. "RES-2026-0001"
+  productionOrderId String
+  status            ReservationStatus @default(ACTIVE)
+  notes             String?
+  idempotencyKey    String
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  tenant            Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  productionOrder   ProductionOrder           @relation(fields: [productionOrderId], references: [id], onDelete: Restrict)
+  lines             MaterialReservationLine[]
+
+  @@unique([tenantId, reservationNumber])
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId, productionOrderId])
+  @@index([tenantId, status])
+}
+
+model MaterialReservationLine {
+  id            String              @id @default(uuid())
+  tenantId      String
+  reservationId String
+  materialId    String
+  fabricRollId  String?
+  quantity      Decimal             @db.Decimal(12, 4)
+  uom           String
+
+  tenant        Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  reservation   MaterialReservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  material      Material            @relation(fields: [materialId], references: [id], onDelete: Restrict)
+  fabricRoll    FabricRoll?         @relation(fields: [fabricRollId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, reservationId])
+  @@index([tenantId, materialId])
+  @@index([tenantId, fabricRollId])
+}
+
+model MaterialRequisition {
+  id                String            @id @default(uuid())
+  tenantId          String
+  requisitionNumber String            // e.g. "REQ-2026-0001"
+  productionOrderId String
+  departmentId      String?
+  requestedById     String
+  status            RequisitionStatus @default(SUBMITTED)
+  requiredDate      DateTime
+  notes             String?
+  idempotencyKey    String
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  tenant          Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  productionOrder ProductionOrder           @relation(fields: [productionOrderId], references: [id], onDelete: Restrict)
+  department      Department?               @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  requestedBy     Employee                  @relation("RequisitionRequester", fields: [requestedById], references: [id], onDelete: Restrict)
+  lines           MaterialRequisitionLine[]
+  issueNotes      MaterialIssueNote[]
+
+  @@unique([tenantId, requisitionNumber])
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId, productionOrderId])
+  @@index([tenantId, status])
+}
+
+model MaterialRequisitionLine {
+  id                String              @id @default(uuid())
+  tenantId          String
+  requisitionId     String
+  materialId        String
+  requestedQuantity Decimal             @db.Decimal(12, 4)
+  issuedQuantity    Decimal             @default(0) @db.Decimal(12, 4)
+  uom               String
+
+  tenant            Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  requisition       MaterialRequisition @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
+  material          Material            @relation(fields: [materialId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, requisitionId])
+  @@index([tenantId, materialId])
+}
+
+model MaterialIssueNote {
+  id                String       @id @default(uuid())
+  tenantId          String
+  issueNumber       String       // e.g. "MIN-2026-0001"
+  requisitionId     String?
+  productionOrderId String
+  issuedById        String
+  receivedById      String?
+  status            IssueStatus  @default(ISSUED)
+  issuedAt          DateTime     @default(now())
+  notes             String?
+  idempotencyKey    String
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  tenant          Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  requisition     MaterialRequisition? @relation(fields: [requisitionId], references: [id], onDelete: SetNull)
+  productionOrder ProductionOrder     @relation(fields: [productionOrderId], references: [id], onDelete: Restrict)
+  issuedBy        Employee            @relation("IssueStorekeeper", fields: [issuedById], references: [id], onDelete: Restrict)
+  receivedBy      Employee?           @relation("IssueReceiver", fields: [receivedById], references: [id], onDelete: SetNull)
+  lines           MaterialIssueLine[]
+
+  @@unique([tenantId, issueNumber])
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId, productionOrderId])
+  @@index([tenantId, requisitionId])
+}
+
+model MaterialIssueLine {
+  id           String            @id @default(uuid())
+  tenantId     String
+  issueNoteId  String
+  materialId   String
+  fabricRollId String?
+  binId        String?
+  quantity     Decimal           @db.Decimal(12, 4)
+  uom          String
+
+  tenant       Tenant            @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  issueNote    MaterialIssueNote @relation(fields: [issueNoteId], references: [id], onDelete: Cascade)
+  material     Material          @relation(fields: [materialId], references: [id], onDelete: Restrict)
+  fabricRoll   FabricRoll?       @relation(fields: [fabricRollId], references: [id], onDelete: SetNull)
+  bin          Bin?              @relation(fields: [binId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, issueNoteId])
+  @@index([tenantId, fabricRollId])
+}
+
+model MaterialReturnNote {
+  id                String       @id @default(uuid())
+  tenantId          String
+  returnNumber      String       // e.g. "MRN-2026-0001"
+  productionOrderId String
+  returnedById      String
+  receivedById      String?
+  status            ReturnStatus @default(RETURNED)
+  returnedAt        DateTime     @default(now())
+  reason            String?
+  idempotencyKey    String
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  tenant          Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  productionOrder ProductionOrder     @relation(fields: [productionOrderId], references: [id], onDelete: Restrict)
+  returnedBy      Employee            @relation("ReturnIssuer", fields: [returnedById], references: [id], onDelete: Restrict)
+  receivedBy      Employee?           @relation("ReturnReceiver", fields: [receivedById], references: [id], onDelete: SetNull)
+  lines           MaterialReturnLine[]
+
+  @@unique([tenantId, returnNumber])
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId, productionOrderId])
+}
+
+model MaterialReturnLine {
+  id           String             @id @default(uuid())
+  tenantId     String
+  returnNoteId String
+  materialId   String
+  fabricRollId String?
+  binId        String
+  quantity     Decimal            @db.Decimal(12, 4)
+  isScrap      Boolean            @default(false)
+  uom          String
+
+  tenant       Tenant             @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  returnNote   MaterialReturnNote @relation(fields: [returnNoteId], references: [id], onDelete: Cascade)
+  material     Material           @relation(fields: [materialId], references: [id], onDelete: Restrict)
+  fabricRoll   FabricRoll?        @relation(fields: [fabricRollId], references: [id], onDelete: SetNull)
+  bin          Bin                @relation(fields: [binId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, returnNoteId])
+  @@index([tenantId, fabricRollId])
+}
+
+// Additive Join Table for Cutting Traceability (Zero edits to frozen CuttingRecord columns)
+model CuttingRecordRoll {
+  id              String        @id @default(uuid())
+  tenantId        String
+  cuttingRecordId String
+  fabricRollId    String
+  lengthConsumed  Decimal       @db.Decimal(12, 4)
+  uom             String        @default("YDS")
+  createdAt       DateTime      @default(now())
+
+  tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  cuttingRecord   CuttingRecord @relation(fields: [cuttingRecordId], references: [id], onDelete: Restrict)
+  fabricRoll      FabricRoll    @relation(fields: [fabricRollId], references: [id], onDelete: Restrict)
+
+  @@unique([cuttingRecordId, fabricRollId])
+  @@index([tenantId, fabricRollId])
+}
+
+// -----------------------------------------------------------------------------
+// PHASE 8.1: FINISHED GOODS PACKAGING & CARTONIZATION
+// -----------------------------------------------------------------------------
+
+model PackingList {
+  id                 String            @id @default(uuid())
+  tenantId           String
+  packingListNumber  String
+  buyerId            String
+  buyerPoId          String?
+  status             PackingListStatus @default(DRAFT)
+  totalCartons       Int               @default(0)
+  totalUnits         Int               @default(0)
+  totalGrossWeightKg Decimal?          @db.Decimal(12, 3)
+  totalNetWeightKg   Decimal?          @db.Decimal(12, 3)
+  totalCbm           Decimal?          @db.Decimal(12, 4)
+  notes              String?
+  idempotencyKey     String
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  tenant             Tenant            @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  buyer              Buyer             @relation(fields: [buyerId], references: [id], onDelete: Restrict)
+  buyerPo            BuyerPo?          @relation(fields: [buyerPoId], references: [id], onDelete: SetNull)
+  cartons            Carton[]
+
+  @@unique([tenantId, packingListNumber])
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId, buyerId])
+  @@index([tenantId, buyerPoId])
+}
+
+model Carton {
+  id                String            @id @default(uuid())
+  tenantId          String
+  cartonNumber      String
+  barcode           String            // GS1-128 / SSCC-18 serial shipping container code
+  packingMode       CartonPackingMode @default(SOLID)
+  status            CartonStatus      @default(PACKED)
+  productionOrderId String
+  buyerPoId         String?
+  packingListId     String?
+  warehouseId       String?
+  binId             String?
+  grossWeightKg     Decimal?          @db.Decimal(10, 3)
+  netWeightKg       Decimal?          @db.Decimal(10, 3)
+  lengthCm          Decimal?          @db.Decimal(10, 2)
+  widthCm           Decimal?          @db.Decimal(10, 2)
+  heightCm          Decimal?          @db.Decimal(10, 2)
+  cbm               Decimal?          @db.Decimal(10, 4)
+  totalUnits        Int               @default(0)
+  notes             String?
+  putawayAt         DateTime?
+  stagedAt          DateTime?
+  shipmentId        String?
+  idempotencyKey    String
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  tenant            Tenant            @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  productionOrder   ProductionOrder   @relation(fields: [productionOrderId], references: [id], onDelete: Restrict)
+  buyerPo           BuyerPo?          @relation(fields: [buyerPoId], references: [id], onDelete: SetNull)
+  packingList       PackingList?      @relation(fields: [packingListId], references: [id], onDelete: SetNull)
+  warehouse         Warehouse?        @relation(fields: [warehouseId], references: [id], onDelete: SetNull)
+  bin               Bin?              @relation(fields: [binId], references: [id], onDelete: SetNull)
+  shipment          Shipment?         @relation(fields: [shipmentId], references: [id], onDelete: SetNull)
+  items             CartonItem[]
+  movements         CartonMovement[]
+
+  @@unique([tenantId, cartonNumber])
+  @@unique([tenantId, barcode])
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId, productionOrderId])
+  @@index([tenantId, packingListId])
+  @@index([tenantId, shipmentId])
+  @@index([tenantId, status])
+}
+
+model CartonItem {
+  id         String   @id @default(uuid())
+  tenantId   String
+  cartonId   String
+  styleId    String
+  bundleId   String?
+  color      String
+  size       String
+  quantity   Int
+  uom        String   @default("PCS")
+  createdAt  DateTime @default(now())
+
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  carton     Carton   @relation(fields: [cartonId], references: [id], onDelete: Cascade)
+  style      Style    @relation(fields: [styleId], references: [id], onDelete: Restrict)
+  bundle     Bundle?  @relation(fields: [bundleId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, cartonId])
+  @@index([tenantId, styleId])
+  @@index([tenantId, bundleId])
+}
+
+model CartonMovement {
+  id              String             @id @default(uuid())
+  tenantId        String
+  cartonId        String
+  fromWarehouseId String?
+  toWarehouseId   String?
+  fromBinId       String?
+  toBinId         String?
+  fromStatus      CartonStatus
+  toStatus        CartonStatus
+  movementType    CartonMovementType
+  actorId         String
+  notes           String?
+  idempotencyKey  String
+  timestamp       DateTime           @default(now())
+
+  tenant        Tenant     @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  carton        Carton     @relation(fields: [cartonId], references: [id], onDelete: Cascade)
+  fromWarehouse Warehouse? @relation("FromWarehouseMovements", fields: [fromWarehouseId], references: [id], onDelete: SetNull)
+  toWarehouse   Warehouse? @relation("ToWarehouseMovements", fields: [toWarehouseId], references: [id], onDelete: SetNull)
+  fromBin       Bin?       @relation("FromBinMovements", fields: [fromBinId], references: [id], onDelete: SetNull)
+  toBin         Bin?       @relation("ToBinMovements", fields: [toBinId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId, cartonId])
+  @@index([tenantId, timestamp])
+}
+
+// -----------------------------------------------------------------------------
+// SUB-PHASE 8.3: OUTBOUND LOGISTICS, SHIPMENT, COMMERCIAL INVOICE & GATE PASS
+// -----------------------------------------------------------------------------
+
+model Shipment {
+  id                 String         @id @default(uuid())
+  tenantId           String
+  shipmentNumber     String         // e.g. "SHP-2026-0001"
+  buyerId            String
+  buyerPoId          String?
+  carrier            String?        // e.g. "Maersk", "DHL", "Swift Freight"
+  trackingNumber     String?        // e.g. B/L or courier tracking number
+  containerNumber    String?        // e.g. "MSKU9045231"
+  destinationPort    String?        // e.g. "Port of Rotterdam"
+  destinationCountry String?        // e.g. "Germany"
+  shippingMarks      String?
+  status             ShipmentStatus @default(DRAFT)
+  totalCartons       Int            @default(0)
+  totalUnits         Int            @default(0)
+  totalGrossWeightKg Decimal?       @db.Decimal(12, 3)
+  totalNetWeightKg   Decimal?       @db.Decimal(12, 3)
+  totalCbm           Decimal?       @db.Decimal(12, 4)
+  plannedShipDate    DateTime?
+  actualShipDate     DateTime?
+  notes              String?
+  idempotencyKey     String
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  buyer              Buyer               @relation(fields: [buyerId], references: [id], onDelete: Restrict)
+  buyerPo            BuyerPo?            @relation(fields: [buyerPoId], references: [id], onDelete: SetNull)
+  items              ShipmentItem[]
+  cartons            Carton[]
+  invoices           CommercialInvoice[]
+  gatePasses         OutboundGatePass[]
+
+  @@unique([tenantId, shipmentNumber])
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId, buyerId])
+  @@index([tenantId, buyerPoId])
+  @@index([tenantId, status])
+}
+
+model ShipmentItem {
+  id             String   @id @default(uuid())
+  tenantId       String
+  shipmentId     String
+  styleId        String
+  cartonCount    Int      @default(0)
+  totalUnits     Int      @default(0)
+  grossWeightKg  Decimal? @db.Decimal(12, 3)
+  cbm            Decimal? @db.Decimal(12, 4)
+  createdAt      DateTime @default(now())
+
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  shipment       Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  style          Style    @relation(fields: [styleId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, shipmentId])
+  @@index([tenantId, styleId])
+}
+
+model CommercialInvoice {
+  id               String                  @id @default(uuid())
+  tenantId         String
+  invoiceNumber    String                  // e.g. "INV-2026-0001"
+  shipmentId       String
+  buyerId          String
+  currency         String                  @default("USD")
+  incoterms        String?                 // e.g. "FOB Karachi"
+  paymentTerms     String?                 // e.g. "LC at sight"
+  status           CommercialInvoiceStatus @default(DRAFT)
+  subtotal         Decimal                 @db.Decimal(14, 2)
+  freightCharges   Decimal                 @default(0) @db.Decimal(12, 2)
+  insuranceCharges Decimal                 @default(0) @db.Decimal(12, 2)
+  discountAmount   Decimal                 @default(0) @db.Decimal(12, 2)
+  taxAmount        Decimal                 @default(0) @db.Decimal(12, 2)
+  totalAmount      Decimal                 @db.Decimal(14, 2)
+  invoiceDate      DateTime                @default(now())
+  dueDate          DateTime?
+  paymentReference String?
+  paymentDate      DateTime?
+  paidAmount       Decimal?                @db.Decimal(14, 2)
+  notes            String?
+  idempotencyKey   String
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+
+  tenant           Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  shipment         Shipment                @relation(fields: [shipmentId], references: [id], onDelete: Restrict)
+  buyer            Buyer                   @relation(fields: [buyerId], references: [id], onDelete: Restrict)
+  lines            CommercialInvoiceLine[]
+
+  @@unique([tenantId, invoiceNumber])
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId, shipmentId])
+  @@index([tenantId, buyerId])
+}
+
+model CommercialInvoiceLine {
+  id             String            @id @default(uuid())
+  tenantId       String
+  invoiceId      String
+  styleId        String
+  hsCode         String?           // e.g. "6109.10"
+  description    String?
+  quantity       Int
+  unitPrice      Decimal           @db.Decimal(12, 4)
+  totalPrice     Decimal           @db.Decimal(14, 2)
+  createdAt      DateTime          @default(now())
+
+  tenant         Tenant            @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  invoice        CommercialInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  style          Style             @relation(fields: [styleId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, invoiceId])
+  @@index([tenantId, styleId])
+}
+
+model OutboundGatePass {
+  id             String         @id @default(uuid())
+  tenantId       String
+  gatePassNumber String         // e.g. "OGP-2026-0001"
+  shipmentId     String
+  transporter    String
+  vehicleNumber  String
+  driverName     String
+  driverPhone    String?
+  sealNumber     String?
+  totalCartons   Int
+  totalUnits     Int            @default(0)
+  status         GatePassStatus @default(DRAFT)
+  approvedById   String?
+  dispatchedById String?
+  dispatchedAt   DateTime?      // Exact gate-out departure timestamp
+  notes          String?
+  idempotencyKey String
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  tenant         Tenant         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  shipment       Shipment       @relation(fields: [shipmentId], references: [id], onDelete: Restrict)
+  approvedBy     User?          @relation("GatePassApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  dispatchedBy   User?          @relation("GatePassDispatchedBy", fields: [dispatchedById], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, gatePassNumber])
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId, shipmentId])
+  @@index([tenantId, status])
+}
+
+// -----------------------------------------------------------------------------
+// PHASE 9: OPERATIONAL COMPLETION & ENTERPRISE CLOSURE
+// -----------------------------------------------------------------------------
+
+enum SupplierReturnStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+}
+
+model SupplierReturnNote {
+  id               String               @id @default(uuid())
+  tenantId         String
+  returnNumber     String               // e.g. "SRN-2026-0001"
+  supplierId       String
+  vpoId            String?
+  grnId            String?
+  status           SupplierReturnStatus @default(COMPLETED)
+  returnedAt       DateTime             @default(now())
+  reason           String?
+  idempotencyKey   String
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  tenant           Tenant               @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  supplier         Supplier             @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  vpo              Vpo?                 @relation(fields: [vpoId], references: [id], onDelete: SetNull)
+  grn              GoodsReceiptNote?    @relation(fields: [grnId], references: [id], onDelete: SetNull)
+  lines            SupplierReturnLine[]
+
+  @@unique([tenantId, returnNumber])
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId, supplierId])
+  @@index([tenantId, grnId])
+}
+
+model SupplierReturnLine {
+  id             String             @id @default(uuid())
+  tenantId       String
+  returnNoteId   String
+  materialId     String
+  fabricRollId   String?
+  binId          String?
+  quantity       Decimal            @db.Decimal(12, 4)
+  uom            String
+  reason         String?
+
+  tenant         Tenant             @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  returnNote     SupplierReturnNote @relation(fields: [returnNoteId], references: [id], onDelete: Cascade)
+  material       Material           @relation(fields: [materialId], references: [id], onDelete: Restrict)
+  fabricRoll     FabricRoll?        @relation(fields: [fabricRollId], references: [id], onDelete: SetNull)
+  bin            Bin?               @relation(fields: [binId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, returnNoteId])
+  @@index([tenantId, fabricRollId])
+}
+
+model MaterialReconciliation {
+  id                     String   @id @default(uuid())
+  tenantId               String
+  productionOrderId      String   @unique
+  totalPlannedMeters     Decimal  @db.Decimal(12, 4)
+  totalActualCutMeters   Decimal  @db.Decimal(12, 4)
+  metersVariance         Decimal  @db.Decimal(12, 4)
+  cuttingYieldPercentage Decimal  @db.Decimal(6, 2)
+  trimsPlannedCost       Decimal  @db.Decimal(12, 4) @default(0)
+  trimsActualCost        Decimal  @db.Decimal(12, 4) @default(0)
+  status                 String   // "BALANCED", "OVER_CONSUMPTION", "OPTIMAL"
+  notes                  String?
+  reconciledAt           DateTime @default(now())
+
+  tenant                 Tenant          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  productionOrder        ProductionOrder @relation(fields: [productionOrderId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, productionOrderId])
+}
+
+model JobCostSummary {
+  id                     String   @id @default(uuid())
+  tenantId               String
+  productionOrderId      String   @unique
+  totalStandardCost      Decimal  @db.Decimal(14, 2)
+  actualMaterialCost     Decimal  @db.Decimal(14, 2)
+  actualLaborCost        Decimal  @db.Decimal(14, 2)
+  actualOverheadCost     Decimal  @db.Decimal(14, 2)
+  totalActualCost        Decimal  @db.Decimal(14, 2)
+  costVariance           Decimal  @db.Decimal(14, 2)
+  invoicedRevenue        Decimal  @db.Decimal(14, 2) @default(0)
+  realizedProfit         Decimal  @db.Decimal(14, 2) @default(0)
+  realizedMarginPercent  Decimal  @db.Decimal(6, 2) @default(0)
+  calculatedAt           DateTime @default(now())
+
+  tenant                 Tenant          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  productionOrder        ProductionOrder @relation(fields: [productionOrderId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, productionOrderId])
+}
+
+enum StockAuditStatus {
+  DRAFT
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model StockAudit {
+  id             String           @id @default(uuid())
+  tenantId       String
+  auditNumber    String           // e.g. "AUD-2026-0001"
+  warehouseId    String
+  status         StockAuditStatus @default(DRAFT)
+  totalCounted   Int              @default(0)
+  totalVariance  Decimal          @db.Decimal(12, 4) @default(0)
+  notes          String?
+  auditedAt      DateTime?
+  idempotencyKey String
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  tenant         Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  warehouse      Warehouse        @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  items          StockAuditItem[]
+
+  @@unique([tenantId, auditNumber])
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId, warehouseId])
+}
+
+model StockAuditItem {
+  id                  String     @id @default(uuid())
+  tenantId            String
+  stockAuditId        String
+  materialId          String
+  binId               String?
+  fabricRollId        String?
+  ledgerQuantity      Decimal    @db.Decimal(12, 4)
+  countedQuantity     Decimal    @db.Decimal(12, 4)
+  discrepancyQuantity Decimal    @db.Decimal(12, 4)
+  isAdjusted          Boolean    @default(false)
+
+  tenant              Tenant     @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  stockAudit          StockAudit @relation(fields: [stockAuditId], references: [id], onDelete: Cascade)
+  material            Material   @relation(fields: [materialId], references: [id], onDelete: Restrict)
+  bin                 Bin?       @relation(fields: [binId], references: [id], onDelete: SetNull)
+  fabricRoll          FabricRoll? @relation(fields: [fabricRollId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, stockAuditId])
+  @@index([tenantId, materialId])
+}
+
+// -----------------------------------------------------------------------------
+// BULK DATA IMPORT & AUDIT
+// -----------------------------------------------------------------------------
+enum ImportStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  PARTIAL_SUCCESS
+}
+
+enum ImportSourceType {
+  CSV
+  XLSX
+  GOOGLE_SHEETS
+}
+
+enum ImportMode {
+  CREATE
+  UPSERT
+}
+
+model DataImportLog {
+  id              String           @id @default(uuid())
+  tenantId        String
+  userId          String?
+  entity          String           // e.g. "BUYER", "STYLE", "BUYER_PO", "MATERIAL"
+  sourceType      ImportSourceType @default(CSV)
+  sourceName      String           // filename or URL
+  importMode      ImportMode       @default(CREATE)
+  totalRows       Int              @default(0)
+  createdCount    Int              @default(0)
+  updatedCount    Int              @default(0)
+  failedCount     Int              @default(0)
+  status          ImportStatus     @default(PENDING)
+  errorSummary    String?          // JSON or summary text
+  idempotencyKey  String?
+  startedAt       DateTime         @default(now())
+  completedAt     DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  user            User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, entity])
+  @@index([tenantId, createdAt])
+}
+

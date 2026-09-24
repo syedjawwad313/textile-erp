@@ -1,0 +1,22 @@
+{
+  "name": "textile-erp",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@9.5.0",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck",
+    "db:push": "pnpm -F @textile-erp/database db:push",
+    "db:generate": "pnpm -F @textile-erp/database db:generate",
+    "db:seed": "pnpm -F @textile-erp/database db:seed"
+  },
+  "devDependencies": {
+    "prettier": "^3.3.3",
+    "turbo": "^2.0.12",
+    "typescript": "^5.5.4"
+  }
+}
