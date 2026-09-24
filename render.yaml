@@ -53,16 +53,12 @@ services:
       npm install -g pnpm@9.5.0 &&
       pnpm install --no-frozen-lockfile --shamefully-hoist &&
       pnpm --filter web run build
-    startCommand: node apps/web/.next/standalone/apps/web/server.js
+    startCommand: cd apps/web && node_modules/.bin/next start -p $PORT -H 0.0.0.0
 
     healthCheckPath: /
 
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: 3000
-      - key: HOSTNAME
-        value: "0.0.0.0"
       - key: NEXT_PUBLIC_API_URL
         sync: false
