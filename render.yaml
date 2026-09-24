@@ -12,7 +12,6 @@ services:
 
     rootDir: .
     buildCommand: >-
-      npm install -g pnpm@9.5.0 &&
       pnpm install --no-frozen-lockfile --shamefully-hoist &&
       pnpm --filter @textile-erp/database run db:generate &&
       pnpm --filter @textile-erp/database run db:deploy &&
@@ -50,7 +49,6 @@ services:
 
     rootDir: .
     buildCommand: >-
-      npm install -g pnpm@9.5.0 &&
       pnpm install --no-frozen-lockfile --shamefully-hoist &&
       pnpm --filter web run build
     startCommand: cd apps/web && node_modules/.bin/next start -p $PORT -H 0.0.0.0
