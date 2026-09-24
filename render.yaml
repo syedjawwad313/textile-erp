@@ -15,8 +15,8 @@ services:
       pnpm install --no-frozen-lockfile --shamefully-hoist &&
       pnpm --filter @textile-erp/database run db:generate &&
       pnpm --filter @textile-erp/database run db:deploy &&
-      pnpm --filter api run build
-    startCommand: node apps/api/dist/main.js
+      cd apps/api && pnpm run build
+    startCommand: cd apps/api && node dist/main.js
 
     healthCheckPath: /health
 
