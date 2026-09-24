@@ -13,8 +13,8 @@ services:
     rootDir: .
     buildCommand: >-
       npm install -g pnpm@9.5.0 &&
-      pnpm install --frozen-lockfile &&
-      pnpm --filter @textile-erp/database exec prisma generate &&
+      pnpm install --no-frozen-lockfile &&
+      pnpm --filter @textile-erp/database run db:generate &&
       pnpm --filter @textile-erp/database run db:deploy &&
       pnpm --filter api run build
     startCommand: node apps/api/dist/main.js
@@ -51,7 +51,7 @@ services:
     rootDir: .
     buildCommand: >-
       npm install -g pnpm@9.5.0 &&
-      pnpm install --frozen-lockfile &&
+      pnpm install --no-frozen-lockfile &&
       pnpm --filter web run build
     startCommand: node apps/web/.next/standalone/apps/web/server.js
 
