@@ -13,7 +13,7 @@ services:
     rootDir: .
     buildCommand: >-
       npm install -g pnpm@9.5.0 &&
-      pnpm install --no-frozen-lockfile &&
+      pnpm install --no-frozen-lockfile --shamefully-hoist &&
       pnpm --filter @textile-erp/database run db:generate &&
       pnpm --filter @textile-erp/database run db:deploy &&
       pnpm --filter api run build
@@ -51,7 +51,7 @@ services:
     rootDir: .
     buildCommand: >-
       npm install -g pnpm@9.5.0 &&
-      pnpm install --no-frozen-lockfile &&
+      pnpm install --no-frozen-lockfile --shamefully-hoist &&
       pnpm --filter web run build
     startCommand: node apps/web/.next/standalone/apps/web/server.js
 
