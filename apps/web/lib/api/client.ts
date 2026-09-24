@@ -108,8 +108,8 @@ interface RequestOptions extends RequestInit {
   skipAuth?: boolean;
 }
 
-const BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api/v1";
+const rawBase = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api/v1").replace(/\/+$/, "");
+const BASE_URL = rawBase.endsWith("/api/v1") ? rawBase : `${rawBase}/api/v1`;
 
 let isRefreshing = false;
 let failedQueue: Array<{
@@ -168,8 +168,8 @@ async function request<T>(
   const { params, skipAuth = false, headers = {}, ...customConfig } = options;
 
   let normalizedEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
-  if (normalizedEndpoint.startsWith("/warehouses") || normalizedEndpoint.startsWith("/inventory")) {
-    normalizedEndpoint = `/api/v1${normalizedEndpoint}`;
+  if (normalizedEndpoint.startsWith("/api/v1/")) {
+    normalizedEndpoint = normalizedEndpoint.replace(/^\/api\/v1/, "");
   }
 
   let url = endpoint.startsWith("http")
@@ -1002,8 +1002,7 @@ export const dataManagementClient = {
     const qStr = query.toString();
     const token = tokenStorage.getAccessToken();
     const tenantId = tokenStorage.getTenantId();
-    const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
-    const res = await fetch(`${base}/data-export/${entity}${qStr ? `?${qStr}` : ''}`, {
+    const res = await fetch(`${BASE_URL}/data-export/${entity}${qStr ? `?${qStr}` : ''}`, {
       headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(tenantId ? { 'x-tenant-id': tenantId } : {}),
@@ -1032,8 +1031,7 @@ export const dataManagementClient = {
   downloadTemplate: async (entity: string, format: 'csv' | 'xlsx') => {
     const token = tokenStorage.getAccessToken();
     const tenantId = tokenStorage.getTenantId();
-    const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
-    const res = await fetch(`${base}/data-import/templates/${entity}?format=${format}`, {
+    const res = await fetch(`${BASE_URL}/data-import/templates/${entity}?format=${format}`, {
       headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(tenantId ? { 'x-tenant-id': tenantId } : {}),
@@ -1055,8 +1053,7 @@ export const dataManagementClient = {
   downloadErrorReport: async (importId: string) => {
     const token = tokenStorage.getAccessToken();
     const tenantId = tokenStorage.getTenantId();
-    const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
-    const res = await fetch(`${base}/data-import/audit/${importId}/error-report`, {
+    const res = await fetch(`${BASE_URL}/data-import/audit/${importId}/error-report`, {
       headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(tenantId ? { 'x-tenant-id': tenantId } : {}),
