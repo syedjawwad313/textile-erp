@@ -1,0 +1,74 @@
+##############################################################################
+# Render Blueprint — Textile & Apparel ERP + MES Platform
+# Docs: https://render.com/docs/blueprint-spec
+#
+# Services:
+#   1. textile-erp-api   — NestJS backend  (apps/api)
+#   2. textile-erp-web   — Next.js frontend (apps/web)
+##############################################################################
+
+services:
+  # -- 1. NestJS API ----------------------------------------------------------
+  - type: web
+    name: textile-erp-api
+    runtime: node
+    region: oregon
+    plan: free
+
+    # Build from repo root so workspace packages resolve correctly
+    rootDir: .
+    buildCommand: >-
+      npm install -g pnpm@9.5.0 &&
+      pnpm install --frozen-lockfile &&
+      pnpm --filter @textile-erp/database exec prisma generate &&
+      pnpm --filter @textile-erp/database exec prisma db push --skip-generate &&
+      pnpm --filter api build
+    startCommand: node apps/api/dist/main.js
+
+    healthCheckPath: /health
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 15m
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_EXPIRES_IN
+        value: 7d
+      - key: REDIS_URL
+        value: ""
+
+  # -- 2. Next.js Frontend ----------------------------------------------------
+  - type: web
+    name: textile-erp-web
+    runtime: node
+    region: oregon
+    plan: free
+
+    rootDir: .
+    buildCommand: >-
+      npm install -g pnpm@9.5.0 &&
+      pnpm install --frozen-lockfile &&
+      pnpm --filter web build
+    startCommand: node apps/web/.next/standalone/apps/web/server.js
+
+    healthCheckPath: /
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: HOSTNAME
+        value: "0.0.0.0"
+      - key: NEXT_PUBLIC_API_URL
+        sync: false
