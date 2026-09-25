@@ -8,9 +8,7 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
 
-  // Reverse proxy /api/v1 requests to the backend API service.
-  // This allows the browser to use same-origin relative URLs (/api/v1/...)
-  // avoiding CORS restrictions and eliminating hardcoded localhost failures on cloud deployments.
+  // Rewrites for health probe
   async rewrites() {
     const rawTarget =
       process.env.API_URL ||
@@ -23,10 +21,6 @@ const nextConfig = {
       .replace(/\/+$/, '');
 
     return [
-      {
-        source: '/api/v1/:path*',
-        destination: `${baseTarget}/api/v1/:path*`,
-      },
       {
         source: '/health',
         destination: `${baseTarget}/health`,
