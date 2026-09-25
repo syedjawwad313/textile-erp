@@ -1,6 +1,22 @@
-process.env.DATABASE_URL =
-  process.env.DATABASE_URL ||
-  'postgresql://postgres:postgres@localhost:5432/textile_erp?schema=public';
+import * as fs from 'fs';
+import * as path from 'path';
+
+if (!process.env.DATABASE_URL) {
+  const possiblePaths = [
+    path.resolve(process.cwd(), '.env'),
+    path.resolve(__dirname, '../../../.env'),
+    path.resolve(__dirname, '../../.env'),
+    path.resolve(__dirname, '../.env'),
+  ];
+  for (const p of possiblePaths) {
+    if (fs.existsSync(p) && typeof (process as any).loadEnvFile === 'function') {
+      try {
+        (process as any).loadEnvFile(p);
+        if (process.env.DATABASE_URL) break;
+      } catch {}
+    }
+  }
+}
 
 import { PrismaClient } from '@prisma/client';
 import * as argon2 from 'argon2';
@@ -100,15 +116,13 @@ async function main() {
     { resource: 'DATA', action: 'EXPORT' },
   ];
 
-  const permissions = [];
-  for (const p of permissionsData) {
-    const perm = await prisma.permission.upsert({
-      where: { resource_action: { resource: p.resource, action: p.action } },
-      update: {},
-      create: p,
-    });
-    permissions.push(perm);
-  }
+  // 5. Create Permissions
+  await prisma.permission.createMany({
+    data: permissionsData,
+    skipDuplicates: true,
+  });
+
+  const permissions = await prisma.permission.findMany();
 
   // 6. Create Roles
   const adminRole = await prisma.role.upsert({
@@ -124,13 +138,13 @@ async function main() {
   });
 
   // Assign permissions to admin role
-  for (const perm of permissions) {
-    await prisma.rolePermission.upsert({
-      where: { roleId_permissionId: { roleId: adminRole.id, permissionId: perm.id } },
-      update: {},
-      create: { roleId: adminRole.id, permissionId: perm.id },
-    });
-  }
+  await prisma.rolePermission.createMany({
+    data: permissions.map((perm) => ({
+      roleId: adminRole.id,
+      permissionId: perm.id,
+    })),
+    skipDuplicates: true,
+  });
 
   // 7. Create Admin User
   const passwordHash = await argon2.hash('AdminPassword123!', {
@@ -234,20 +248,17 @@ async function main() {
     { code: 'LABEL_MISALIGN', name: 'Care/Size Label Misplaced', category: 'PACKING', defaultSeverity: 'MAJOR', description: 'Label stitched upside down, off-center, or incorrect size attached' },
   ];
 
-  for (const def of standardDefects) {
-    await (prisma as any).defectCatalog.upsert({
-      where: { tenantId_code: { tenantId: tenant.id, code: def.code } },
-      update: { name: def.name, category: def.category as any, defaultSeverity: def.defaultSeverity as any, description: def.description },
-      create: {
-        tenantId: tenant.id,
-        code: def.code,
-        name: def.name,
-        category: def.category as any,
-        defaultSeverity: def.defaultSeverity as any,
-        description: def.description,
-      },
-    });
-  }
+  await (prisma as any).defectCatalog.createMany({
+    data: standardDefects.map((def) => ({
+      tenantId: tenant.id,
+      code: def.code,
+      name: def.name,
+      category: def.category as any,
+      defaultSeverity: def.defaultSeverity as any,
+      description: def.description,
+    })),
+    skipDuplicates: true,
+  });
 
   console.log('Seed completed successfully with 20 defect catalog entries.');
 }

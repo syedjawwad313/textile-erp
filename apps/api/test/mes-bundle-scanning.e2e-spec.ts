@@ -1,11 +1,18 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
-import * as request from 'supertest';
-import { AppModule } from '../src/app.module';
-import { prisma, ProductionStatus, CostingStatus, InventoryTxType, BundleStatus, EmployeeType } from '@textile-erp/database';
-import * as argon2 from 'argon2';
+import { Test, TestingModule } from "@nestjs/testing";
+import { INestApplication, ValidationPipe } from "@nestjs/common";
+import * as request from "supertest";
+import { AppModule } from "../src/app.module";
+import {
+  prisma,
+  ProductionStatus,
+  CostingStatus,
+  InventoryTxType,
+  BundleStatus,
+  EmployeeType,
+} from "@textile-erp/database";
+import * as argon2 from "argon2";
 
-describe('MES Bundle Barcode Scanning & WIP Synchronization (e2e)', () => {
+describe("MES Bundle Barcode Scanning & WIP Synchronization (e2e)", () => {
   let app: INestApplication;
   let tenantId: string;
   let foreignTenantId: string;
@@ -37,68 +44,70 @@ describe('MES Bundle Barcode Scanning & WIP Synchronization (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+    app.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, transform: true }),
+    );
     await app.init();
 
     // 1. Create Primary Test Tenant & Foreign Tenant
     const tenant = await prisma.tenant.create({
-      data: { name: 'MES Barcode Scanning Test Tenant' },
+      data: { name: "MES Barcode Scanning Test Tenant" },
     });
     tenantId = tenant.id;
 
     const foreignTenant = await prisma.tenant.create({
-      data: { name: 'Foreign Isolated Scan Tenant' },
+      data: { name: "Foreign Isolated Scan Tenant" },
     });
     foreignTenantId = foreignTenant.id;
 
-    const pwd = await argon2.hash('ScanPassword123!');
+    const pwd = await argon2.hash("ScanPassword123!");
     const user = await prisma.user.create({
       data: {
         tenantId,
-        email: 'scan-admin@test.com',
+        email: "scan-admin@test.com",
         passwordHash: pwd,
-        firstName: 'Scan',
-        lastName: 'Manager',
+        firstName: "Scan",
+        lastName: "Manager",
       },
     });
 
     const foreignUser = await prisma.user.create({
       data: {
         tenantId: foreignTenantId,
-        email: 'foreign-scan@test.com',
+        email: "foreign-scan@test.com",
         passwordHash: pwd,
-        firstName: 'Foreign',
-        lastName: 'ScanUser',
+        firstName: "Foreign",
+        lastName: "ScanUser",
       },
     });
 
     const role = await prisma.role.create({
-      data: { tenantId, name: 'MES_SCAN_ADMIN' },
+      data: { tenantId, name: "MES_SCAN_ADMIN" },
     });
 
     const foreignRole = await prisma.role.create({
-      data: { tenantId: foreignTenantId, name: 'FOREIGN_SCAN_ADMIN' },
+      data: { tenantId: foreignTenantId, name: "FOREIGN_SCAN_ADMIN" },
     });
 
     // Seed all necessary permissions
     const perms = [
-      { resource: 'PRODUCTION', action: 'WRITE' },
-      { resource: 'PRODUCTION', action: 'READ' },
-      { resource: 'CUTTING', action: 'WRITE' },
-      { resource: 'CUTTING', action: 'READ' },
-      { resource: 'BUNDLE', action: 'WRITE' },
-      { resource: 'BUNDLE', action: 'READ' },
-      { resource: 'INVENTORY', action: 'WRITE' },
-      { resource: 'INVENTORY', action: 'READ' },
-      { resource: 'COSTING', action: 'WRITE' },
-      { resource: 'COSTING', action: 'APPROVE' },
-      { resource: 'BUYER', action: 'WRITE' },
-      { resource: 'STYLE', action: 'WRITE' },
-      { resource: 'FACTORY', action: 'WRITE' },
-      { resource: 'LINE', action: 'WRITE' },
-      { resource: 'MATERIAL', action: 'WRITE' },
-      { resource: 'EMPLOYEE', action: 'WRITE' },
-      { resource: 'MACHINE', action: 'WRITE' },
+      { resource: "PRODUCTION", action: "WRITE" },
+      { resource: "PRODUCTION", action: "READ" },
+      { resource: "CUTTING", action: "WRITE" },
+      { resource: "CUTTING", action: "READ" },
+      { resource: "BUNDLE", action: "WRITE" },
+      { resource: "BUNDLE", action: "READ" },
+      { resource: "INVENTORY", action: "WRITE" },
+      { resource: "INVENTORY", action: "READ" },
+      { resource: "COSTING", action: "WRITE" },
+      { resource: "COSTING", action: "APPROVE" },
+      { resource: "BUYER", action: "WRITE" },
+      { resource: "STYLE", action: "WRITE" },
+      { resource: "FACTORY", action: "WRITE" },
+      { resource: "LINE", action: "WRITE" },
+      { resource: "MATERIAL", action: "WRITE" },
+      { resource: "EMPLOYEE", action: "WRITE" },
+      { resource: "MACHINE", action: "WRITE" },
     ];
 
     for (const p of perms) {
@@ -125,29 +134,37 @@ describe('MES Bundle Barcode Scanning & WIP Synchronization (e2e)', () => {
 
     // Login to get tokens
     const loginRes = await request(app.getHttpServer())
-      .post('/auth/login')
-      .send({ tenantId, email: 'scan-admin@test.com', password: 'ScanPassword123!' });
+      .post("/auth/login")
+      .send({
+        tenantId,
+        email: "scan-admin@test.com",
+        password: "ScanPassword123!",
+      });
     accessToken = loginRes.body.accessToken;
 
     const foreignLoginRes = await request(app.getHttpServer())
-      .post('/auth/login')
-      .send({ tenantId: foreignTenantId, email: 'foreign-scan@test.com', password: 'ScanPassword123!' });
+      .post("/auth/login")
+      .send({
+        tenantId: foreignTenantId,
+        email: "foreign-scan@test.com",
+        password: "ScanPassword123!",
+      });
     foreignAccessToken = foreignLoginRes.body.accessToken;
 
     // 2. MDM Setup (Factory, Line, Machine, Employee)
     const company = await prisma.company.create({
-      data: { tenantId, name: 'MES Scan Co' },
+      data: { tenantId, name: "MES Scan Co" },
     });
     const foreignCompany = await prisma.company.create({
-      data: { tenantId: foreignTenantId, name: 'Foreign MES Co' },
+      data: { tenantId: foreignTenantId, name: "Foreign MES Co" },
     });
 
     const factory = await prisma.factoryUnit.create({
       data: {
         tenantId,
         companyId: company.id,
-        code: 'SCAN-FAC-01',
-        name: 'Main Sewing Factory',
+        code: "SCAN-FAC-01",
+        name: "Main Sewing Factory",
       },
     });
     factoryUnitId = factory.id;
@@ -156,8 +173,8 @@ describe('MES Bundle Barcode Scanning & WIP Synchronization (e2e)', () => {
       data: {
         tenantId: foreignTenantId,
         companyId: foreignCompany.id,
-        code: 'FOR-FAC-01',
-        name: 'Foreign Factory',
+        code: "FOR-FAC-01",
+        name: "Foreign Factory",
       },
     });
 
@@ -165,8 +182,8 @@ describe('MES Bundle Barcode Scanning & WIP Synchronization (e2e)', () => {
       data: {
         tenantId,
         factoryUnitId: factory.id,
-        code: 'SCAN-LINE-01',
-        name: 'Assembly Line 1',
+        code: "SCAN-LINE-01",
+        name: "Assembly Line 1",
         capacity: 2500,
       },
     });
@@ -176,9 +193,9 @@ describe('MES Bundle Barcode Scanning & WIP Synchronization (e2e)', () => {
       data: {
         tenantId,
         factoryUnitId: factory.id,
-        code: 'SEW-MCH-01',
-        name: 'Juki DDL-9000C Lockstitch',
-        type: 'LOCKSTITCH',
+        code: "SEW-MCH-01",
+        name: "Juki DDL-9000C Lockstitch",
+        type: "LOCKSTITCH",
       },
     });
     machineId = machine.id;
@@ -187,9 +204,9 @@ describe('MES Bundle Barcode Scanning & WIP Synchronization (e2e)', () => {
       data: {
         tenantId: foreignTenantId,
         factoryUnitId: foreignFactory.id,
-        code: 'FOR-MCH-01',
-        name: 'Foreign Machine',
-        type: 'LOCKSTITCH',
+        code: "FOR-MCH-01",
+        name: "Foreign Machine",
+        type: "LOCKSTITCH",
       },
     });
     foreignMachineId = foreignMachine.id;
@@ -198,8 +215,8 @@ describe('MES Bundle Barcode Scanning & WIP Synchronization (e2e)', () => {
       data: {
         tenantId,
         factoryUnitId: factory.id,
-        code: 'EMP-OP-01',
-        name: 'Rahim Operator',
+        code: "EMP-OP-01",
+        name: "Rahim Operator",
         type: EmployeeType.OPERATOR,
       },
     });
@@ -209,8 +226,8 @@ describe('MES Bundle Barcode Scanning & WIP Synchronization (e2e)', () => {
       data: {
         tenantId: foreignTenantId,
         factoryUnitId: foreignFactory.id,
-        code: 'FOR-EMP-01',
-        name: 'Foreign Operator',
+        code: "FOR-EMP-01",
+        name: "Foreign Operator",
         type: EmployeeType.OPERATOR,
       },
     });
@@ -220,10 +237,10 @@ describe('MES Bundle Barcode Scanning & WIP Synchronization (e2e)', () => {
     const fabric = await prisma.material.create({
       data: {
         tenantId,
-        code: 'MAT-SCAN-FAB',
-        name: '100% Cotton Single Jersey',
-        category: 'FABRIC',
-        uom: 'MTR',
+        code: "MAT-SCAN-FAB",
+        name: "100% Cotton Single Jersey",
+        category: "FABRIC",
+        uom: "MTR",
       },
     });
     fabricMaterialId = fabric.id;
@@ -231,8 +248,8 @@ describe('MES Bundle Barcode Scanning & WIP Synchronization (e2e)', () => {
     const style = await prisma.style.create({
       data: {
         tenantId,
-        code: 'STY-SCAN-TSHIRT',
-        name: 'Crew Neck T-Shirt',
+        code: "STY-SCAN-TSHIRT",
+        name: "Crew Neck T-Shirt",
       },
     });
     styleId = style.id;
@@ -240,8 +257,8 @@ describe('MES Bundle Barcode Scanning & WIP Synchronization (e2e)', () => {
     const buyer = await prisma.buyer.create({
       data: {
         tenantId,
-        code: 'BYR-GLOBAL-01',
-        name: 'Global Retailer',
+        code: "BYR-GLOBAL-01",
+        name: "Global Retailer",
       },
     });
     buyerId = buyer.id;
@@ -280,8 +297,8 @@ describe('MES Bundle Barcode Scanning & WIP Synchronization (e2e)', () => {
       data: {
         tenantId,
         buyerId,
-        poNumber: 'PO-SCAN-TEST-001',
-        status: 'CONFIRMED' as any,
+        poNumber: "PO-SCAN-TEST-001",
+        status: "CONFIRMED" as any,
         orderDate: new Date(),
         buyerPoLines: {
           create: [
@@ -300,20 +317,29 @@ describe('MES Bundle Barcode Scanning & WIP Synchronization (e2e)', () => {
 
     // 4. Production Order with 4 operations (Cutting, Sewing, Washing, Finishing)
     const orderRes = await request(app.getHttpServer())
-      .post('/production/orders')
-      .set('Authorization', `Bearer ${accessToken}`)
-      .set('x-tenant-id', tenantId)
-      .set('x-idempotency-key', 'idem-prod-order-scan-01')
+      .post("/production/orders")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .set("x-tenant-id", tenantId)
+      .set("x-idempotency-key", "idem-prod-order-scan-01")
       .send({
         buyerPoLineId,
-        orderNumber: 'PRD-SCAN-001',
+        orderNumber: "PRD-SCAN-001",
         targetQuantity: 200,
         productionLineId,
         operations: [
-          { operationName: 'Cutting & Numbering', sequence: 1, smv: 2.0 },
-          { operationName: 'Sewing Assembly', sequence: 2, smv: 8.0, machineTypeId: 'LOCKSTITCH' },
-          { operationName: 'Garment Washing', sequence: 3, smv: 4.0 },
-          { operationName: 'Final Inspection & Packing', sequence: 4, smv: 2.5 },
+          { operationName: "Cutting & Numbering", sequence: 1, smv: 2.0 },
+          {
+            operationName: "Sewing Assembly",
+            sequence: 2,
+            smv: 8.0,
+            machineTypeId: "LOCKSTITCH",
+          },
+          { operationName: "Garment Washing", sequence: 3, smv: 4.0 },
+          {
+            operationName: "Final Inspection & Packing",
+            sequence: 4,
+            smv: 2.5,
+          },
         ],
       })
       .expect(201);
@@ -326,18 +352,18 @@ describe('MES Bundle Barcode Scanning & WIP Synchronization (e2e)', () => {
     // Release Order
     await request(app.getHttpServer())
       .patch(`/production/orders/${productionOrderId}/status`)
-      .set('Authorization', `Bearer ${accessToken}`)
-      .set('x-tenant-id', tenantId)
-      .set('x-actor-id', 'actor-scan-mgr')
+      .set("Authorization", `Bearer ${accessToken}`)
+      .set("x-tenant-id", tenantId)
+      .set("x-actor-id", "actor-scan-mgr")
       .send({ status: ProductionStatus.RELEASED })
       .expect(200);
 
     // 5. Inventory Setup
     const warehouse = await prisma.warehouse.create({
-      data: { tenantId, code: 'WH-SCAN-FAB', name: 'Fabric Store' },
+      data: { tenantId, code: "WH-SCAN-FAB", name: "Fabric Store" },
     });
     const bin = await prisma.bin.create({
-      data: { warehouseId: warehouse.id, code: 'BIN-SCAN-01', name: 'Bay S1' },
+      data: { warehouseId: warehouse.id, code: "BIN-SCAN-01", name: "Bay S1" },
     });
 
     await prisma.inventoryItem.create({
@@ -350,19 +376,19 @@ describe('MES Bundle Barcode Scanning & WIP Synchronization (e2e)', () => {
         binId: bin.id,
         type: InventoryTxType.RECEIPT,
         quantity: 1000,
-        uom: 'MTR',
+        uom: "MTR",
         actorId: user.id,
-        idempotencyKey: 'stock-scan-receipt',
+        idempotencyKey: "stock-scan-receipt",
       },
     });
 
     // 6. Create Cutting Record: 100 pcs cut, 120 MTR fabric
     const cutRes = await request(app.getHttpServer())
-      .post('/cutting/records')
-      .set('Authorization', `Bearer ${accessToken}`)
-      .set('x-tenant-id', tenantId)
-      .set('x-actor-id', 'actor-cutter')
-      .set('x-idempotency-key', 'idem-cut-scan-batch-01')
+      .post("/cutting/records")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .set("x-tenant-id", tenantId)
+      .set("x-actor-id", "actor-cutter")
+      .set("x-idempotency-key", "idem-cut-scan-batch-01")
       .send({
         productionOrderId,
         fabricMaterialId,
@@ -374,11 +400,11 @@ describe('MES Bundle Barcode Scanning & WIP Synchronization (e2e)', () => {
 
     // 7. Generate Bundles: 5 bundles of 20 pcs
     const bundleRes = await request(app.getHttpServer())
-      .post('/bundles/generate')
-      .set('Authorization', `Bearer ${accessToken}`)
-      .set('x-tenant-id', tenantId)
-      .set('x-actor-id', 'actor-bundle-mgr')
-      .set('x-idempotency-key', 'idem-gen-bnd-scan-01')
+      .post("/bundles/generate")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .set("x-tenant-id", tenantId)
+      .set("x-actor-id", "actor-bundle-mgr")
+      .set("x-idempotency-key", "idem-gen-bnd-scan-01")
       .send({
         cuttingRecordId,
         bundleSize: 20,
@@ -390,14 +416,30 @@ describe('MES Bundle Barcode Scanning & WIP Synchronization (e2e)', () => {
   });
 
   afterAll(async () => {
-    await prisma.bundleScan.deleteMany({ where: { tenantId: { in: [tenantId, foreignTenantId] } } });
-    await prisma.bundle.deleteMany({ where: { tenantId: { in: [tenantId, foreignTenantId] } } });
-    await prisma.cuttingRecord.deleteMany({ where: { tenantId: { in: [tenantId, foreignTenantId] } } });
-    await prisma.productionPlan.deleteMany({ where: { tenantId: { in: [tenantId, foreignTenantId] } } });
-    await prisma.wipTransaction.deleteMany({ where: { tenantId: { in: [tenantId, foreignTenantId] } } });
-    await prisma.productionBomLine.deleteMany({ where: { productionOrder: { tenantId } } });
-    await prisma.productionOperation.deleteMany({ where: { productionOrder: { tenantId } } });
-    await prisma.productionOrder.deleteMany({ where: { tenantId: { in: [tenantId, foreignTenantId] } } });
+    await prisma.bundleScan.deleteMany({
+      where: { tenantId: { in: [tenantId, foreignTenantId] } },
+    });
+    await prisma.bundle.deleteMany({
+      where: { tenantId: { in: [tenantId, foreignTenantId] } },
+    });
+    await prisma.cuttingRecord.deleteMany({
+      where: { tenantId: { in: [tenantId, foreignTenantId] } },
+    });
+    await prisma.productionPlan.deleteMany({
+      where: { tenantId: { in: [tenantId, foreignTenantId] } },
+    });
+    await prisma.wipTransaction.deleteMany({
+      where: { tenantId: { in: [tenantId, foreignTenantId] } },
+    });
+    await prisma.productionBomLine.deleteMany({
+      where: { productionOrder: { tenantId } },
+    });
+    await prisma.productionOperation.deleteMany({
+      where: { productionOrder: { tenantId } },
+    });
+    await prisma.productionOrder.deleteMany({
+      where: { tenantId: { in: [tenantId, foreignTenantId] } },
+    });
     await prisma.buyerPoLine.deleteMany({ where: { buyerPo: { tenantId } } });
     await prisma.buyerPo.deleteMany({ where: { tenantId } });
     await prisma.costingVersion.deleteMany({ where: { tenantId } });
@@ -409,28 +451,48 @@ describe('MES Bundle Barcode Scanning & WIP Synchronization (e2e)', () => {
     await prisma.material.deleteMany({ where: { tenantId } });
     await prisma.style.deleteMany({ where: { tenantId } });
     await prisma.buyer.deleteMany({ where: { tenantId } });
-    await prisma.employee.deleteMany({ where: { tenantId: { in: [tenantId, foreignTenantId] } } });
-    await prisma.machine.deleteMany({ where: { tenantId: { in: [tenantId, foreignTenantId] } } });
-    await prisma.productionLine.deleteMany({ where: { tenantId: { in: [tenantId, foreignTenantId] } } });
-    await prisma.factoryUnit.deleteMany({ where: { tenantId: { in: [tenantId, foreignTenantId] } } });
-    await prisma.company.deleteMany({ where: { tenantId: { in: [tenantId, foreignTenantId] } } });
-    await prisma.userRole.deleteMany({ where: { role: { tenantId: { in: [tenantId, foreignTenantId] } } } });
-    await prisma.rolePermission.deleteMany({ where: { role: { tenantId: { in: [tenantId, foreignTenantId] } } } });
-    await prisma.role.deleteMany({ where: { tenantId: { in: [tenantId, foreignTenantId] } } });
-    await prisma.user.deleteMany({ where: { tenantId: { in: [tenantId, foreignTenantId] } } });
-    await prisma.tenant.deleteMany({ where: { id: { in: [tenantId, foreignTenantId] } } });
+    await prisma.employee.deleteMany({
+      where: { tenantId: { in: [tenantId, foreignTenantId] } },
+    });
+    await prisma.machine.deleteMany({
+      where: { tenantId: { in: [tenantId, foreignTenantId] } },
+    });
+    await prisma.productionLine.deleteMany({
+      where: { tenantId: { in: [tenantId, foreignTenantId] } },
+    });
+    await prisma.factoryUnit.deleteMany({
+      where: { tenantId: { in: [tenantId, foreignTenantId] } },
+    });
+    await prisma.company.deleteMany({
+      where: { tenantId: { in: [tenantId, foreignTenantId] } },
+    });
+    await prisma.userRole.deleteMany({
+      where: { role: { tenantId: { in: [tenantId, foreignTenantId] } } },
+    });
+    await prisma.rolePermission.deleteMany({
+      where: { role: { tenantId: { in: [tenantId, foreignTenantId] } } },
+    });
+    await prisma.role.deleteMany({
+      where: { tenantId: { in: [tenantId, foreignTenantId] } },
+    });
+    await prisma.user.deleteMany({
+      where: { tenantId: { in: [tenantId, foreignTenantId] } },
+    });
+    await prisma.tenant.deleteMany({
+      where: { id: { in: [tenantId, foreignTenantId] } },
+    });
     await app.close();
   });
 
-  describe('Section 1: Bundle Scanning Positive Flows & Atomic WIP Synchronization', () => {
-    it('should successfully scan bundle at operation 1, advance to operation 2, and synchronize aggregate WIP', async () => {
+  describe("Section 1: Bundle Scanning Positive Flows & Atomic WIP Synchronization", () => {
+    it("should successfully scan bundle at operation 1, advance to operation 2, and synchronize aggregate WIP", async () => {
       // 1. Scan at Op 1 (Cutting & Numbering)
       const res = await request(app.getHttpServer())
-        .post('/bundles/scan')
-        .set('Authorization', `Bearer ${accessToken}`)
-        .set('x-tenant-id', tenantId)
-        .set('x-actor-id', 'actor-scan-01')
-        .set('x-idempotency-key', 'scan-idem-001')
+        .post("/bundles/scan")
+        .set("Authorization", `Bearer ${accessToken}`)
+        .set("x-tenant-id", tenantId)
+        .set("x-actor-id", "actor-scan-01")
+        .set("x-idempotency-key", "scan-idem-001")
         .send({
           barcode: bundleBarcode,
           operationId: op1Id,
@@ -462,20 +524,24 @@ describe('MES Bundle Barcode Scanning & WIP Synchronization (e2e)', () => {
       });
       expect(wipTx).toBeDefined();
       expect(Number(wipTx?.quantity)).toBe(20);
-      expect(wipTx?.type).toBe('MOVE');
+      expect(wipTx?.type).toBe("MOVE");
 
       // 4. Verify Operation counters were incremented
-      const op1 = await prisma.productionOperation.findUnique({ where: { id: op1Id } });
-      const op2 = await prisma.productionOperation.findUnique({ where: { id: op2Id } });
+      const op1 = await prisma.productionOperation.findUnique({
+        where: { id: op1Id },
+      });
+      const op2 = await prisma.productionOperation.findUnique({
+        where: { id: op2Id },
+      });
       expect(Number(op1?.outputQty)).toBe(20);
       expect(Number(op2?.inputQty)).toBe(20);
     });
 
-    it('should retrieve scan history via GET /bundles/scans', async () => {
+    it("should retrieve scan history via GET /bundles/scans", async () => {
       const res = await request(app.getHttpServer())
-        .get('/bundles/scans')
-        .set('Authorization', `Bearer ${accessToken}`)
-        .set('x-tenant-id', tenantId)
+        .get("/bundles/scans")
+        .set("Authorization", `Bearer ${accessToken}`)
+        .set("x-tenant-id", tenantId)
         .expect(200);
 
       expect(Array.isArray(res.body)).toBe(true);
@@ -485,13 +551,13 @@ describe('MES Bundle Barcode Scanning & WIP Synchronization (e2e)', () => {
       expect(res.body[0].employee).toBeDefined();
     });
 
-    it('should successfully scan with machineId at operation 2 (Sewing Assembly) and advance to washing', async () => {
+    it("should successfully scan with machineId at operation 2 (Sewing Assembly) and advance to washing", async () => {
       const res = await request(app.getHttpServer())
-        .post('/bundles/scan')
-        .set('Authorization', `Bearer ${accessToken}`)
-        .set('x-tenant-id', tenantId)
-        .set('x-actor-id', 'actor-scan-02')
-        .set('x-idempotency-key', 'scan-idem-002')
+        .post("/bundles/scan")
+        .set("Authorization", `Bearer ${accessToken}`)
+        .set("x-tenant-id", tenantId)
+        .set("x-actor-id", "actor-scan-02")
+        .set("x-idempotency-key", "scan-idem-002")
         .send({
           bundleId,
           operationId: op2Id,
@@ -502,19 +568,21 @@ describe('MES Bundle Barcode Scanning & WIP Synchronization (e2e)', () => {
 
       expect(res.body.machineId).toBe(machineId);
 
-      const updatedBundle = await prisma.bundle.findUnique({ where: { id: bundleId } });
+      const updatedBundle = await prisma.bundle.findUnique({
+        where: { id: bundleId },
+      });
       expect(updatedBundle?.currentOperationId).toBe(op3Id);
       expect(updatedBundle?.status).toBe(BundleStatus.IN_WASHING);
     });
 
-    it('should advance through operation 3 and operation 4 to terminal completion (FINISHED)', async () => {
+    it("should advance through operation 3 and operation 4 to terminal completion (FINISHED)", async () => {
       // Scan at Op 3 (Washing) -> Advances to Op 4
       await request(app.getHttpServer())
-        .post('/bundles/scan')
-        .set('Authorization', `Bearer ${accessToken}`)
-        .set('x-tenant-id', tenantId)
-        .set('x-actor-id', 'actor-scan-03')
-        .set('x-idempotency-key', 'scan-idem-003')
+        .post("/bundles/scan")
+        .set("Authorization", `Bearer ${accessToken}`)
+        .set("x-tenant-id", tenantId)
+        .set("x-actor-id", "actor-scan-03")
+        .set("x-idempotency-key", "scan-idem-003")
         .send({
           bundleId,
           operationId: op3Id,
@@ -524,11 +592,11 @@ describe('MES Bundle Barcode Scanning & WIP Synchronization (e2e)', () => {
 
       // Scan at Op 4 (Final Inspection & Packing) -> Terminal completion
       await request(app.getHttpServer())
-        .post('/bundles/scan')
-        .set('Authorization', `Bearer ${accessToken}`)
-        .set('x-tenant-id', tenantId)
-        .set('x-actor-id', 'actor-scan-04')
-        .set('x-idempotency-key', 'scan-idem-004')
+        .post("/bundles/scan")
+        .set("Authorization", `Bearer ${accessToken}`)
+        .set("x-tenant-id", tenantId)
+        .set("x-actor-id", "actor-scan-04")
+        .set("x-idempotency-key", "scan-idem-004")
         .send({
           bundleId,
           operationId: op4Id,
@@ -536,7 +604,9 @@ describe('MES Bundle Barcode Scanning & WIP Synchronization (e2e)', () => {
         })
         .expect(201);
 
-      const finishedBundle = await prisma.bundle.findUnique({ where: { id: bundleId } });
+      const finishedBundle = await prisma.bundle.findUnique({
+        where: { id: bundleId },
+      });
       expect(finishedBundle?.currentOperationId).toBeNull();
       expect(finishedBundle?.status).toBe(BundleStatus.FINISHED);
 
@@ -554,19 +624,22 @@ describe('MES Bundle Barcode Scanning & WIP Synchronization (e2e)', () => {
     });
   });
 
-  describe('Section 2: Idempotency & Repeat Request Safeguards', () => {
-    it('should return existing scan result and not double-advance bundle on repeat idempotency key', async () => {
+  describe("Section 2: Idempotency & Repeat Request Safeguards", () => {
+    it("should return existing scan result and not double-advance bundle on repeat idempotency key", async () => {
       // Pick bundle 2
-      const allBundles = await prisma.bundle.findMany({ where: { tenantId }, orderBy: { bundleSequence: 'asc' } });
+      const allBundles = await prisma.bundle.findMany({
+        where: { tenantId },
+        orderBy: { bundleSequence: "asc" },
+      });
       const bundle2 = allBundles[1];
 
       // Initial scan
       const res1 = await request(app.getHttpServer())
-        .post('/bundles/scan')
-        .set('Authorization', `Bearer ${accessToken}`)
-        .set('x-tenant-id', tenantId)
-        .set('x-actor-id', 'actor-scan-05')
-        .set('x-idempotency-key', 'scan-idem-dup-001')
+        .post("/bundles/scan")
+        .set("Authorization", `Bearer ${accessToken}`)
+        .set("x-tenant-id", tenantId)
+        .set("x-actor-id", "actor-scan-05")
+        .set("x-idempotency-key", "scan-idem-dup-001")
         .send({
           barcode: bundle2.barcode,
           operationId: op1Id,
@@ -576,11 +649,11 @@ describe('MES Bundle Barcode Scanning & WIP Synchronization (e2e)', () => {
 
       // Repeated scan with same idempotency key
       const res2 = await request(app.getHttpServer())
-        .post('/bundles/scan')
-        .set('Authorization', `Bearer ${accessToken}`)
-        .set('x-tenant-id', tenantId)
-        .set('x-actor-id', 'actor-scan-05')
-        .set('x-idempotency-key', 'scan-idem-dup-001')
+        .post("/bundles/scan")
+        .set("Authorization", `Bearer ${accessToken}`)
+        .set("x-tenant-id", tenantId)
+        .set("x-actor-id", "actor-scan-05")
+        .set("x-idempotency-key", "scan-idem-dup-001")
         .send({
           barcode: bundle2.barcode,
           operationId: op1Id,
@@ -594,38 +667,38 @@ describe('MES Bundle Barcode Scanning & WIP Synchronization (e2e)', () => {
       const wipCount = await prisma.wipTransaction.count({
         where: {
           tenantId,
-          idempotencyKey: 'wip-scan-scan-idem-dup-001',
+          idempotencyKey: "wip-scan-scan-idem-dup-001",
         },
       });
       expect(wipCount).toBe(1);
     });
   });
 
-  describe('Section 3: Negative Validations & Boundary Safeguards', () => {
-    it('should reject scan for nonexistent bundle/barcode', async () => {
+  describe("Section 3: Negative Validations & Boundary Safeguards", () => {
+    it("should reject scan for nonexistent bundle/barcode", async () => {
       const res = await request(app.getHttpServer())
-        .post('/bundles/scan')
-        .set('Authorization', `Bearer ${accessToken}`)
-        .set('x-tenant-id', tenantId)
-        .set('x-actor-id', 'actor-scan-err')
-        .set('x-idempotency-key', 'scan-err-01')
+        .post("/bundles/scan")
+        .set("Authorization", `Bearer ${accessToken}`)
+        .set("x-tenant-id", tenantId)
+        .set("x-actor-id", "actor-scan-err")
+        .set("x-idempotency-key", "scan-err-01")
         .send({
-          barcode: 'BND-NONEXISTENT-999',
+          barcode: "BND-NONEXISTENT-999",
           operationId: op1Id,
           employeeId,
         });
 
       expect(res.status).toBe(404);
-      expect(res.body.message).toContain('Bundle not found');
+      expect(res.body.message).toContain("Bundle not found");
     });
 
-    it('should reject scan for foreign tenant bundle (cross-tenant isolation)', async () => {
+    it("should reject scan for foreign tenant bundle (cross-tenant isolation)", async () => {
       const res = await request(app.getHttpServer())
-        .post('/bundles/scan')
-        .set('Authorization', `Bearer ${foreignAccessToken}`)
-        .set('x-tenant-id', foreignTenantId)
-        .set('x-actor-id', 'actor-foreign')
-        .set('x-idempotency-key', 'scan-err-02')
+        .post("/bundles/scan")
+        .set("Authorization", `Bearer ${foreignAccessToken}`)
+        .set("x-tenant-id", foreignTenantId)
+        .set("x-actor-id", "actor-foreign")
+        .set("x-idempotency-key", "scan-err-02")
         .send({
           barcode: bundleBarcode,
           operationId: op1Id,
@@ -635,16 +708,18 @@ describe('MES Bundle Barcode Scanning & WIP Synchronization (e2e)', () => {
       expect(res.status).toBe(404);
     });
 
-    it('should reject scan with foreign employee (cross-tenant employee)', async () => {
+    it("should reject scan with foreign employee (cross-tenant employee)", async () => {
       const allBundles = await prisma.bundle.findMany({ where: { tenantId } });
-      const availableBundle = allBundles.find((b) => b.status !== BundleStatus.FINISHED)!;
+      const availableBundle = allBundles.find(
+        (b) => b.status !== BundleStatus.FINISHED,
+      )!;
 
       const res = await request(app.getHttpServer())
-        .post('/bundles/scan')
-        .set('Authorization', `Bearer ${accessToken}`)
-        .set('x-tenant-id', tenantId)
-        .set('x-actor-id', 'actor-scan-err')
-        .set('x-idempotency-key', 'scan-err-03')
+        .post("/bundles/scan")
+        .set("Authorization", `Bearer ${accessToken}`)
+        .set("x-tenant-id", tenantId)
+        .set("x-actor-id", "actor-scan-err")
+        .set("x-idempotency-key", "scan-err-03")
         .send({
           barcode: availableBundle.barcode,
           operationId: availableBundle.currentOperationId,
@@ -652,19 +727,21 @@ describe('MES Bundle Barcode Scanning & WIP Synchronization (e2e)', () => {
         });
 
       expect(res.status).toBe(404);
-      expect(res.body.message).toContain('Employee not found');
+      expect(res.body.message).toContain("Employee not found");
     });
 
-    it('should reject scan with foreign machine (cross-tenant machine)', async () => {
+    it("should reject scan with foreign machine (cross-tenant machine)", async () => {
       const allBundles = await prisma.bundle.findMany({ where: { tenantId } });
-      const availableBundle = allBundles.find((b) => b.status !== BundleStatus.FINISHED)!;
+      const availableBundle = allBundles.find(
+        (b) => b.status !== BundleStatus.FINISHED,
+      )!;
 
       const res = await request(app.getHttpServer())
-        .post('/bundles/scan')
-        .set('Authorization', `Bearer ${accessToken}`)
-        .set('x-tenant-id', tenantId)
-        .set('x-actor-id', 'actor-scan-err')
-        .set('x-idempotency-key', 'scan-err-04')
+        .post("/bundles/scan")
+        .set("Authorization", `Bearer ${accessToken}`)
+        .set("x-tenant-id", tenantId)
+        .set("x-actor-id", "actor-scan-err")
+        .set("x-idempotency-key", "scan-err-04")
         .send({
           barcode: availableBundle.barcode,
           operationId: availableBundle.currentOperationId,
@@ -673,19 +750,19 @@ describe('MES Bundle Barcode Scanning & WIP Synchronization (e2e)', () => {
         });
 
       expect(res.status).toBe(404);
-      expect(res.body.message).toContain('Machine not found');
+      expect(res.body.message).toContain("Machine not found");
     });
 
-    it('should reject out-of-sequence scan (e.g. scanning Op 3 when bundle is at Op 1)', async () => {
+    it("should reject out-of-sequence scan (e.g. scanning Op 3 when bundle is at Op 1)", async () => {
       const allBundles = await prisma.bundle.findMany({ where: { tenantId } });
       const op1Bundle = allBundles.find((b) => b.currentOperationId === op1Id)!;
 
       const res = await request(app.getHttpServer())
-        .post('/bundles/scan')
-        .set('Authorization', `Bearer ${accessToken}`)
-        .set('x-tenant-id', tenantId)
-        .set('x-actor-id', 'actor-scan-err')
-        .set('x-idempotency-key', 'scan-err-05')
+        .post("/bundles/scan")
+        .set("Authorization", `Bearer ${accessToken}`)
+        .set("x-tenant-id", tenantId)
+        .set("x-actor-id", "actor-scan-err")
+        .set("x-idempotency-key", "scan-err-05")
         .send({
           barcode: op1Bundle.barcode,
           operationId: op3Id, // Out of sequence!
@@ -693,17 +770,17 @@ describe('MES Bundle Barcode Scanning & WIP Synchronization (e2e)', () => {
         });
 
       expect(res.status).toBe(400);
-      expect(res.body.message).toContain('Invalid operation scan');
+      expect(res.body.message).toContain("Invalid operation scan");
     });
 
-    it('should reject scan on an already FINISHED bundle', async () => {
+    it("should reject scan on an already FINISHED bundle", async () => {
       // bundleId was finished in Section 1 test
       const res = await request(app.getHttpServer())
-        .post('/bundles/scan')
-        .set('Authorization', `Bearer ${accessToken}`)
-        .set('x-tenant-id', tenantId)
-        .set('x-actor-id', 'actor-scan-err')
-        .set('x-idempotency-key', 'scan-err-06')
+        .post("/bundles/scan")
+        .set("Authorization", `Bearer ${accessToken}`)
+        .set("x-tenant-id", tenantId)
+        .set("x-actor-id", "actor-scan-err")
+        .set("x-idempotency-key", "scan-err-06")
         .send({
           bundleId,
           operationId: op1Id,
@@ -711,20 +788,20 @@ describe('MES Bundle Barcode Scanning & WIP Synchronization (e2e)', () => {
         });
 
       expect(res.status).toBe(400);
-      expect(res.body.message).toContain('Bundle is already FINISHED');
+      expect(res.body.message).toContain("Bundle is already FINISHED");
     });
 
-    it('should reject scan when operation requires machine but machineId is missing', async () => {
+    it("should reject scan when operation requires machine but machineId is missing", async () => {
       // Bundle 2 is currently at Op 2 (Sewing Assembly, which has machineTypeId: LOCKSTITCH)
       const allBundles = await prisma.bundle.findMany({ where: { tenantId } });
       const op2Bundle = allBundles.find((b) => b.currentOperationId === op2Id)!;
 
       const res = await request(app.getHttpServer())
-        .post('/bundles/scan')
-        .set('Authorization', `Bearer ${accessToken}`)
-        .set('x-tenant-id', tenantId)
-        .set('x-actor-id', 'actor-scan-err')
-        .set('x-idempotency-key', 'scan-err-07')
+        .post("/bundles/scan")
+        .set("Authorization", `Bearer ${accessToken}`)
+        .set("x-tenant-id", tenantId)
+        .set("x-actor-id", "actor-scan-err")
+        .set("x-idempotency-key", "scan-err-07")
         .send({
           barcode: op2Bundle.barcode,
           operationId: op2Id,
@@ -733,7 +810,7 @@ describe('MES Bundle Barcode Scanning & WIP Synchronization (e2e)', () => {
         });
 
       expect(res.status).toBe(400);
-      expect(res.body.message).toContain('Machine is required');
+      expect(res.body.message).toContain("Machine is required");
     });
   });
 });

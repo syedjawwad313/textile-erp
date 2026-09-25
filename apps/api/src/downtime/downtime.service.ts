@@ -1,6 +1,13 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
-import { prisma, DowntimeStatus } from '@textile-erp/database';
-import { CreateDowntimeEventDto, ResolveDowntimeEventDto } from './downtime.dto';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from "@nestjs/common";
+import { prisma, DowntimeStatus } from "@textile-erp/database";
+import {
+  CreateDowntimeEventDto,
+  ResolveDowntimeEventDto,
+} from "./downtime.dto";
 
 @Injectable()
 export class DowntimeService {
@@ -8,10 +15,10 @@ export class DowntimeService {
     tenantId: string,
     actorId: string,
     idempotencyKey: string,
-    dto: CreateDowntimeEventDto
+    dto: CreateDowntimeEventDto,
   ) {
     if (!idempotencyKey) {
-      throw new BadRequestException('X-Idempotency-Key is required');
+      throw new BadRequestException("X-Idempotency-Key is required");
     }
 
     return prisma.$transaction(async (tx) => {
@@ -29,7 +36,7 @@ export class DowntimeService {
         where: { id: dto.productionLineId },
       });
       if (!line || line.tenantId !== tenantId) {
-        throw new NotFoundException('Production Line not found');
+        throw new NotFoundException("Production Line not found");
       }
 
       // 3. Validate Machine if provided
@@ -39,12 +46,12 @@ export class DowntimeService {
           where: { id: dto.machineId },
         });
         if (!machine || machine.tenantId !== tenantId) {
-          throw new NotFoundException('Machine not found');
+          throw new NotFoundException("Machine not found");
         }
 
         if (machine.factoryUnitId !== line.factoryUnitId) {
           throw new BadRequestException(
-            'Machine does not belong to the same factory unit as the production line'
+            "Machine does not belong to the same factory unit as the production line",
           );
         }
 
@@ -58,7 +65,7 @@ export class DowntimeService {
         });
         if (activeMachineIncident) {
           throw new BadRequestException(
-            `Machine ${machine.code} already has an active downtime incident`
+            `Machine ${machine.code} already has an active downtime incident`,
           );
         }
       }
@@ -66,21 +73,23 @@ export class DowntimeService {
       // 4. Validate Timestamps
       const start = dto.startTime ? new Date(dto.startTime) : new Date();
       if (isNaN(start.getTime())) {
-        throw new BadRequestException('Invalid startTime format');
+        throw new BadRequestException("Invalid startTime format");
       }
 
       let end: Date | null = null;
       if (dto.endTime) {
         end = new Date(dto.endTime);
         if (isNaN(end.getTime())) {
-          throw new BadRequestException('Invalid endTime format');
+          throw new BadRequestException("Invalid endTime format");
         }
         if (end < start) {
-          throw new BadRequestException('endTime cannot precede startTime');
+          throw new BadRequestException("endTime cannot precede startTime");
         }
       }
 
-      const initialStatus = end ? DowntimeStatus.RESOLVED : DowntimeStatus.ACTIVE;
+      const initialStatus = end
+        ? DowntimeStatus.RESOLVED
+        : DowntimeStatus.ACTIVE;
 
       // 5. Create DowntimeEvent
       const event = await tx.downtimeEvent.create({
@@ -105,9 +114,9 @@ export class DowntimeService {
       await tx.auditEvent.create({
         data: {
           tenantId,
-          actorId: actorId || 'SYSTEM',
-          action: 'DOWNTIME_CREATED',
-          entity: 'DowntimeEvent',
+          actorId: actorId || "SYSTEM",
+          action: "DOWNTIME_CREATED",
+          entity: "DowntimeEvent",
           entityId: event.id,
           newValues: {
             status: event.status,
@@ -129,7 +138,7 @@ export class DowntimeService {
     tenantId: string,
     actorId: string,
     id: string,
-    dto: ResolveDowntimeEventDto
+    dto: ResolveDowntimeEventDto,
   ) {
     return prisma.$transaction(async (tx) => {
       const event = await tx.downtimeEvent.findUnique({
@@ -138,20 +147,20 @@ export class DowntimeService {
       });
 
       if (!event || event.tenantId !== tenantId) {
-        throw new NotFoundException('Downtime event not found');
+        throw new NotFoundException("Downtime event not found");
       }
 
       if (event.status === DowntimeStatus.RESOLVED) {
-        throw new BadRequestException('Downtime event is already RESOLVED');
+        throw new BadRequestException("Downtime event is already RESOLVED");
       }
 
       const end = dto.endTime ? new Date(dto.endTime) : new Date();
       if (isNaN(end.getTime())) {
-        throw new BadRequestException('Invalid endTime format');
+        throw new BadRequestException("Invalid endTime format");
       }
 
       if (end < event.startTime) {
-        throw new BadRequestException('endTime cannot precede startTime');
+        throw new BadRequestException("endTime cannot precede startTime");
       }
 
       const updatedRemarks = dto.remarks
@@ -177,9 +186,9 @@ export class DowntimeService {
       await tx.auditEvent.create({
         data: {
           tenantId,
-          actorId: actorId || 'SYSTEM',
-          action: 'DOWNTIME_RESOLVED',
-          entity: 'DowntimeEvent',
+          actorId: actorId || "SYSTEM",
+          action: "DOWNTIME_RESOLVED",
+          entity: "DowntimeEvent",
           entityId: id,
           oldValues: {
             status: event.status,
@@ -190,7 +199,7 @@ export class DowntimeService {
             endTime: resolved.endTime,
             remarks: resolved.remarks,
           },
-          reason: dto.remarks || 'Downtime incident resolved',
+          reason: dto.remarks || "Downtime incident resolved",
         },
       });
 
@@ -206,11 +215,12 @@ export class DowntimeService {
       status?: DowntimeStatus;
       from?: string;
       to?: string;
-    }
+    },
   ) {
     const where: any = { tenantId };
 
-    if (filters?.productionLineId) where.productionLineId = filters.productionLineId;
+    if (filters?.productionLineId)
+      where.productionLineId = filters.productionLineId;
     if (filters?.machineId) where.machineId = filters.machineId;
     if (filters?.status) where.status = filters.status;
     if (filters?.from || filters?.to) {
@@ -225,7 +235,7 @@ export class DowntimeService {
         productionLine: true,
         machine: true,
       },
-      orderBy: { startTime: 'desc' },
+      orderBy: { startTime: "desc" },
     });
   }
 
@@ -239,7 +249,7 @@ export class DowntimeService {
     });
 
     if (!event || event.tenantId !== tenantId) {
-      throw new NotFoundException('Downtime event not found');
+      throw new NotFoundException("Downtime event not found");
     }
 
     return event;

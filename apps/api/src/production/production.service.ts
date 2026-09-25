@@ -1,5 +1,19 @@
-import { Injectable, BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
-import { prisma, ProductionStatus, OperationStatus, CostingStatus, InventoryTxType, BundleStatus, DefectStatus, QualityHoldStatus } from '@textile-erp/database';
+import {
+  Injectable,
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from "@nestjs/common";
+import {
+  prisma,
+  ProductionStatus,
+  OperationStatus,
+  CostingStatus,
+  InventoryTxType,
+  BundleStatus,
+  DefectStatus,
+  QualityHoldStatus,
+} from "@textile-erp/database";
 import {
   CreateProductionOrderDto,
   PlanProductionOrderDto,
@@ -12,36 +26,36 @@ import {
   ReleaseQualityHoldDto,
   QueryProductionOutputDto,
   QueryProductionDefectDto,
-  QueryQualityHoldDto
-} from './production.dto';
-import { StateMachineService } from '../common/state-machine/state-machine.service';
-import { LedgerService } from '../inventory/services/ledger.service';
+  QueryQualityHoldDto,
+} from "./production.dto";
+import { StateMachineService } from "../common/state-machine/state-machine.service";
+import { LedgerService } from "../inventory/services/ledger.service";
 
 @Injectable()
 export class ProductionService {
   constructor(
     private stateMachine: StateMachineService,
-    private ledgerService: LedgerService
+    private ledgerService: LedgerService,
   ) {}
 
   async getProductionOrders(tenantId: string) {
     return prisma.productionOrder.findMany({
       where: { tenantId },
       include: {
-        operations: { orderBy: { sequence: 'asc' } },
+        operations: { orderBy: { sequence: "asc" } },
         bomLines: { include: { material: true } },
         productionLine: true,
-        productionPlans: { orderBy: { createdAt: 'desc' } },
-        cuttingRecords: { orderBy: { createdAt: 'desc' } },
-        bundles: { orderBy: { createdAt: 'desc' } },
+        productionPlans: { orderBy: { createdAt: "desc" } },
+        cuttingRecords: { orderBy: { createdAt: "desc" } },
+        bundles: { orderBy: { createdAt: "desc" } },
         buyerPoLine: {
           include: {
             buyerPo: { include: { buyer: true } },
-            style: true
-          }
-        }
+            style: true,
+          },
+        },
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: "desc" },
     });
   }
 
@@ -49,72 +63,92 @@ export class ProductionService {
     const order = await prisma.productionOrder.findUnique({
       where: { id },
       include: {
-        operations: { orderBy: { sequence: 'asc' } },
+        operations: { orderBy: { sequence: "asc" } },
         bomLines: { include: { material: true } },
         productionLine: true,
-        productionPlans: { orderBy: { createdAt: 'desc' } },
-        cuttingRecords: { include: { fabricMaterial: true }, orderBy: { createdAt: 'desc' } },
-        bundles: { orderBy: { createdAt: 'desc' } },
+        productionPlans: { orderBy: { createdAt: "desc" } },
+        cuttingRecords: {
+          include: { fabricMaterial: true },
+          orderBy: { createdAt: "desc" },
+        },
+        bundles: { orderBy: { createdAt: "desc" } },
         buyerPoLine: {
           include: {
             buyerPo: { include: { buyer: true } },
-            style: true
-          }
-        }
-      }
+            style: true,
+          },
+        },
+      },
     });
 
     if (!order || order.tenantId !== tenantId) {
-      throw new NotFoundException('Production Order not found');
+      throw new NotFoundException("Production Order not found");
     }
 
     return order;
   }
 
-  async createProductionOrder(tenantId: string, idempotencyKey: string, dto: CreateProductionOrderDto) {
-    if (!idempotencyKey) throw new BadRequestException('X-Idempotency-Key is required');
+  async createProductionOrder(
+    tenantId: string,
+    idempotencyKey: string,
+    dto: CreateProductionOrderDto,
+  ) {
+    if (!idempotencyKey)
+      throw new BadRequestException("X-Idempotency-Key is required");
 
     return prisma.$transaction(async (tx) => {
       // Idempotency check
       const existing = await tx.productionOrder.findUnique({
-        where: { tenantId_idempotencyKey: { tenantId, idempotencyKey } }
+        where: { tenantId_idempotencyKey: { tenantId, idempotencyKey } },
       });
       if (existing) {
-        throw new ConflictException('Idempotency key already used for Production Order');
+        throw new ConflictException(
+          "Idempotency key already used for Production Order",
+        );
       }
 
       // Check Buyer PO Line
       const poLine = await tx.buyerPoLine.findUnique({
         where: { id: dto.buyerPoLineId },
-        include: { buyerPo: true }
+        include: { buyerPo: true },
       });
 
       if (!poLine || poLine.buyerPo.tenantId !== tenantId) {
-        throw new NotFoundException('BuyerPoLine not found');
+        throw new NotFoundException("BuyerPoLine not found");
       }
-      
-      if (poLine.buyerPo.status !== 'CONFIRMED') {
-         throw new BadRequestException('BuyerPo must be CONFIRMED to create Production Orders');
+
+      if (poLine.buyerPo.status !== "CONFIRMED") {
+        throw new BadRequestException(
+          "BuyerPo must be CONFIRMED to create Production Orders",
+        );
       }
 
       // Concurrency check for quantity limits
-      await tx.$queryRaw<any[]>`SELECT * FROM "BuyerPoLine" WHERE id = ${dto.buyerPoLineId} FOR UPDATE`;
-      
+      await tx.$queryRaw<
+        any[]
+      >`SELECT * FROM "BuyerPoLine" WHERE id = ${dto.buyerPoLineId} FOR UPDATE`;
+
       const existingOrders = await tx.productionOrder.aggregate({
         where: { buyerPoLineId: dto.buyerPoLineId },
-        _sum: { targetQuantity: true }
+        _sum: { targetQuantity: true },
       });
 
       const currentTotal = Number(existingOrders._sum.targetQuantity || 0);
       if (currentTotal + dto.targetQuantity > Number(poLine.quantity)) {
-        throw new BadRequestException('Production Order target quantity exceeds remaining BuyerPoLine quantity');
+        throw new BadRequestException(
+          "Production Order target quantity exceeds remaining BuyerPoLine quantity",
+        );
       }
 
       // If productionLineId is provided on create, validate it belongs to tenant
       if (dto.productionLineId) {
-        const line = await tx.productionLine.findUnique({ where: { id: dto.productionLineId } });
+        const line = await tx.productionLine.findUnique({
+          where: { id: dto.productionLineId },
+        });
         if (!line || line.tenantId !== tenantId) {
-          throw new BadRequestException('Production Line not found or belongs to another tenant');
+          throw new BadRequestException(
+            "Production Line not found or belongs to another tenant",
+          );
         }
       }
 
@@ -123,21 +157,27 @@ export class ProductionService {
         where: {
           tenantId,
           status: CostingStatus.APPROVED,
-          costingSheet: { styleId: poLine.styleId }
+          costingSheet: { styleId: poLine.styleId },
         },
         include: {
-          bomLines: true
-        }
+          bomLines: true,
+        },
       });
 
       if (!costingVersion) {
-        throw new BadRequestException('No APPROVED CostingVersion found for this Style to snapshot BOM');
+        throw new BadRequestException(
+          "No APPROVED CostingVersion found for this Style to snapshot BOM",
+        );
       }
 
-      const bomLinesData = costingVersion.bomLines.map(line => ({
+      const bomLinesData = costingVersion.bomLines.map((line) => ({
         materialId: line.materialId,
-        quantityPerUnit: Number(line.consumption) * (1 + Number(line.wastagePercent)),
-        totalRequired: (Number(line.consumption) * (1 + Number(line.wastagePercent))) * dto.targetQuantity
+        quantityPerUnit:
+          Number(line.consumption) * (1 + Number(line.wastagePercent)),
+        totalRequired:
+          Number(line.consumption) *
+          (1 + Number(line.wastagePercent)) *
+          dto.targetQuantity,
       }));
 
       // Create Order
@@ -151,78 +191,98 @@ export class ProductionService {
           smv: dto.smv,
           idempotencyKey,
           operations: {
-            create: dto.operations.map(op => ({
+            create: dto.operations.map((op) => ({
               operationName: op.operationName,
               sequence: op.sequence,
               smv: op.smv,
-              machineTypeId: op.machineTypeId
-            }))
+              machineTypeId: op.machineTypeId,
+            })),
           },
           bomLines: {
-            create: bomLinesData
-          }
+            create: bomLinesData,
+          },
         },
         include: {
           operations: true,
           bomLines: true,
-          productionLine: true
-        }
+          productionLine: true,
+        },
       });
 
       return order;
     });
   }
 
-  async planProductionOrder(tenantId: string, actorId: string, orderId: string, idempotencyKey: string | undefined, dto: PlanProductionOrderDto) {
+  async planProductionOrder(
+    tenantId: string,
+    actorId: string,
+    orderId: string,
+    idempotencyKey: string | undefined,
+    dto: PlanProductionOrderDto,
+  ) {
     const startDate = new Date(dto.plannedStartDate);
     const endDate = new Date(dto.plannedEndDate);
 
     if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-      throw new BadRequestException('Invalid planned dates provided');
+      throw new BadRequestException("Invalid planned dates provided");
     }
 
     if (startDate > endDate) {
-      throw new BadRequestException('plannedStartDate must be before or equal to plannedEndDate');
+      throw new BadRequestException(
+        "plannedStartDate must be before or equal to plannedEndDate",
+      );
     }
 
     return prisma.$transaction(async (tx) => {
       // Check idempotency if key provided
       if (idempotencyKey) {
         const existingPlan = await tx.productionPlan.findUnique({
-          where: { tenantId_idempotencyKey: { tenantId, idempotencyKey } }
+          where: { tenantId_idempotencyKey: { tenantId, idempotencyKey } },
         });
         if (existingPlan) {
-          throw new ConflictException('Idempotency key already used for Production Plan');
+          throw new ConflictException(
+            "Idempotency key already used for Production Plan",
+          );
         }
       }
 
       // Lock Production Order
-      const lockQuery = await tx.$queryRaw<any[]>`SELECT * FROM "ProductionOrder" WHERE id = ${orderId} FOR UPDATE`;
+      const lockQuery = await tx.$queryRaw<
+        any[]
+      >`SELECT * FROM "ProductionOrder" WHERE id = ${orderId} FOR UPDATE`;
       if (!lockQuery || lockQuery.length === 0) {
-        throw new NotFoundException('Production Order not found');
+        throw new NotFoundException("Production Order not found");
       }
 
       const order = await tx.productionOrder.findUnique({
         where: { id: orderId },
-        include: { operations: true }
+        include: { operations: true },
       });
 
       if (!order || order.tenantId !== tenantId) {
-        throw new NotFoundException('Production Order not found');
+        throw new NotFoundException("Production Order not found");
       }
 
       // Planning Guard: Once production starts or completes, line assignment cannot be mutated
-      if (order.status === ProductionStatus.IN_PROGRESS || order.status === ProductionStatus.COMPLETED || order.status === ProductionStatus.CANCELLED) {
-        throw new BadRequestException(`Cannot re-plan or change production line for order in ${order.status} status`);
+      if (
+        order.status === ProductionStatus.IN_PROGRESS ||
+        order.status === ProductionStatus.COMPLETED ||
+        order.status === ProductionStatus.CANCELLED
+      ) {
+        throw new BadRequestException(
+          `Cannot re-plan or change production line for order in ${order.status} status`,
+        );
       }
 
       // Validate Production Line exists and belongs to the same tenant
       const line = await tx.productionLine.findUnique({
-        where: { id: dto.productionLineId }
+        where: { id: dto.productionLineId },
       });
 
       if (!line || line.tenantId !== tenantId) {
-        throw new BadRequestException('Production Line not found or belongs to another tenant');
+        throw new BadRequestException(
+          "Production Line not found or belongs to another tenant",
+        );
       }
 
       // Update Production Order line, dates, and SMV
@@ -233,7 +293,7 @@ export class ProductionService {
           plannedStartDate: startDate,
           plannedEndDate: endDate,
           smv: dto.smv !== undefined ? dto.smv : order.smv,
-        }
+        },
       });
 
       // Update operation SMVs if provided
@@ -242,9 +302,9 @@ export class ProductionService {
           await tx.productionOperation.updateMany({
             where: {
               id: opSmv.operationId,
-              productionOrderId: orderId
+              productionOrderId: orderId,
             },
-            data: { smv: opSmv.smv }
+            data: { smv: opSmv.smv },
           });
         }
       }
@@ -259,22 +319,26 @@ export class ProductionService {
           plannedEndDate: endDate,
           dailyTarget: dto.dailyTarget,
           smv: dto.smv !== undefined ? dto.smv : order.smv,
-          status: 'PLANNED',
+          status: "PLANNED",
           idempotencyKey: idempotencyKey || null,
         },
         include: {
-          productionLine: true
-        }
+          productionLine: true,
+        },
       });
 
       return {
         order: updatedOrder,
-        plan
+        plan,
       };
     });
   }
 
-  async getProductionPlans(tenantId: string, lineId?: string, orderId?: string) {
+  async getProductionPlans(
+    tenantId: string,
+    lineId?: string,
+    orderId?: string,
+  ) {
     const where: any = { tenantId };
     if (lineId) where.productionLineId = lineId;
     if (orderId) where.productionOrderId = orderId;
@@ -286,68 +350,82 @@ export class ProductionService {
         productionOrder: {
           include: {
             buyerPoLine: {
-              include: { style: true, buyerPo: { include: { buyer: true } } }
-            }
-          }
-        }
+              include: { style: true, buyerPo: { include: { buyer: true } } },
+            },
+          },
+        },
       },
-      orderBy: { plannedStartDate: 'asc' }
+      orderBy: { plannedStartDate: "asc" },
     });
   }
 
-  async createCuttingRecord(tenantId: string, actorId: string, idempotencyKey: string, dto: CreateCuttingRecordDto) {
+  async createCuttingRecord(
+    tenantId: string,
+    actorId: string,
+    idempotencyKey: string,
+    dto: CreateCuttingRecordDto,
+  ) {
     if (!idempotencyKey) {
-      throw new BadRequestException('X-Idempotency-Key is required');
+      throw new BadRequestException("X-Idempotency-Key is required");
     }
 
     return prisma.$transaction(async (tx) => {
       // Idempotency check
       const existing = await tx.cuttingRecord.findUnique({
-        where: { tenantId_idempotencyKey: { tenantId, idempotencyKey } }
+        where: { tenantId_idempotencyKey: { tenantId, idempotencyKey } },
       });
       if (existing) {
-        throw new ConflictException('Idempotency key already used for Cutting Record');
+        throw new ConflictException(
+          "Idempotency key already used for Cutting Record",
+        );
       }
 
       // Lock and validate Production Order
-      const lockQuery = await tx.$queryRaw<any[]>`SELECT * FROM "ProductionOrder" WHERE id = ${dto.productionOrderId} FOR UPDATE`;
+      const lockQuery = await tx.$queryRaw<
+        any[]
+      >`SELECT * FROM "ProductionOrder" WHERE id = ${dto.productionOrderId} FOR UPDATE`;
       if (!lockQuery || lockQuery.length === 0) {
-        throw new NotFoundException('Production Order not found');
+        throw new NotFoundException("Production Order not found");
       }
 
       const order = await tx.productionOrder.findUnique({
-        where: { id: dto.productionOrderId }
+        where: { id: dto.productionOrderId },
       });
 
       if (!order || order.tenantId !== tenantId) {
-        throw new NotFoundException('Production Order not found');
+        throw new NotFoundException("Production Order not found");
       }
 
       // State check: Cutting must happen on RELEASED or IN_PROGRESS orders
-      if (order.status !== ProductionStatus.RELEASED && order.status !== ProductionStatus.IN_PROGRESS) {
-        throw new BadRequestException(`Cannot record cutting for production order in ${order.status} status. Order must be RELEASED or IN_PROGRESS.`);
+      if (
+        order.status !== ProductionStatus.RELEASED &&
+        order.status !== ProductionStatus.IN_PROGRESS
+      ) {
+        throw new BadRequestException(
+          `Cannot record cutting for production order in ${order.status} status. Order must be RELEASED or IN_PROGRESS.`,
+        );
       }
 
       // 0% Target Overage Guard: Sum of all cuts cannot exceed target quantity
       const existingCuts = await tx.cuttingRecord.aggregate({
         where: { productionOrderId: dto.productionOrderId },
-        _sum: { cutQuantity: true }
+        _sum: { cutQuantity: true },
       });
 
       const totalCutSoFar = Number(existingCuts._sum.cutQuantity || 0);
       if (totalCutSoFar + dto.cutQuantity > Number(order.targetQuantity)) {
         throw new BadRequestException(
-          `Cutting quantity (${dto.cutQuantity}) exceeds remaining production order capacity. Target: ${order.targetQuantity}, Already Cut: ${totalCutSoFar}, Remaining: ${Number(order.targetQuantity) - totalCutSoFar}`
+          `Cutting quantity (${dto.cutQuantity}) exceeds remaining production order capacity. Target: ${order.targetQuantity}, Already Cut: ${totalCutSoFar}, Remaining: ${Number(order.targetQuantity) - totalCutSoFar}`,
         );
       }
 
       // Validate Fabric Material
       const material = await tx.material.findUnique({
-        where: { id: dto.fabricMaterialId }
+        where: { id: dto.fabricMaterialId },
       });
 
       if (!material || material.tenantId !== tenantId) {
-        throw new NotFoundException('Fabric material not found');
+        throw new NotFoundException("Fabric material not found");
       }
 
       // Issue Fabric Material through LedgerService (atomic balance check + double-entry ledger entry)
@@ -356,11 +434,11 @@ export class ProductionService {
         materialId: dto.fabricMaterialId,
         type: InventoryTxType.ISSUE,
         quantity: dto.fabricQuantity,
-        uom: material.uom || 'MTR',
+        uom: material.uom || "MTR",
         referenceId: dto.productionOrderId,
         actorId,
         reason: `Cutting Room Material Issue for Order ${order.orderNumber}`,
-        idempotencyKey: `cut-ledger-${idempotencyKey}`
+        idempotencyKey: `cut-ledger-${idempotencyKey}`,
       });
 
       // If order is RELEASED, automatically start production into IN_PROGRESS
@@ -372,7 +450,7 @@ export class ProductionService {
           actorId,
           ProductionStatus.RELEASED,
           ProductionStatus.IN_PROGRESS,
-          'Started cutting room operations'
+          "Started cutting room operations",
         );
       }
 
@@ -389,13 +467,13 @@ export class ProductionService {
           markerEfficiency: dto.markerEfficiency,
           wastagePercent: dto.wastagePercent,
           layCount: dto.layCount || 1,
-          idempotencyKey
+          idempotencyKey,
         },
         include: {
           fabricMaterial: true,
           productionOrder: true,
-          inventoryTransaction: true
-        }
+          inventoryTransaction: true,
+        },
       });
 
       return cuttingRecord;
@@ -413,38 +491,47 @@ export class ProductionService {
         productionOrder: {
           include: {
             buyerPoLine: { include: { style: true } },
-            productionLine: true
-          }
+            productionLine: true,
+          },
         },
         inventoryTransaction: true,
-        bundles: { orderBy: { bundleSequence: 'asc' } }
+        bundles: { orderBy: { bundleSequence: "asc" } },
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: "desc" },
     });
   }
 
-  async generateBundles(tenantId: string, actorId: string, idempotencyKey: string, dto: GenerateBundlesDto) {
+  async generateBundles(
+    tenantId: string,
+    actorId: string,
+    idempotencyKey: string,
+    dto: GenerateBundlesDto,
+  ) {
     if (!idempotencyKey) {
-      throw new BadRequestException('X-Idempotency-Key is required');
+      throw new BadRequestException("X-Idempotency-Key is required");
     }
 
     if (!dto.bundleSize || dto.bundleSize <= 0) {
-      throw new BadRequestException('Bundle size must be greater than zero');
+      throw new BadRequestException("Bundle size must be greater than zero");
     }
 
     return prisma.$transaction(async (tx) => {
       // 1. Check Idempotency Key
       const existing = await tx.bundle.findUnique({
-        where: { tenantId_idempotencyKey: { tenantId, idempotencyKey } }
+        where: { tenantId_idempotencyKey: { tenantId, idempotencyKey } },
       });
       if (existing) {
-        throw new ConflictException('Idempotency key already used for Bundle Generation');
+        throw new ConflictException(
+          "Idempotency key already used for Bundle Generation",
+        );
       }
 
       // 2. Lock CuttingRecord and validate ownership
-      const cutLock = await tx.$queryRaw<any[]>`SELECT * FROM "CuttingRecord" WHERE id = ${dto.cuttingRecordId} FOR UPDATE`;
+      const cutLock = await tx.$queryRaw<
+        any[]
+      >`SELECT * FROM "CuttingRecord" WHERE id = ${dto.cuttingRecordId} FOR UPDATE`;
       if (!cutLock || cutLock.length === 0) {
-        throw new NotFoundException('Cutting Record not found');
+        throw new NotFoundException("Cutting Record not found");
       }
 
       const cuttingRecord = await tx.cuttingRecord.findUnique({
@@ -452,62 +539,74 @@ export class ProductionService {
         include: {
           productionOrder: {
             include: {
-              operations: { orderBy: { sequence: 'asc' } }
-            }
-          }
-        }
+              operations: { orderBy: { sequence: "asc" } },
+            },
+          },
+        },
       });
 
       if (!cuttingRecord || cuttingRecord.tenantId !== tenantId) {
-        throw new NotFoundException('Cutting Record not found');
+        throw new NotFoundException("Cutting Record not found");
       }
 
       const order = cuttingRecord.productionOrder;
       if (!order || order.tenantId !== tenantId) {
-        throw new NotFoundException('Production Order not found');
+        throw new NotFoundException("Production Order not found");
       }
 
       // 3. Conservation Check on Cutting Record
       const existingCuttingBundles = await tx.bundle.aggregate({
         where: { cuttingRecordId: dto.cuttingRecordId },
         _sum: { quantity: true },
-        _count: { id: true }
+        _count: { id: true },
       });
 
-      const totalCuttingBundledSoFar = Number(existingCuttingBundles._sum.quantity || 0);
-      const remainingCuttingCapacity = Number(cuttingRecord.cutQuantity) - totalCuttingBundledSoFar;
+      const totalCuttingBundledSoFar = Number(
+        existingCuttingBundles._sum.quantity || 0,
+      );
+      const remainingCuttingCapacity =
+        Number(cuttingRecord.cutQuantity) - totalCuttingBundledSoFar;
 
-      const requestedQuantity = dto.totalQuantity !== undefined && dto.totalQuantity !== null
-        ? Number(dto.totalQuantity)
-        : remainingCuttingCapacity;
+      const requestedQuantity =
+        dto.totalQuantity !== undefined && dto.totalQuantity !== null
+          ? Number(dto.totalQuantity)
+          : remainingCuttingCapacity;
 
       if (requestedQuantity <= 0) {
         throw new BadRequestException(
-          `No remaining unbundled quantity available for Cutting Record (Cut Quantity: ${cuttingRecord.cutQuantity}, Already Bundled: ${totalCuttingBundledSoFar})`
+          `No remaining unbundled quantity available for Cutting Record (Cut Quantity: ${cuttingRecord.cutQuantity}, Already Bundled: ${totalCuttingBundledSoFar})`,
         );
       }
 
       if (requestedQuantity > remainingCuttingCapacity) {
         throw new BadRequestException(
-          `Requested bundle quantity (${requestedQuantity}) exceeds remaining Cutting Record capacity (${remainingCuttingCapacity}). Total Cut: ${cuttingRecord.cutQuantity}, Already Bundled: ${totalCuttingBundledSoFar}`
+          `Requested bundle quantity (${requestedQuantity}) exceeds remaining Cutting Record capacity (${remainingCuttingCapacity}). Total Cut: ${cuttingRecord.cutQuantity}, Already Bundled: ${totalCuttingBundledSoFar}`,
         );
       }
 
       // 4. Conservation Check on Production Order (0% Overage Rule)
       const existingOrderBundles = await tx.bundle.aggregate({
         where: { productionOrderId: order.id },
-        _sum: { quantity: true }
+        _sum: { quantity: true },
       });
 
-      const totalOrderBundledSoFar = Number(existingOrderBundles._sum.quantity || 0);
-      if (totalOrderBundledSoFar + requestedQuantity > Number(order.targetQuantity)) {
+      const totalOrderBundledSoFar = Number(
+        existingOrderBundles._sum.quantity || 0,
+      );
+      if (
+        totalOrderBundledSoFar + requestedQuantity >
+        Number(order.targetQuantity)
+      ) {
         throw new BadRequestException(
-          `Total bundled quantity exceeds Production Order target quantity (${order.targetQuantity}). Already Bundled: ${totalOrderBundledSoFar}, Requested: ${requestedQuantity}`
+          `Total bundled quantity exceeds Production Order target quantity (${order.targetQuantity}). Already Bundled: ${totalOrderBundledSoFar}, Requested: ${requestedQuantity}`,
         );
       }
 
       // 5. Initial Operation Assignment (Earliest sequence)
-      const firstOperation = order.operations && order.operations.length > 0 ? order.operations[0] : null;
+      const firstOperation =
+        order.operations && order.operations.length > 0
+          ? order.operations[0]
+          : null;
       const initialOperationId = firstOperation ? firstOperation.id : null;
 
       // 6. Split requestedQuantity into bundles
@@ -519,10 +618,16 @@ export class ProductionService {
       let currentSequence = (existingCuttingBundles._count.id || 0) + 1;
 
       for (let i = 0; i < fullBundlesCount; i++) {
-        bundlesToCreate.push({ sequence: currentSequence++, quantity: bundleSize });
+        bundlesToCreate.push({
+          sequence: currentSequence++,
+          quantity: bundleSize,
+        });
       }
       if (remainder > 0) {
-        bundlesToCreate.push({ sequence: currentSequence++, quantity: remainder });
+        bundlesToCreate.push({
+          sequence: currentSequence++,
+          quantity: remainder,
+        });
       }
 
       // 7. Generate Barcodes & Create Bundles
@@ -531,8 +636,9 @@ export class ProductionService {
 
       for (let idx = 0; idx < bundlesToCreate.length; idx++) {
         const bData = bundlesToCreate[idx];
-        const barcode = `BND-${order.orderNumber}-${cutPrefix}-${bData.sequence.toString().padStart(3, '0')}`;
-        const bundleIdempKey = idx === 0 ? idempotencyKey : `${idempotencyKey}-bnd-${idx}`;
+        const barcode = `BND-${order.orderNumber}-${cutPrefix}-${bData.sequence.toString().padStart(3, "0")}`;
+        const bundleIdempKey =
+          idx === 0 ? idempotencyKey : `${idempotencyKey}-bnd-${idx}`;
 
         const bundle = await tx.bundle.create({
           data: {
@@ -550,7 +656,7 @@ export class ProductionService {
             productionOrder: true,
             cuttingRecord: true,
             currentOperation: true,
-          }
+          },
         });
         createdBundles.push(bundle);
       }
@@ -559,7 +665,13 @@ export class ProductionService {
     });
   }
 
-  async getBundles(tenantId: string, cuttingRecordId?: string, productionOrderId?: string, barcode?: string, status?: BundleStatus) {
+  async getBundles(
+    tenantId: string,
+    cuttingRecordId?: string,
+    productionOrderId?: string,
+    barcode?: string,
+    status?: BundleStatus,
+  ) {
     const where: any = { tenantId };
     if (cuttingRecordId) where.cuttingRecordId = cuttingRecordId;
     if (productionOrderId) where.productionOrderId = productionOrderId;
@@ -573,14 +685,14 @@ export class ProductionService {
           include: {
             buyerPoLine: { include: { style: true } },
             productionLine: true,
-          }
+          },
         },
         cuttingRecord: {
-          include: { fabricMaterial: true }
+          include: { fabricMaterial: true },
         },
         currentOperation: true,
       },
-      orderBy: [{ createdAt: 'desc' }, { bundleSequence: 'asc' }]
+      orderBy: [{ createdAt: "desc" }, { bundleSequence: "asc" }],
     });
   }
 
@@ -592,43 +704,50 @@ export class ProductionService {
           include: {
             buyerPoLine: { include: { style: true } },
             productionLine: true,
-          }
+          },
         },
         cuttingRecord: {
-          include: { fabricMaterial: true }
+          include: { fabricMaterial: true },
         },
         currentOperation: true,
-      }
+      },
     });
 
     if (!bundle || bundle.tenantId !== tenantId) {
-      throw new NotFoundException('Bundle not found');
+      throw new NotFoundException("Bundle not found");
     }
 
     return bundle;
   }
 
-  async transitionStatus(tenantId: string, actorId: string, id: string, targetState: ProductionStatus) {
+  async transitionStatus(
+    tenantId: string,
+    actorId: string,
+    id: string,
+    targetState: ProductionStatus,
+  ) {
     return prisma.$transaction(async (tx) => {
       const order = await tx.productionOrder.findUnique({
         where: { id },
-        include: { bomLines: { include: { material: true } } }
+        include: { bomLines: { include: { material: true } } },
       });
 
       if (!order || order.tenantId !== tenantId) {
-        throw new NotFoundException('Production Order not found');
+        throw new NotFoundException("Production Order not found");
       }
 
       // Trim-Gate validation before RELEASED
       if (targetState === ProductionStatus.RELEASED) {
         for (const bom of order.bomLines) {
-          if (bom.material.category === 'TRIM') {
+          if (bom.material.category === "TRIM") {
             const inventory = await tx.inventoryItem.findFirst({
-              where: { tenantId: tenantId, materialId: bom.materialId }
+              where: { tenantId: tenantId, materialId: bom.materialId },
             });
             const available = inventory ? Number(inventory.quantity) : 0;
             if (available < Number(bom.totalRequired)) {
-              throw new BadRequestException(`Trim-Gate Failed: Insufficient inventory for TRIM material ${bom.material.name} (Required: ${bom.totalRequired}, Available: ${available})`);
+              throw new BadRequestException(
+                `Trim-Gate Failed: Insufficient inventory for TRIM material ${bom.material.name} (Required: ${bom.totalRequired}, Available: ${available})`,
+              );
             }
           }
         }
@@ -640,53 +759,82 @@ export class ProductionService {
         tenantId,
         actorId,
         order.status,
-        targetState
+        targetState,
       );
     });
   }
 
-  async issueMaterial(tenantId: string, actorId: string, orderId: string, materialId: string, quantity: number, idempotencyKey: string) {
-    if (!idempotencyKey) throw new BadRequestException('X-Idempotency-Key is required');
+  async issueMaterial(
+    tenantId: string,
+    actorId: string,
+    orderId: string,
+    materialId: string,
+    quantity: number,
+    idempotencyKey: string,
+  ) {
+    if (!idempotencyKey)
+      throw new BadRequestException("X-Idempotency-Key is required");
 
     return prisma.$transaction(async (tx) => {
       const order = await tx.productionOrder.findUnique({
-        where: { id: orderId }
+        where: { id: orderId },
       });
 
       if (!order || order.tenantId !== tenantId) {
-        throw new NotFoundException('Production Order not found');
+        throw new NotFoundException("Production Order not found");
       }
 
-      if (order.status !== ProductionStatus.RELEASED && order.status !== ProductionStatus.IN_PROGRESS) {
-        throw new BadRequestException('Can only issue materials for RELEASED or IN_PROGRESS orders');
+      if (
+        order.status !== ProductionStatus.RELEASED &&
+        order.status !== ProductionStatus.IN_PROGRESS
+      ) {
+        throw new BadRequestException(
+          "Can only issue materials for RELEASED or IN_PROGRESS orders",
+        );
       }
 
       // Delegate to LedgerService
       return this.ledgerService.recordTransaction(tx, {
         tenantId,
         materialId,
-        type: 'ISSUE' as any,
+        type: "ISSUE" as any,
         quantity,
-        uom: 'PCS',
+        uom: "PCS",
         referenceId: orderId,
         actorId,
-        idempotencyKey
+        idempotencyKey,
       });
     });
   }
 
-  async reportWipMove(tenantId: string, actorId: string, orderId: string, fromOpId: string | null, toOpId: string | null, quantity: number, type: 'MOVE' | 'REJECT', idempotencyKey: string) {
-    if (!idempotencyKey) throw new BadRequestException('X-Idempotency-Key is required');
+  async reportWipMove(
+    tenantId: string,
+    actorId: string,
+    orderId: string,
+    fromOpId: string | null,
+    toOpId: string | null,
+    quantity: number,
+    type: "MOVE" | "REJECT",
+    idempotencyKey: string,
+  ) {
+    if (!idempotencyKey)
+      throw new BadRequestException("X-Idempotency-Key is required");
 
     return prisma.$transaction(async (tx) => {
-      const order = await tx.productionOrder.findUnique({ where: { id: orderId } });
-      if (!order || order.tenantId !== tenantId) throw new NotFoundException('Production Order not found');
+      const order = await tx.productionOrder.findUnique({
+        where: { id: orderId },
+      });
+      if (!order || order.tenantId !== tenantId)
+        throw new NotFoundException("Production Order not found");
 
       if (fromOpId) {
-        const fromLock = await tx.$queryRaw<any[]>`SELECT "outputQty", "defectiveQty" FROM "ProductionOperation" WHERE id = ${fromOpId} FOR UPDATE`;
-        if (!fromLock || fromLock.length === 0) throw new BadRequestException('From Operation not found');
+        const fromLock = await tx.$queryRaw<
+          any[]
+        >`SELECT "outputQty", "defectiveQty" FROM "ProductionOperation" WHERE id = ${fromOpId} FOR UPDATE`;
+        if (!fromLock || fromLock.length === 0)
+          throw new BadRequestException("From Operation not found");
       }
-      
+
       const wip = await tx.wipTransaction.create({
         data: {
           tenantId,
@@ -696,55 +844,77 @@ export class ProductionService {
           quantity,
           type,
           actorId,
-          idempotencyKey
-        }
+          idempotencyKey,
+        },
       });
       return wip;
     });
   }
 
-  async reportOutput(tenantId: string, actorId: string, orderId: string, quantity: number, idempotencyKey: string) {
-    if (!idempotencyKey) throw new BadRequestException('X-Idempotency-Key is required');
+  async reportOutput(
+    tenantId: string,
+    actorId: string,
+    orderId: string,
+    quantity: number,
+    idempotencyKey: string,
+  ) {
+    if (!idempotencyKey)
+      throw new BadRequestException("X-Idempotency-Key is required");
 
     return prisma.$transaction(async (tx) => {
       const order = await tx.productionOrder.findUnique({
         where: { id: orderId },
-        include: { buyerPoLine: true }
+        include: { buyerPoLine: true },
       });
 
       if (!order || order.tenantId !== tenantId) {
-        throw new NotFoundException('Production Order not found');
+        throw new NotFoundException("Production Order not found");
       }
 
       // Concurrency check for quantity limits
-      const lockQuery = await tx.$queryRaw<any[]>`SELECT "completedQty" FROM "ProductionOrder" WHERE id = ${orderId} FOR UPDATE`;
+      const lockQuery = await tx.$queryRaw<
+        any[]
+      >`SELECT "completedQty" FROM "ProductionOrder" WHERE id = ${orderId} FOR UPDATE`;
       const currentCompleted = Number(lockQuery[0].completedQty);
 
       if (currentCompleted + quantity > Number(order.targetQuantity)) {
-        throw new BadRequestException('Production output cannot exceed target quantity (Overage is NOT permitted)');
+        throw new BadRequestException(
+          "Production output cannot exceed target quantity (Overage is NOT permitted)",
+        );
       }
 
       // Update Order completedQty
       const updatedOrder = await tx.productionOrder.update({
         where: { id: orderId },
-        data: { completedQty: { increment: quantity } }
+        data: { completedQty: { increment: quantity } },
       });
 
       // Complete the order if we hit the target
-      if (Number(updatedOrder.completedQty) === Number(updatedOrder.targetQuantity)) {
-        await this.stateMachine.transitionProductionOrder(tx, orderId, tenantId, actorId, updatedOrder.status, ProductionStatus.COMPLETED, 'Target reached');
+      if (
+        Number(updatedOrder.completedQty) ===
+        Number(updatedOrder.targetQuantity)
+      ) {
+        await this.stateMachine.transitionProductionOrder(
+          tx,
+          orderId,
+          tenantId,
+          actorId,
+          updatedOrder.status,
+          ProductionStatus.COMPLETED,
+          "Target reached",
+        );
       }
 
       // Delegate to LedgerService for finished goods
       await this.ledgerService.recordTransaction(tx, {
         tenantId,
         styleId: order.buyerPoLine.styleId,
-        type: 'PRODUCTION_OUTPUT' as any,
+        type: "PRODUCTION_OUTPUT" as any,
         quantity,
-        uom: 'PCS',
+        uom: "PCS",
         referenceId: orderId,
         actorId,
-        idempotencyKey
+        idempotencyKey,
       });
 
       return updatedOrder;
@@ -755,41 +925,43 @@ export class ProductionService {
     tenantId: string,
     actorId: string,
     idempotencyKey: string,
-    dto: ScanBundleDto
+    dto: ScanBundleDto,
   ) {
     if (!idempotencyKey) {
-      throw new BadRequestException('X-Idempotency-Key is required');
+      throw new BadRequestException("X-Idempotency-Key is required");
     }
 
     if (!dto.barcode && !dto.bundleId) {
-      throw new BadRequestException('Either barcode or bundleId must be provided');
+      throw new BadRequestException(
+        "Either barcode or bundleId must be provided",
+      );
     }
 
     if (!dto.operationId) {
-      throw new BadRequestException('operationId is required');
+      throw new BadRequestException("operationId is required");
     }
 
     if (!dto.employeeId) {
-      throw new BadRequestException('employeeId is required');
+      throw new BadRequestException("employeeId is required");
     }
 
     return prisma.$transaction(async (tx) => {
       // 1. Idempotency check
       const existingScan = await tx.bundleScan.findUnique({
         where: {
-          tenantId_idempotencyKey: { tenantId, idempotencyKey }
+          tenantId_idempotencyKey: { tenantId, idempotencyKey },
         },
         include: {
           bundle: {
             include: {
               currentOperation: true,
-              productionOrder: true
-            }
+              productionOrder: true,
+            },
           },
           operation: true,
           employee: true,
-          machine: true
-        }
+          machine: true,
+        },
       });
 
       if (existingScan) {
@@ -798,63 +970,71 @@ export class ProductionService {
 
       // 2. Validate Employee exists and belongs to tenant
       const employee = await tx.employee.findUnique({
-        where: { id: dto.employeeId }
+        where: { id: dto.employeeId },
       });
       if (!employee || employee.tenantId !== tenantId) {
-        throw new NotFoundException('Employee not found or unauthorized');
+        throw new NotFoundException("Employee not found or unauthorized");
       }
 
       // 3. Find and validate Bundle
       let bundleRecord = null;
       if (dto.barcode) {
         bundleRecord = await tx.bundle.findFirst({
-          where: { tenantId, barcode: dto.barcode }
+          where: { tenantId, barcode: dto.barcode },
         });
       } else if (dto.bundleId) {
         bundleRecord = await tx.bundle.findUnique({
-          where: { id: dto.bundleId }
+          where: { id: dto.bundleId },
         });
       }
 
       if (!bundleRecord || bundleRecord.tenantId !== tenantId) {
-        throw new NotFoundException('Bundle not found');
+        throw new NotFoundException("Bundle not found");
       }
 
       // Concurrency lock on Bundle
-      const bundleLock = await tx.$queryRaw<any[]>`SELECT * FROM "Bundle" WHERE id = ${bundleRecord.id} FOR UPDATE`;
+      const bundleLock = await tx.$queryRaw<
+        any[]
+      >`SELECT * FROM "Bundle" WHERE id = ${bundleRecord.id} FOR UPDATE`;
       if (!bundleLock || bundleLock.length === 0) {
-        throw new NotFoundException('Bundle not found');
+        throw new NotFoundException("Bundle not found");
       }
 
       // Check bundle status
       if (bundleRecord.status === BundleStatus.FINISHED) {
-        throw new BadRequestException('Bundle is already FINISHED and cannot be scanned');
+        throw new BadRequestException(
+          "Bundle is already FINISHED and cannot be scanned",
+        );
       }
       if (bundleRecord.status === BundleStatus.DEFECTIVE) {
-        throw new BadRequestException('Bundle is marked as DEFECTIVE');
+        throw new BadRequestException("Bundle is marked as DEFECTIVE");
       }
       if (bundleRecord.isQualityHold) {
         throw new BadRequestException(
-          `Bundle ${bundleRecord.barcode} is on QUALITY HOLD (${bundleRecord.qualityHoldReason || 'Pending inspection/rework'}) and cannot be scanned`
+          `Bundle ${bundleRecord.barcode} is on QUALITY HOLD (${bundleRecord.qualityHoldReason || "Pending inspection/rework"}) and cannot be scanned`,
         );
       }
 
       // 4. Validate Operation and Sequence
       if (bundleRecord.currentOperationId !== dto.operationId) {
         throw new BadRequestException(
-          `Invalid operation scan. Bundle current operation is ${bundleRecord.currentOperationId || 'NONE'}, scanned operation is ${dto.operationId}`
+          `Invalid operation scan. Bundle current operation is ${bundleRecord.currentOperationId || "NONE"}, scanned operation is ${dto.operationId}`,
         );
       }
 
       // Fetch all operations for this ProductionOrder ordered by sequence ASC
       const orderOperations = await tx.productionOperation.findMany({
         where: { productionOrderId: bundleRecord.productionOrderId },
-        orderBy: { sequence: 'asc' }
+        orderBy: { sequence: "asc" },
       });
 
-      const currentOpIndex = orderOperations.findIndex((o) => o.id === dto.operationId);
+      const currentOpIndex = orderOperations.findIndex(
+        (o) => o.id === dto.operationId,
+      );
       if (currentOpIndex === -1) {
-        throw new BadRequestException('Operation does not belong to bundle production order');
+        throw new BadRequestException(
+          "Operation does not belong to bundle production order",
+        );
       }
 
       const currentOp = orderOperations[currentOpIndex];
@@ -862,22 +1042,25 @@ export class ProductionService {
       // 5. Validate Machine requirements if operation specifies machineTypeId
       let machineRecord = null;
       if (currentOp.machineTypeId && !dto.machineId) {
-        throw new BadRequestException(`Machine is required for operation ${currentOp.operationName}`);
+        throw new BadRequestException(
+          `Machine is required for operation ${currentOp.operationName}`,
+        );
       }
 
       if (dto.machineId) {
         machineRecord = await tx.machine.findUnique({
-          where: { id: dto.machineId }
+          where: { id: dto.machineId },
         });
         if (!machineRecord || machineRecord.tenantId !== tenantId) {
-          throw new NotFoundException('Machine not found or unauthorized');
+          throw new NotFoundException("Machine not found or unauthorized");
         }
       }
 
       // 6. Determine Next Operation and Updated Status
-      const nextOp = currentOpIndex + 1 < orderOperations.length
-        ? orderOperations[currentOpIndex + 1]
-        : null;
+      const nextOp =
+        currentOpIndex + 1 < orderOperations.length
+          ? orderOperations[currentOpIndex + 1]
+          : null;
 
       let nextStatus: BundleStatus = BundleStatus.IN_SEWING;
       let nextOperationId: string | null = null;
@@ -885,9 +1068,12 @@ export class ProductionService {
       if (nextOp) {
         nextOperationId = nextOp.id;
         const opNameLower = nextOp.operationName.toLowerCase();
-        if (opNameLower.includes('wash')) {
+        if (opNameLower.includes("wash")) {
           nextStatus = BundleStatus.IN_WASHING;
-        } else if (opNameLower.includes('finish') || opNameLower.includes('pack')) {
+        } else if (
+          opNameLower.includes("finish") ||
+          opNameLower.includes("pack")
+        ) {
           nextStatus = BundleStatus.IN_SEWING;
         } else {
           nextStatus = BundleStatus.IN_SEWING;
@@ -903,8 +1089,8 @@ export class ProductionService {
         where: { id: bundleRecord.id },
         data: {
           currentOperationId: nextOperationId,
-          status: nextStatus
-        }
+          status: nextStatus,
+        },
       });
 
       // 8. Create BundleScan record
@@ -916,19 +1102,19 @@ export class ProductionService {
           employeeId: dto.employeeId,
           machineId: dto.machineId || null,
           idempotencyKey,
-          timestamp: new Date()
+          timestamp: new Date(),
         },
         include: {
           bundle: {
             include: {
               currentOperation: true,
-              productionOrder: true
-            }
+              productionOrder: true,
+            },
           },
           operation: true,
           employee: true,
-          machine: true
-        }
+          machine: true,
+        },
       });
 
       // 9. Synchronize with Aggregate WipTransaction (MOVE)
@@ -939,27 +1125,27 @@ export class ProductionService {
           fromOperationId: dto.operationId,
           toOperationId: nextOperationId,
           quantity: bundleRecord.quantity,
-          type: 'MOVE',
+          type: "MOVE",
           actorId: actorId || dto.employeeId,
           idempotencyKey: `wip-scan-${idempotencyKey}`,
-          timestamp: new Date()
-        }
+          timestamp: new Date(),
+        },
       });
 
       // 10. Update Operation Output & Input Quantities
       await tx.productionOperation.update({
         where: { id: dto.operationId },
         data: {
-          outputQty: { increment: bundleRecord.quantity }
-        }
+          outputQty: { increment: bundleRecord.quantity },
+        },
       });
 
       if (nextOp) {
         await tx.productionOperation.update({
           where: { id: nextOp.id },
           data: {
-            inputQty: { increment: bundleRecord.quantity }
-          }
+            inputQty: { increment: bundleRecord.quantity },
+          },
         });
       }
 
@@ -972,14 +1158,14 @@ export class ProductionService {
     bundleId?: string,
     operationId?: string,
     employeeId?: string,
-    limit = 50
+    limit = 50,
   ) {
     return prisma.bundleScan.findMany({
       where: {
         tenantId,
         ...(bundleId ? { bundleId } : {}),
         ...(operationId ? { operationId } : {}),
-        ...(employeeId ? { employeeId } : {})
+        ...(employeeId ? { employeeId } : {}),
       },
       include: {
         bundle: {
@@ -987,19 +1173,19 @@ export class ProductionService {
             productionOrder: {
               include: {
                 buyerPoLine: {
-                  include: { style: true }
-                }
-              }
+                  include: { style: true },
+                },
+              },
             },
-            currentOperation: true
-          }
+            currentOperation: true,
+          },
         },
         operation: true,
         employee: true,
-        machine: true
+        machine: true,
       },
-      orderBy: { createdAt: 'desc' },
-      take: limit
+      orderBy: { createdAt: "desc" },
+      take: limit,
     });
   }
 
@@ -1007,9 +1193,10 @@ export class ProductionService {
     tenantId: string,
     actorId: string,
     idempotencyKey: string,
-    dto: RecordProductionOutputDto
+    dto: RecordProductionOutputDto,
   ) {
-    if (!idempotencyKey) throw new BadRequestException('X-Idempotency-Key is required');
+    if (!idempotencyKey)
+      throw new BadRequestException("X-Idempotency-Key is required");
 
     return prisma.$transaction(async (tx) => {
       // 1. Idempotency Check
@@ -1030,14 +1217,18 @@ export class ProductionService {
         include: { buyerPoLine: true },
       });
       if (!order || order.tenantId !== tenantId) {
-        throw new NotFoundException('Production Order not found');
+        throw new NotFoundException("Production Order not found");
       }
 
       if (order.status === ProductionStatus.CANCELLED) {
-        throw new BadRequestException('Cannot record output for CANCELLED production order');
+        throw new BadRequestException(
+          "Cannot record output for CANCELLED production order",
+        );
       }
       if (order.status === ProductionStatus.PLANNED) {
-        throw new BadRequestException('Production order must be RELEASED or IN_PROGRESS before output can be reported');
+        throw new BadRequestException(
+          "Production order must be RELEASED or IN_PROGRESS before output can be reported",
+        );
       }
 
       // 3. Validate Operation
@@ -1045,14 +1236,18 @@ export class ProductionService {
         where: { id: dto.operationId },
       });
       if (!operation || operation.productionOrderId !== order.id) {
-        throw new BadRequestException('Operation does not belong to the production order');
+        throw new BadRequestException(
+          "Operation does not belong to the production order",
+        );
       }
 
       // 4. Validate Operator if provided
       if (dto.operatorId) {
-        const opUser = await tx.employee.findUnique({ where: { id: dto.operatorId } });
+        const opUser = await tx.employee.findUnique({
+          where: { id: dto.operatorId },
+        });
         if (!opUser || opUser.tenantId !== tenantId) {
-          throw new NotFoundException('Operator employee not found');
+          throw new NotFoundException("Operator employee not found");
         }
       }
 
@@ -1061,10 +1256,12 @@ export class ProductionService {
       const totalReported = goodQty + defectQty;
 
       if (goodQty < 0 || defectQty < 0) {
-        throw new BadRequestException('Quantities cannot be negative');
+        throw new BadRequestException("Quantities cannot be negative");
       }
       if (totalReported <= 0) {
-        throw new BadRequestException('Total reported quantity (good + defective) must be greater than zero');
+        throw new BadRequestException(
+          "Total reported quantity (good + defective) must be greater than zero",
+        );
       }
 
       let bundleRecord: any = null;
@@ -1072,51 +1269,67 @@ export class ProductionService {
       // 5. If bundle specified, validate and lock
       if (dto.bundleId || dto.barcode) {
         if (dto.bundleId) {
-          bundleRecord = await tx.bundle.findUnique({ where: { id: dto.bundleId } });
+          bundleRecord = await tx.bundle.findUnique({
+            where: { id: dto.bundleId },
+          });
         } else if (dto.barcode) {
-          bundleRecord = await tx.bundle.findFirst({ where: { tenantId, barcode: dto.barcode } });
+          bundleRecord = await tx.bundle.findFirst({
+            where: { tenantId, barcode: dto.barcode },
+          });
         }
 
         if (!bundleRecord || bundleRecord.tenantId !== tenantId) {
-          throw new NotFoundException('Bundle not found');
+          throw new NotFoundException("Bundle not found");
         }
 
         if (bundleRecord.productionOrderId !== order.id) {
-          throw new BadRequestException('Bundle does not belong to this production order');
+          throw new BadRequestException(
+            "Bundle does not belong to this production order",
+          );
         }
 
         // Lock bundle
-        await tx.$queryRaw<any[]>`SELECT * FROM "Bundle" WHERE id = ${bundleRecord.id} FOR UPDATE`;
+        await tx.$queryRaw<
+          any[]
+        >`SELECT * FROM "Bundle" WHERE id = ${bundleRecord.id} FOR UPDATE`;
 
         // Check hold status
         if (bundleRecord.isQualityHold) {
-          throw new BadRequestException(`Bundle ${bundleRecord.barcode} is on QUALITY HOLD and cannot record output`);
+          throw new BadRequestException(
+            `Bundle ${bundleRecord.barcode} is on QUALITY HOLD and cannot record output`,
+          );
         }
 
         // Check bundle status
         if (bundleRecord.status === BundleStatus.FINISHED) {
-          throw new BadRequestException('Bundle is already FINISHED');
+          throw new BadRequestException("Bundle is already FINISHED");
         }
         if (bundleRecord.status === BundleStatus.DEFECTIVE) {
-          throw new BadRequestException('Bundle is marked as DEFECTIVE');
+          throw new BadRequestException("Bundle is marked as DEFECTIVE");
         }
 
         // Check operation sequence
         if (bundleRecord.currentOperationId !== dto.operationId) {
-          throw new BadRequestException(`Invalid operation scan. Bundle current operation is ${bundleRecord.currentOperationId}, scanned ${dto.operationId}`);
+          throw new BadRequestException(
+            `Invalid operation scan. Bundle current operation is ${bundleRecord.currentOperationId}, scanned ${dto.operationId}`,
+          );
         }
 
         // Check quantity conservation
         const bundleQty = Number(bundleRecord.quantity);
         if (totalReported > bundleQty) {
-          throw new BadRequestException(`Reported quantity (${totalReported}) exceeds bundle quantity (${bundleQty})`);
+          throw new BadRequestException(
+            `Reported quantity (${totalReported}) exceeds bundle quantity (${bundleQty})`,
+          );
         }
       }
 
       // 6. Check target quantity overage on Order
       const currentCompleted = Number(order.completedQty);
       if (currentCompleted + goodQty > Number(order.targetQuantity)) {
-        throw new BadRequestException('Good output exceeds production order target quantity');
+        throw new BadRequestException(
+          "Good output exceeds production order target quantity",
+        );
       }
 
       // 7. Create ProductionOutput record
@@ -1143,7 +1356,7 @@ export class ProductionService {
             bundleId: bundleRecord ? bundleRecord.id : null,
             operationId: dto.operationId,
             productionOutputId: output.id,
-            defectCode: dto.defectCode || 'DEFECT_REPORTED',
+            defectCode: dto.defectCode || "DEFECT_REPORTED",
             quantity: defectQty,
             status: DefectStatus.OPEN,
             remarks: dto.defectRemarks || null,
@@ -1162,8 +1375,8 @@ export class ProductionService {
             fromOperationId: dto.operationId,
             toOperationId: null,
             quantity: defectQty,
-            type: 'REJECT',
-            actorId: actorId || dto.operatorId || 'SYSTEM',
+            type: "REJECT",
+            actorId: actorId || dto.operatorId || "SYSTEM",
             idempotencyKey: `wip-output-reject-${idempotencyKey}`,
             timestamp: new Date(),
           },
@@ -1179,10 +1392,15 @@ export class ProductionService {
 
         const orderOperations = await tx.productionOperation.findMany({
           where: { productionOrderId: order.id },
-          orderBy: { sequence: 'asc' },
+          orderBy: { sequence: "asc" },
         });
-        const currentOpIndex = orderOperations.findIndex((o) => o.id === dto.operationId);
-        const nextOp = currentOpIndex + 1 < orderOperations.length ? orderOperations[currentOpIndex + 1] : null;
+        const currentOpIndex = orderOperations.findIndex(
+          (o) => o.id === dto.operationId,
+        );
+        const nextOp =
+          currentOpIndex + 1 < orderOperations.length
+            ? orderOperations[currentOpIndex + 1]
+            : null;
 
         if (nextOp) {
           // Advance to next operation
@@ -1198,8 +1416,8 @@ export class ProductionService {
               fromOperationId: dto.operationId,
               toOperationId: nextOp.id,
               quantity: goodQty,
-              type: 'MOVE',
-              actorId: actorId || dto.operatorId || 'SYSTEM',
+              type: "MOVE",
+              actorId: actorId || dto.operatorId || "SYSTEM",
               idempotencyKey: `wip-output-move-${idempotencyKey}`,
               timestamp: new Date(),
             },
@@ -1207,7 +1425,9 @@ export class ProductionService {
 
           if (bundleRecord) {
             const nextOpName = nextOp.operationName.toLowerCase();
-            const nextStatus = nextOpName.includes('wash') ? BundleStatus.IN_WASHING : BundleStatus.IN_SEWING;
+            const nextStatus = nextOpName.includes("wash")
+              ? BundleStatus.IN_WASHING
+              : BundleStatus.IN_SEWING;
             await tx.bundle.update({
               where: { id: bundleRecord.id },
               data: {
@@ -1226,8 +1446,8 @@ export class ProductionService {
               fromOperationId: dto.operationId,
               toOperationId: null,
               quantity: goodQty,
-              type: 'OUTPUT',
-              actorId: actorId || dto.operatorId || 'SYSTEM',
+              type: "OUTPUT",
+              actorId: actorId || dto.operatorId || "SYSTEM",
               idempotencyKey: `wip-output-term-${idempotencyKey}`,
               timestamp: new Date(),
             },
@@ -1251,7 +1471,10 @@ export class ProductionService {
           });
 
           // If target is reached, complete the order
-          if (Number(updatedOrder.completedQty) === Number(updatedOrder.targetQuantity)) {
+          if (
+            Number(updatedOrder.completedQty) ===
+            Number(updatedOrder.targetQuantity)
+          ) {
             await this.stateMachine.transitionProductionOrder(
               tx,
               order.id,
@@ -1259,7 +1482,7 @@ export class ProductionService {
               actorId,
               order.status,
               ProductionStatus.COMPLETED,
-              'Order target reached via final production output'
+              "Order target reached via final production output",
             );
           }
 
@@ -1269,9 +1492,9 @@ export class ProductionService {
             styleId: order.buyerPoLine.styleId,
             type: InventoryTxType.PRODUCTION_OUTPUT,
             quantity: goodQty,
-            uom: 'PCS',
+            uom: "PCS",
             referenceId: output.id,
-            actorId: actorId || dto.operatorId || 'SYSTEM',
+            actorId: actorId || dto.operatorId || "SYSTEM",
             idempotencyKey: `inv-prod-out-${idempotencyKey}`,
           });
         }
@@ -1290,9 +1513,9 @@ export class ProductionService {
       await tx.auditEvent.create({
         data: {
           tenantId,
-          actorId: actorId || dto.operatorId || 'SYSTEM',
-          action: 'PRODUCTION_OUTPUT_RECORDED',
-          entity: 'ProductionOutput',
+          actorId: actorId || dto.operatorId || "SYSTEM",
+          action: "PRODUCTION_OUTPUT_RECORDED",
+          entity: "ProductionOutput",
           entityId: output.id,
           newValues: {
             productionOrderId: order.id,
@@ -1300,7 +1523,7 @@ export class ProductionService {
             goodQuantity: goodQty,
             defectiveQuantity: defectQty,
           },
-          reason: dto.notes || 'Production output recorded',
+          reason: dto.notes || "Production output recorded",
         },
       });
 
@@ -1318,13 +1541,15 @@ export class ProductionService {
 
   async getProductionOutputs(
     tenantId: string,
-    query?: QueryProductionOutputDto
+    query?: QueryProductionOutputDto,
   ) {
     const limit = query?.limit ? Number(query.limit) : 50;
     return prisma.productionOutput.findMany({
       where: {
         tenantId,
-        ...(query?.productionOrderId ? { productionOrderId: query.productionOrderId } : {}),
+        ...(query?.productionOrderId
+          ? { productionOrderId: query.productionOrderId }
+          : {}),
         ...(query?.bundleId ? { bundleId: query.bundleId } : {}),
         ...(query?.operationId ? { operationId: query.operationId } : {}),
       },
@@ -1335,7 +1560,7 @@ export class ProductionService {
         productionOrder: true,
         operator: true,
       },
-      orderBy: { timestamp: 'desc' },
+      orderBy: { timestamp: "desc" },
       take: limit,
     });
   }
@@ -1344,24 +1569,30 @@ export class ProductionService {
     tenantId: string,
     actorId: string,
     idempotencyKey: string | undefined,
-    dto: CreateProductionDefectDto
+    dto: CreateProductionDefectDto,
   ) {
     return prisma.$transaction(async (tx) => {
-      const order = await tx.productionOrder.findUnique({ where: { id: dto.productionOrderId } });
+      const order = await tx.productionOrder.findUnique({
+        where: { id: dto.productionOrderId },
+      });
       if (!order || order.tenantId !== tenantId) {
-        throw new NotFoundException('Production Order not found');
+        throw new NotFoundException("Production Order not found");
       }
 
-      const op = await tx.productionOperation.findUnique({ where: { id: dto.operationId } });
+      const op = await tx.productionOperation.findUnique({
+        where: { id: dto.operationId },
+      });
       if (!op || op.productionOrderId !== order.id) {
-        throw new BadRequestException('Operation not found on production order');
+        throw new BadRequestException(
+          "Operation not found on production order",
+        );
       }
 
       let bundle = null;
       if (dto.bundleId) {
         bundle = await tx.bundle.findUnique({ where: { id: dto.bundleId } });
         if (!bundle || bundle.tenantId !== tenantId) {
-          throw new NotFoundException('Bundle not found');
+          throw new NotFoundException("Bundle not found");
         }
       }
 
@@ -1391,9 +1622,11 @@ export class ProductionService {
           fromOperationId: dto.operationId,
           toOperationId: null,
           quantity: dto.quantity,
-          type: 'REJECT',
+          type: "REJECT",
           actorId,
-          idempotencyKey: idempotencyKey ? `wip-defect-${idempotencyKey}` : undefined,
+          idempotencyKey: idempotencyKey
+            ? `wip-defect-${idempotencyKey}`
+            : undefined,
           timestamp: new Date(),
         },
       });
@@ -1402,14 +1635,14 @@ export class ProductionService {
         data: {
           tenantId,
           actorId,
-          action: 'PRODUCTION_DEFECT_RECORDED',
-          entity: 'ProductionDefect',
+          action: "PRODUCTION_DEFECT_RECORDED",
+          entity: "ProductionDefect",
           entityId: defect.id,
           newValues: {
             defectCode: dto.defectCode,
             quantity: dto.quantity,
           },
-          reason: dto.remarks || 'Production defect recorded',
+          reason: dto.remarks || "Production defect recorded",
         },
       });
 
@@ -1419,13 +1652,15 @@ export class ProductionService {
 
   async getProductionDefects(
     tenantId: string,
-    query?: QueryProductionDefectDto
+    query?: QueryProductionDefectDto,
   ) {
     const limit = query?.limit ? Number(query.limit) : 50;
     return prisma.productionDefect.findMany({
       where: {
         tenantId,
-        ...(query?.productionOrderId ? { productionOrderId: query.productionOrderId } : {}),
+        ...(query?.productionOrderId
+          ? { productionOrderId: query.productionOrderId }
+          : {}),
         ...(query?.bundleId ? { bundleId: query.bundleId } : {}),
         ...(query?.operationId ? { operationId: query.operationId } : {}),
         ...(query?.status ? { status: query.status as DefectStatus } : {}),
@@ -1435,7 +1670,7 @@ export class ProductionService {
         operation: true,
         productionOrder: true,
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       take: limit,
     });
   }
@@ -1444,9 +1679,10 @@ export class ProductionService {
     tenantId: string,
     actorId: string,
     idempotencyKey: string,
-    dto: CreateQualityHoldDto
+    dto: CreateQualityHoldDto,
   ) {
-    if (!idempotencyKey) throw new BadRequestException('X-Idempotency-Key is required');
+    if (!idempotencyKey)
+      throw new BadRequestException("X-Idempotency-Key is required");
 
     return prisma.$transaction(async (tx) => {
       const existing = await tx.qualityHold.findUnique({
@@ -1455,16 +1691,18 @@ export class ProductionService {
       });
       if (existing) return existing;
 
-      const order = await tx.productionOrder.findUnique({ where: { id: dto.productionOrderId } });
+      const order = await tx.productionOrder.findUnique({
+        where: { id: dto.productionOrderId },
+      });
       if (!order || order.tenantId !== tenantId) {
-        throw new NotFoundException('Production Order not found');
+        throw new NotFoundException("Production Order not found");
       }
 
       let bundle = null;
       if (dto.bundleId) {
         bundle = await tx.bundle.findUnique({ where: { id: dto.bundleId } });
         if (!bundle || bundle.tenantId !== tenantId) {
-          throw new NotFoundException('Bundle not found');
+          throw new NotFoundException("Bundle not found");
         }
 
         await tx.bundle.update({
@@ -1501,8 +1739,8 @@ export class ProductionService {
         data: {
           tenantId,
           actorId,
-          action: 'QUALITY_HOLD_APPLIED',
-          entity: 'QualityHold',
+          action: "QUALITY_HOLD_APPLIED",
+          entity: "QualityHold",
           entityId: hold.id,
           newValues: {
             bundleId: bundle?.id,
@@ -1522,7 +1760,7 @@ export class ProductionService {
     actorId: string,
     holdId: string,
     idempotencyKey: string | undefined,
-    dto: ReleaseQualityHoldDto
+    dto: ReleaseQualityHoldDto,
   ) {
     return prisma.$transaction(async (tx) => {
       const hold = await tx.qualityHold.findUnique({
@@ -1531,7 +1769,7 @@ export class ProductionService {
       });
 
       if (!hold || hold.tenantId !== tenantId) {
-        throw new NotFoundException('Quality Hold not found');
+        throw new NotFoundException("Quality Hold not found");
       }
 
       if (hold.status === QualityHoldStatus.RELEASED) {
@@ -1583,8 +1821,8 @@ export class ProductionService {
         data: {
           tenantId,
           actorId,
-          action: 'QUALITY_HOLD_RELEASED',
-          entity: 'QualityHold',
+          action: "QUALITY_HOLD_RELEASED",
+          entity: "QualityHold",
           entityId: holdId,
           newValues: {
             status: QualityHoldStatus.RELEASED,
@@ -1598,15 +1836,14 @@ export class ProductionService {
     });
   }
 
-  async getQualityHolds(
-    tenantId: string,
-    query?: QueryQualityHoldDto
-  ) {
+  async getQualityHolds(tenantId: string, query?: QueryQualityHoldDto) {
     const limit = query?.limit ? Number(query.limit) : 50;
     return prisma.qualityHold.findMany({
       where: {
         tenantId,
-        ...(query?.productionOrderId ? { productionOrderId: query.productionOrderId } : {}),
+        ...(query?.productionOrderId
+          ? { productionOrderId: query.productionOrderId }
+          : {}),
         ...(query?.bundleId ? { bundleId: query.bundleId } : {}),
         ...(query?.status ? { status: query.status as QualityHoldStatus } : {}),
       },
@@ -1616,7 +1853,7 @@ export class ProductionService {
         heldBy: true,
         releasedBy: true,
       },
-      orderBy: { heldAt: 'desc' },
+      orderBy: { heldAt: "desc" },
       take: limit,
     });
   }

@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { prisma } from '@textile-erp/database';
-import { CreateStyleDto, UpdateStyleDto } from '../dto/master-data.dto';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { prisma } from "@textile-erp/database";
+import { CreateStyleDto, UpdateStyleDto } from "../dto/master-data.dto";
 
 @Injectable()
 export class StyleService {

@@ -3,7 +3,7 @@ import {
   BadRequestException,
   NotFoundException,
   ConflictException,
-} from '@nestjs/common';
+} from "@nestjs/common";
 import {
   PrismaClient,
   GatePassStatus,
@@ -16,12 +16,9 @@ import {
   InspectionStage,
   AqlAuditStatus,
   InventoryTxType,
-} from '@textile-erp/database';
-import { LedgerService } from '../../inventory/services/ledger.service';
-import {
-  CreateGatePassDto,
-  QueryGatePassesDto,
-} from '../dto/shipping.dto';
+} from "@textile-erp/database";
+import { LedgerService } from "../../inventory/services/ledger.service";
+import { CreateGatePassDto, QueryGatePassesDto } from "../dto/shipping.dto";
 
 const prisma = new PrismaClient();
 
@@ -40,7 +37,7 @@ export class GatePassService {
     dto: CreateGatePassDto,
   ) {
     if (!idempotencyKey) {
-      throw new BadRequestException('X-Idempotency-Key header is required');
+      throw new BadRequestException("X-Idempotency-Key header is required");
     }
 
     return prisma.$transaction(async (tx) => {
@@ -65,21 +62,30 @@ export class GatePassService {
       }
 
       if (shipment.status === ShipmentStatus.CANCELLED) {
-        throw new ConflictException('Cannot create gate pass for a CANCELLED shipment');
+        throw new ConflictException(
+          "Cannot create gate pass for a CANCELLED shipment",
+        );
       }
 
-      if (shipment.status === ShipmentStatus.DISPATCHED || shipment.status === ShipmentStatus.DELIVERED) {
-        throw new ConflictException(`Shipment has already been ${shipment.status}`);
+      if (
+        shipment.status === ShipmentStatus.DISPATCHED ||
+        shipment.status === ShipmentStatus.DELIVERED
+      ) {
+        throw new ConflictException(
+          `Shipment has already been ${shipment.status}`,
+        );
       }
 
       if (shipment.totalCartons <= 0 || shipment.cartons.length === 0) {
-        throw new BadRequestException('Cannot create gate pass for shipment with zero cartons');
+        throw new BadRequestException(
+          "Cannot create gate pass for shipment with zero cartons",
+        );
       }
 
       // 3. Generate Gate Pass Number
       const gatePassNumber =
         dto.gatePassNumber?.trim() ||
-        `GP-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Date.now().toString().slice(-4)}`;
+        `GP-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${Date.now().toString().slice(-4)}`;
 
       // 4. Create Gate Pass in DRAFT
       const gatePass = await tx.outboundGatePass.create({
@@ -104,9 +110,9 @@ export class GatePassService {
       await tx.auditEvent.create({
         data: {
           tenantId,
-          actorId: actorId || 'SYSTEM',
-          action: 'GATE_PASS_CREATED',
-          entity: 'OutboundGatePass',
+          actorId: actorId || "SYSTEM",
+          action: "GATE_PASS_CREATED",
+          entity: "OutboundGatePass",
           entityId: gatePass.id,
           newValues: {
             gatePassNumber,
@@ -114,7 +120,7 @@ export class GatePassService {
             vehicleNumber: dto.vehicleNumber,
             driverName: dto.driverName,
           },
-          reason: 'Outbound gate pass drafted for shipment',
+          reason: "Outbound gate pass drafted for shipment",
         },
       });
 
@@ -143,7 +149,7 @@ export class GatePassService {
         shipment: { include: { buyer: true, buyerPo: true } },
         approvedBy: true,
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       take: query?.limit || 50,
     });
   }
@@ -193,17 +199,21 @@ export class GatePassService {
                     include: {
                       bundle: {
                         include: {
-                          qualityHolds: { where: { status: QualityHoldStatus.ACTIVE } },
+                          qualityHolds: {
+                            where: { status: QualityHoldStatus.ACTIVE },
+                          },
                         },
                       },
                     },
                   },
                   productionOrder: {
                     include: {
-                      qualityHolds: { where: { status: QualityHoldStatus.ACTIVE } },
+                      qualityHolds: {
+                        where: { status: QualityHoldStatus.ACTIVE },
+                      },
                       aqlAudits: {
                         where: { stage: InspectionStage.FINAL_AUDIT },
-                        orderBy: { auditDate: 'desc' },
+                        orderBy: { auditDate: "desc" },
                         take: 1,
                       },
                     },
@@ -220,11 +230,13 @@ export class GatePassService {
       }
 
       if (gp.status === GatePassStatus.CANCELLED) {
-        throw new ConflictException('Cannot approve a CANCELLED gate pass');
+        throw new ConflictException("Cannot approve a CANCELLED gate pass");
       }
 
       if (gp.status === GatePassStatus.DISPATCHED) {
-        throw new ConflictException('Cannot approve gate pass in DISPATCHED status');
+        throw new ConflictException(
+          "Cannot approve gate pass in DISPATCHED status",
+        );
       }
 
       if (gp.status === GatePassStatus.APPROVED) {
@@ -233,43 +245,72 @@ export class GatePassService {
 
       // Revalidate shipment & cartons
       if (gp.shipment.status === ShipmentStatus.CANCELLED) {
-        throw new ConflictException('Cannot approve gate pass for a CANCELLED shipment');
+        throw new ConflictException(
+          "Cannot approve gate pass for a CANCELLED shipment",
+        );
       }
 
       for (const carton of gp.shipment.cartons) {
         if (carton.status === CartonStatus.CANCELLED) {
-          throw new ConflictException(`Carton ${carton.cartonNumber} is CANCELLED`);
+          throw new ConflictException(
+            `Carton ${carton.cartonNumber} is CANCELLED`,
+          );
         }
         if (carton.status === CartonStatus.SHIPPED) {
-          throw new ConflictException(`Carton ${carton.cartonNumber} is already SHIPPED`);
+          throw new ConflictException(
+            `Carton ${carton.cartonNumber} is already SHIPPED`,
+          );
         }
         if (carton.bin && carton.bin.binType === BinType.QUARANTINE) {
-          throw new ConflictException(`Carton ${carton.cartonNumber} is in a QUARANTINE bin`);
+          throw new ConflictException(
+            `Carton ${carton.cartonNumber} is in a QUARANTINE bin`,
+          );
         }
-        const orderHolds = carton.productionOrder.qualityHolds?.filter((h) => !h.bundleId) || [];
+        const orderHolds =
+          carton.productionOrder.qualityHolds?.filter((h) => !h.bundleId) || [];
         if (orderHolds.length > 0) {
-          throw new ConflictException(`Carton ${carton.cartonNumber} has an active Quality Hold`);
+          throw new ConflictException(
+            `Carton ${carton.cartonNumber} has an active Quality Hold`,
+          );
         }
         for (const item of carton.items) {
-          if (item.bundle?.isQualityHold || (item.bundle?.qualityHolds && item.bundle.qualityHolds.length > 0)) {
-            throw new ConflictException(`Carton ${carton.cartonNumber} has an active bundle Quality Hold`);
+          if (
+            item.bundle?.isQualityHold ||
+            (item.bundle?.qualityHolds && item.bundle.qualityHolds.length > 0)
+          ) {
+            throw new ConflictException(
+              `Carton ${carton.cartonNumber} has an active bundle Quality Hold`,
+            );
           }
         }
         const audit = carton.productionOrder.aqlAudits[0];
         if (!audit) {
-          throw new ConflictException(`Carton ${carton.cartonNumber} lacks passing FINAL_AUDIT`);
+          throw new ConflictException(
+            `Carton ${carton.cartonNumber} lacks passing FINAL_AUDIT`,
+          );
         }
         if (audit.status === AqlAuditStatus.FAILED) {
-          throw new ConflictException(`Carton ${carton.cartonNumber} quality audit status is FAILED`);
+          throw new ConflictException(
+            `Carton ${carton.cartonNumber} quality audit status is FAILED`,
+          );
         }
         if (audit.status === AqlAuditStatus.PENDING_REWORK) {
-          throw new ConflictException(`Carton ${carton.cartonNumber} quality audit status is PENDING_REWORK`);
+          throw new ConflictException(
+            `Carton ${carton.cartonNumber} quality audit status is PENDING_REWORK`,
+          );
         }
         if (audit.status !== AqlAuditStatus.PASSED) {
-          throw new ConflictException(`Carton ${carton.cartonNumber} lacks passing FINAL_AUDIT`);
+          throw new ConflictException(
+            `Carton ${carton.cartonNumber} lacks passing FINAL_AUDIT`,
+          );
         }
-        if (carton.packingList && carton.packingList.status !== PackingListStatus.FINALIZED) {
-          throw new ConflictException(`Packing list for carton ${carton.cartonNumber} is not FINALIZED`);
+        if (
+          carton.packingList &&
+          carton.packingList.status !== PackingListStatus.FINALIZED
+        ) {
+          throw new ConflictException(
+            `Packing list for carton ${carton.cartonNumber} is not FINALIZED`,
+          );
         }
       }
 
@@ -289,10 +330,11 @@ export class GatePassService {
         data: {
           tenantId,
           actorId,
-          action: 'GATE_PASS_APPROVED',
-          entity: 'OutboundGatePass',
+          action: "GATE_PASS_APPROVED",
+          entity: "OutboundGatePass",
           entityId: gp.id,
-          reason: 'Gate pass approved by supervisor; ready for security gate-out',
+          reason:
+            "Gate pass approved by supervisor; ready for security gate-out",
         },
       });
 
@@ -304,7 +346,12 @@ export class GatePassService {
    * Cancels a gate pass before dispatch.
    * Zero ledger effect.
    */
-  async cancelGatePass(tenantId: string, actorId: string, id: string, reason?: string) {
+  async cancelGatePass(
+    tenantId: string,
+    actorId: string,
+    id: string,
+    reason?: string,
+  ) {
     return prisma.$transaction(async (tx) => {
       const gp = await tx.outboundGatePass.findUnique({ where: { id } });
 
@@ -313,7 +360,9 @@ export class GatePassService {
       }
 
       if (gp.status === GatePassStatus.DISPATCHED) {
-        throw new ConflictException('Cannot cancel gate pass in DISPATCHED status');
+        throw new ConflictException(
+          "Cannot cancel gate pass in DISPATCHED status",
+        );
       }
 
       if (gp.status === GatePassStatus.CANCELLED) {
@@ -329,10 +378,11 @@ export class GatePassService {
         data: {
           tenantId,
           actorId,
-          action: 'GATE_PASS_CANCELLED',
-          entity: 'OutboundGatePass',
+          action: "GATE_PASS_CANCELLED",
+          entity: "OutboundGatePass",
           entityId: gp.id,
-          reason: reason || 'Gate pass cancelled by supervisor prior to dispatch',
+          reason:
+            reason || "Gate pass cancelled by supervisor prior to dispatch",
         },
       });
 
@@ -352,7 +402,7 @@ export class GatePassService {
     id: string,
   ) {
     if (!idempotencyKey) {
-      throw new BadRequestException('X-Idempotency-Key header is required');
+      throw new BadRequestException("X-Idempotency-Key header is required");
     }
 
     return prisma.$transaction(async (tx) => {
@@ -374,7 +424,7 @@ export class GatePassService {
       }
 
       if (gp.status === GatePassStatus.CANCELLED) {
-        throw new ConflictException('Cannot dispatch a CANCELLED gate pass');
+        throw new ConflictException("Cannot dispatch a CANCELLED gate pass");
       }
 
       // Require APPROVED status
@@ -389,11 +439,14 @@ export class GatePassService {
       });
 
       if (!shipment || shipment.status === ShipmentStatus.CANCELLED) {
-        throw new ConflictException('Associated shipment is cancelled');
+        throw new ConflictException("Associated shipment is cancelled");
       }
 
-      if (shipment.status === ShipmentStatus.DISPATCHED || shipment.status === ShipmentStatus.DELIVERED) {
-        throw new ConflictException('Shipment has already been dispatched');
+      if (
+        shipment.status === ShipmentStatus.DISPATCHED ||
+        shipment.status === ShipmentStatus.DELIVERED
+      ) {
+        throw new ConflictException("Shipment has already been dispatched");
       }
 
       // 1. Fetch all assigned cartons with deep relations
@@ -416,7 +469,7 @@ export class GatePassService {
               qualityHolds: { where: { status: QualityHoldStatus.ACTIVE } },
               aqlAudits: {
                 where: { stage: InspectionStage.FINAL_AUDIT },
-                orderBy: { auditDate: 'desc' },
+                orderBy: { auditDate: "desc" },
                 take: 1,
               },
             },
@@ -425,7 +478,9 @@ export class GatePassService {
       });
 
       if (cartons.length === 0) {
-        throw new BadRequestException('Shipment has no cartons assigned for dispatch');
+        throw new BadRequestException(
+          "Shipment has no cartons assigned for dispatch",
+        );
       }
 
       // 2. Comprehensive Quality, Custody & State Re-Verification
@@ -435,11 +490,15 @@ export class GatePassService {
       for (const carton of cartons) {
         // A. Not cancelled
         if (carton.status === CartonStatus.CANCELLED) {
-          throw new ConflictException(`Carton ${carton.cartonNumber} is CANCELLED`);
+          throw new ConflictException(
+            `Carton ${carton.cartonNumber} is CANCELLED`,
+          );
         }
         // B. Not already shipped (Double-shipment guard)
         if (carton.status === CartonStatus.SHIPPED) {
-          throw new ConflictException(`Carton ${carton.cartonNumber} has already been shipped`);
+          throw new ConflictException(
+            `Carton ${carton.cartonNumber} has already been shipped`,
+          );
         }
         // C. Quarantine check
         if (carton.bin && carton.bin.binType === BinType.QUARANTINE) {
@@ -448,7 +507,8 @@ export class GatePassService {
           );
         }
         // D. Active Quality Hold check
-        const orderHolds = carton.productionOrder.qualityHolds?.filter((h) => !h.bundleId) || [];
+        const orderHolds =
+          carton.productionOrder.qualityHolds?.filter((h) => !h.bundleId) || [];
         if (orderHolds.length > 0) {
           const hold = orderHolds[0];
           throw new ConflictException(
@@ -457,11 +517,15 @@ export class GatePassService {
         }
         // D2. Active Quality Hold check (Bundle level)
         for (const item of carton.items) {
-          if (item.bundle?.isQualityHold || (item.bundle?.qualityHolds && item.bundle.qualityHolds.length > 0)) {
+          if (
+            item.bundle?.isQualityHold ||
+            (item.bundle?.qualityHolds && item.bundle.qualityHolds.length > 0)
+          ) {
             const bHoldReason =
               item.bundle?.qualityHoldReason ||
-              (item.bundle?.qualityHolds && item.bundle.qualityHolds[0]?.reason) ||
-              'Quality Hold';
+              (item.bundle?.qualityHolds &&
+                item.bundle.qualityHolds[0]?.reason) ||
+              "Quality Hold";
             throw new ConflictException(
               `Cannot dispatch carton ${carton.cartonNumber}: Bundle is on active Quality Hold (${bHoldReason})`,
             );
@@ -491,7 +555,8 @@ export class GatePassService {
 
         // Aggregate units by style for ledger deduction
         for (const item of carton.items) {
-          styleQuantities[item.styleId] = (styleQuantities[item.styleId] || 0) + item.quantity;
+          styleQuantities[item.styleId] =
+            (styleQuantities[item.styleId] || 0) + item.quantity;
         }
       }
 
@@ -502,9 +567,9 @@ export class GatePassService {
           styleId,
           type: InventoryTxType.ISSUE,
           quantity: totalUnits,
-          uom: 'PCS',
+          uom: "PCS",
           referenceId: shipment.id,
-          actorId: actorId || 'SYSTEM',
+          actorId: actorId || "SYSTEM",
           reason: `Outbound shipment dispatch: ${shipment.shipmentNumber} via Gate Pass ${gp.gatePassNumber}`,
           idempotencyKey: `inv-dispatch-${shipment.id}-${styleId}`,
         });
@@ -536,7 +601,7 @@ export class GatePassService {
             fromStatus: carton.status,
             toStatus: CartonStatus.SHIPPED,
             movementType: CartonMovementType.DISPATCH,
-            actorId: actorId || 'SYSTEM',
+            actorId: actorId || "SYSTEM",
             notes: `Dispatched on shipment ${shipment.shipmentNumber} via Gate Pass ${gp.gatePassNumber} (Vehicle: ${gp.vehicleNumber})`,
             idempotencyKey: `mov-dispatch-${carton.id}-${shipment.id}`,
             timestamp: dispatchTimestamp,
@@ -581,8 +646,8 @@ export class GatePassService {
         data: {
           tenantId,
           actorId,
-          action: 'SHIPMENT_DISPATCHED',
-          entity: 'OutboundGatePass',
+          action: "SHIPMENT_DISPATCHED",
+          entity: "OutboundGatePass",
           entityId: gp.id,
           newValues: {
             gatePassNumber: gp.gatePassNumber,

@@ -7,8 +7,12 @@ import {
   IsArray,
   Min,
   IsPositive,
-} from 'class-validator';
-import { ShipmentStatus, CommercialInvoiceStatus, GatePassStatus } from '@textile-erp/database';
+} from "class-validator";
+import {
+  ShipmentStatus,
+  CommercialInvoiceStatus,
+  GatePassStatus,
+} from "@textile-erp/database";
 
 export class CreateShipmentDto {
   @IsString()
@@ -233,4 +237,3 @@ export class SettleCommercialInvoiceDto {
   @IsOptional()
   notes?: string;
 }
-

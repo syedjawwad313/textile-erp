@@ -1,5 +1,12 @@
-import { IsString, IsOptional, IsUUID, IsBoolean, Matches, IsEnum } from 'class-validator';
-import { EmployeeType } from '@textile-erp/database';
+import {
+  IsString,
+  IsOptional,
+  IsUUID,
+  IsBoolean,
+  Matches,
+  IsEnum,
+} from "class-validator";
+import { EmployeeType } from "@textile-erp/database";
 
 export class CreateShiftDto {
   @IsUUID()
@@ -13,13 +20,13 @@ export class CreateShiftDto {
 
   @IsString()
   @Matches(/^([01]\d|2[0-3]):([0-5]\d)$/, {
-    message: 'startTime must be in 24-hour HH:mm format (e.g. 06:00 or 22:30)',
+    message: "startTime must be in 24-hour HH:mm format (e.g. 06:00 or 22:30)",
   })
   startTime: string;
 
   @IsString()
   @Matches(/^([01]\d|2[0-3]):([0-5]\d)$/, {
-    message: 'endTime must be in 24-hour HH:mm format (e.g. 14:30 or 06:00)',
+    message: "endTime must be in 24-hour HH:mm format (e.g. 14:30 or 06:00)",
   })
   endTime: string;
 
@@ -36,14 +43,14 @@ export class UpdateShiftDto {
   @IsOptional()
   @IsString()
   @Matches(/^([01]\d|2[0-3]):([0-5]\d)$/, {
-    message: 'startTime must be in 24-hour HH:mm format',
+    message: "startTime must be in 24-hour HH:mm format",
   })
   startTime?: string;
 
   @IsOptional()
   @IsString()
   @Matches(/^([01]\d|2[0-3]):([0-5]\d)$/, {
-    message: 'endTime must be in 24-hour HH:mm format',
+    message: "endTime must be in 24-hour HH:mm format",
   })
   endTime?: string;
 

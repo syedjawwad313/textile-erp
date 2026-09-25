@@ -1,6 +1,14 @@
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
-import { prisma } from '@textile-erp/database';
-import { CreateDefectCatalogDto, UpdateDefectCatalogDto, QueryDefectCatalogDto } from './defect-catalog.dto';
+import {
+  Injectable,
+  ConflictException,
+  NotFoundException,
+} from "@nestjs/common";
+import { prisma } from "@textile-erp/database";
+import {
+  CreateDefectCatalogDto,
+  UpdateDefectCatalogDto,
+  QueryDefectCatalogDto,
+} from "./defect-catalog.dto";
 
 @Injectable()
 export class DefectCatalogService {
@@ -15,7 +23,9 @@ export class DefectCatalogService {
     });
 
     if (existing) {
-      throw new ConflictException(`Defect code "${dto.code}" already exists in this tenant`);
+      throw new ConflictException(
+        `Defect code "${dto.code}" already exists in this tenant`,
+      );
     }
 
     const defect = await prisma.defectCatalog.create({
@@ -33,9 +43,9 @@ export class DefectCatalogService {
     await prisma.auditEvent.create({
       data: {
         tenantId,
-        actorId: actorId || 'SYSTEM',
-        action: 'DEFECT_CATALOG_CREATED',
-        entity: 'DefectCatalog',
+        actorId: actorId || "SYSTEM",
+        action: "DEFECT_CATALOG_CREATED",
+        entity: "DefectCatalog",
         entityId: defect.id,
         newValues: defect as any,
         reason: `Created defect master code ${defect.code}`,
@@ -55,20 +65,20 @@ export class DefectCatalogService {
       where.defaultSeverity = query.severity;
     }
     if (query.active !== undefined) {
-      where.active = String(query.active) === 'true' || query.active === true;
+      where.active = String(query.active) === "true" || query.active === true;
     }
     if (query.search) {
       const term = query.search.trim();
       where.OR = [
-        { code: { contains: term, mode: 'insensitive' } },
-        { name: { contains: term, mode: 'insensitive' } },
-        { description: { contains: term, mode: 'insensitive' } },
+        { code: { contains: term, mode: "insensitive" } },
+        { name: { contains: term, mode: "insensitive" } },
+        { description: { contains: term, mode: "insensitive" } },
       ];
     }
 
     return prisma.defectCatalog.findMany({
       where,
-      orderBy: [{ category: 'asc' }, { code: 'asc' }],
+      orderBy: [{ category: "asc" }, { code: "asc" }],
     });
   }
 
@@ -78,13 +88,18 @@ export class DefectCatalogService {
     });
 
     if (!defect || defect.tenantId !== tenantId) {
-      throw new NotFoundException('Defect code not found');
+      throw new NotFoundException("Defect code not found");
     }
 
     return defect;
   }
 
-  async update(tenantId: string, actorId: string, id: string, dto: UpdateDefectCatalogDto) {
+  async update(
+    tenantId: string,
+    actorId: string,
+    id: string,
+    dto: UpdateDefectCatalogDto,
+  ) {
     const defect = await this.findById(tenantId, id);
 
     const updated = await prisma.defectCatalog.update({
@@ -93,7 +108,8 @@ export class DefectCatalogService {
         name: dto.name !== undefined ? dto.name.trim() : undefined,
         category: dto.category,
         defaultSeverity: dto.defaultSeverity,
-        description: dto.description !== undefined ? dto.description : undefined,
+        description:
+          dto.description !== undefined ? dto.description : undefined,
         active: dto.active,
       },
     });
@@ -101,9 +117,9 @@ export class DefectCatalogService {
     await prisma.auditEvent.create({
       data: {
         tenantId,
-        actorId: actorId || 'SYSTEM',
-        action: 'DEFECT_CATALOG_UPDATED',
-        entity: 'DefectCatalog',
+        actorId: actorId || "SYSTEM",
+        action: "DEFECT_CATALOG_UPDATED",
+        entity: "DefectCatalog",
         entityId: defect.id,
         oldValues: defect as any,
         newValues: updated as any,

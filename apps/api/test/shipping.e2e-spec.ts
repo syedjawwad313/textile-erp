@@ -1,7 +1,7 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
-import * as request from 'supertest';
-import { AppModule } from '../src/app.module';
+import { Test, TestingModule } from "@nestjs/testing";
+import { INestApplication, ValidationPipe } from "@nestjs/common";
+import * as request from "supertest";
+import { AppModule } from "../src/app.module";
 import {
   PrismaClient,
   WarehouseType,
@@ -19,11 +19,11 @@ import {
   ShipmentStatus,
   CommercialInvoiceStatus,
   GatePassStatus,
-} from '@textile-erp/database';
-import * as argon2 from 'argon2';
-import * as crypto from 'crypto';
+} from "@textile-erp/database";
+import * as argon2 from "argon2";
+import * as crypto from "crypto";
 
-describe('ShippingModule (e2e Phase 8.3)', () => {
+describe("ShippingModule (e2e Phase 8.3)", () => {
   let app: INestApplication;
   let prisma: PrismaClient;
 
@@ -74,13 +74,13 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
   beforeAll(async () => {
     const DB_URL =
       process.env.DATABASE_URL ||
-      'postgresql://postgres:postgres@localhost:5432/textile_erp?schema=public';
+      "postgresql://postgres:postgres@localhost:5432/textile_erp?schema=public";
     process.env.DATABASE_URL = DB_URL;
     process.env.JWT_SECRET =
-      process.env.JWT_SECRET || 'super-secret-jwt-key-for-development-only';
+      process.env.JWT_SECRET || "super-secret-jwt-key-for-development-only";
     prisma = new PrismaClient({ datasourceUrl: DB_URL });
 
-    const passwordHash = await argon2.hash('TestPass123!', {
+    const passwordHash = await argon2.hash("TestPass123!", {
       type: argon2.argon2id,
       memoryCost: 65536,
       timeCost: 3,
@@ -89,19 +89,19 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
 
     // 1. Setup Tenant A
     await prisma.tenant.create({
-      data: { id: tenantAId, name: 'Tenant A Global Logistics' },
+      data: { id: tenantAId, name: "Tenant A Global Logistics" },
     });
 
     const companyA = await prisma.company.create({
-      data: { tenantId: tenantAId, name: 'Tenant A Enterprise Corp' },
+      data: { tenantId: tenantAId, name: "Tenant A Enterprise Corp" },
     });
 
     const factoryUnitA = await prisma.factoryUnit.create({
       data: {
         tenantId: tenantAId,
         companyId: companyA.id,
-        code: 'FAC-A-SHP',
-        name: 'Unit A Export Terminal',
+        code: "FAC-A-SHP",
+        name: "Unit A Export Terminal",
       },
     });
 
@@ -109,8 +109,8 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
       data: {
         tenantId: tenantAId,
         factoryUnitId: factoryUnitA.id,
-        code: 'EMP-QA-83',
-        name: 'Chief QA Inspector',
+        code: "EMP-QA-83",
+        name: "Chief QA Inspector",
         type: EmployeeType.QC,
       },
     });
@@ -118,15 +118,15 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
     const adminUserA = await prisma.user.create({
       data: {
         tenantId: tenantAId,
-        email: 'adminA_p83@test.com',
+        email: "adminA_p83@test.com",
         passwordHash,
-        firstName: 'ShippingSupervisor',
-        lastName: 'A',
+        firstName: "ShippingSupervisor",
+        lastName: "A",
       },
     });
 
     const roleA = await prisma.role.create({
-      data: { tenantId: tenantAId, name: 'SHIPPING_SUPERVISOR' },
+      data: { tenantId: tenantAId, name: "SHIPPING_SUPERVISOR" },
     });
 
     await prisma.userRole.create({
@@ -137,15 +137,15 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
     const staffUserA = await prisma.user.create({
       data: {
         tenantId: tenantAId,
-        email: 'staffA_p83@test.com',
+        email: "staffA_p83@test.com",
         passwordHash,
-        firstName: 'ShippingClerk',
-        lastName: 'A',
+        firstName: "ShippingClerk",
+        lastName: "A",
       },
     });
 
     const clerkRoleA = await prisma.role.create({
-      data: { tenantId: tenantAId, name: 'SHIPPING_CLERK' },
+      data: { tenantId: tenantAId, name: "SHIPPING_CLERK" },
     });
 
     await prisma.userRole.create({
@@ -156,43 +156,43 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
     await prisma.user.create({
       data: {
         tenantId: tenantAId,
-        email: 'unauthA_p83@test.com',
+        email: "unauthA_p83@test.com",
         passwordHash,
-        firstName: 'UnauthorizedUser',
-        lastName: 'A',
+        firstName: "UnauthorizedUser",
+        lastName: "A",
       },
     });
 
     // 2. Setup Tenant B
     await prisma.tenant.create({
-      data: { id: tenantBId, name: 'Tenant B International Logistics' },
+      data: { id: tenantBId, name: "Tenant B International Logistics" },
     });
 
     const companyB = await prisma.company.create({
-      data: { tenantId: tenantBId, name: 'Tenant B Enterprise' },
+      data: { tenantId: tenantBId, name: "Tenant B Enterprise" },
     });
 
     await prisma.factoryUnit.create({
       data: {
         tenantId: tenantBId,
         companyId: companyB.id,
-        code: 'FAC-B-SHP',
-        name: 'Unit B Export Terminal',
+        code: "FAC-B-SHP",
+        name: "Unit B Export Terminal",
       },
     });
 
     const adminUserB = await prisma.user.create({
       data: {
         tenantId: tenantBId,
-        email: 'adminB_p83@test.com',
+        email: "adminB_p83@test.com",
         passwordHash,
-        firstName: 'Admin',
-        lastName: 'B',
+        firstName: "Admin",
+        lastName: "B",
       },
     });
 
     const roleB = await prisma.role.create({
-      data: { tenantId: tenantBId, name: 'ADMIN' },
+      data: { tenantId: tenantBId, name: "ADMIN" },
     });
 
     await prisma.userRole.create({
@@ -201,15 +201,15 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
 
     // 3. Seed Permissions
     const permissionsToSeed = [
-      { resource: 'SHIPPING', action: 'READ' },
-      { resource: 'SHIPPING', action: 'WRITE' },
-      { resource: 'SHIPPING', action: 'APPROVE' },
-      { resource: 'WAREHOUSE', action: 'READ' },
-      { resource: 'WAREHOUSE', action: 'WRITE' },
-      { resource: 'PACKING', action: 'READ' },
-      { resource: 'PACKING', action: 'WRITE' },
-      { resource: 'INVENTORY', action: 'READ' },
-      { resource: 'INVENTORY', action: 'WRITE' },
+      { resource: "SHIPPING", action: "READ" },
+      { resource: "SHIPPING", action: "WRITE" },
+      { resource: "SHIPPING", action: "APPROVE" },
+      { resource: "WAREHOUSE", action: "READ" },
+      { resource: "WAREHOUSE", action: "WRITE" },
+      { resource: "PACKING", action: "READ" },
+      { resource: "PACKING", action: "WRITE" },
+      { resource: "INVENTORY", action: "READ" },
+      { resource: "INVENTORY", action: "WRITE" },
     ];
 
     for (const p of permissionsToSeed) {
@@ -221,20 +221,29 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
 
       // Assign all to Supervisor A and Admin B
       await prisma.rolePermission.upsert({
-        where: { roleId_permissionId: { roleId: roleA.id, permissionId: perm.id } },
+        where: {
+          roleId_permissionId: { roleId: roleA.id, permissionId: perm.id },
+        },
         update: {},
         create: { roleId: roleA.id, permissionId: perm.id },
       });
       await prisma.rolePermission.upsert({
-        where: { roleId_permissionId: { roleId: roleB.id, permissionId: perm.id } },
+        where: {
+          roleId_permissionId: { roleId: roleB.id, permissionId: perm.id },
+        },
         update: {},
         create: { roleId: roleB.id, permissionId: perm.id },
       });
 
       // Assign only READ and WRITE (not APPROVE) to Clerk A
-      if (p.action !== 'APPROVE') {
+      if (p.action !== "APPROVE") {
         await prisma.rolePermission.upsert({
-          where: { roleId_permissionId: { roleId: clerkRoleA.id, permissionId: perm.id } },
+          where: {
+            roleId_permissionId: {
+              roleId: clerkRoleA.id,
+              permissionId: perm.id,
+            },
+          },
           update: {},
           create: { roleId: clerkRoleA.id, permissionId: perm.id },
         });
@@ -245,8 +254,8 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
     const fgWhA = await prisma.warehouse.create({
       data: {
         tenantId: tenantAId,
-        code: 'WH-FG-A-EXP',
-        name: 'Finished Goods Export Hub',
+        code: "WH-FG-A-EXP",
+        name: "Finished Goods Export Hub",
         warehouseType: WarehouseType.FINISHED_GOODS,
       },
     });
@@ -255,8 +264,8 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
     const storageBinA = await prisma.bin.create({
       data: {
         warehouseId: fgWhA.id,
-        code: 'BIN-FG-STRG-1',
-        name: 'Finished Goods Storage 1',
+        code: "BIN-FG-STRG-1",
+        name: "Finished Goods Storage 1",
         binType: BinType.STORAGE,
       },
     });
@@ -265,8 +274,8 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
     const stagingBinA = await prisma.bin.create({
       data: {
         warehouseId: fgWhA.id,
-        code: 'BIN-FG-STG-1',
-        name: 'Outbound Dock Staging Bay 1',
+        code: "BIN-FG-STG-1",
+        name: "Outbound Dock Staging Bay 1",
         binType: BinType.STAGING,
       },
     });
@@ -275,8 +284,8 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
     const quarantineBinA = await prisma.bin.create({
       data: {
         warehouseId: fgWhA.id,
-        code: 'BIN-FG-QRN-1',
-        name: 'Quarantine Hold Area 1',
+        code: "BIN-FG-QRN-1",
+        name: "Quarantine Hold Area 1",
         binType: BinType.QUARANTINE,
       },
     });
@@ -284,12 +293,20 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
 
     // 5. Tenant A Orders, Styles & Production
     const buyerA = await prisma.buyer.create({
-      data: { tenantId: tenantAId, code: 'BUY-NORDSTROM', name: 'Nordstrom Retail Corp' },
+      data: {
+        tenantId: tenantAId,
+        code: "BUY-NORDSTROM",
+        name: "Nordstrom Retail Corp",
+      },
     });
     buyerAId = buyerA.id;
 
     const styleA = await prisma.style.create({
-      data: { tenantId: tenantAId, code: 'STY-CHINO-83', name: 'Stretch Chino Pant' },
+      data: {
+        tenantId: tenantAId,
+        code: "STY-CHINO-83",
+        name: "Stretch Chino Pant",
+      },
     });
     styleAId = styleA.id;
 
@@ -297,11 +314,18 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
       data: {
         tenantId: tenantAId,
         buyerId: buyerA.id,
-        poNumber: 'PO-NDS-2026-83',
-        status: 'CONFIRMED',
+        poNumber: "PO-NDS-2026-83",
+        status: "CONFIRMED",
         orderDate: new Date(),
         buyerPoLines: {
-          create: [{ styleId: styleA.id, quantity: 2000, unitPrice: 25.5, totalPrice: 51000 }],
+          create: [
+            {
+              styleId: styleA.id,
+              quantity: 2000,
+              unitPrice: 25.5,
+              totalPrice: 51000,
+            },
+          ],
         },
       },
       include: { buyerPoLines: true },
@@ -314,7 +338,7 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
       data: {
         tenantId: tenantAId,
         buyerPoLineId: buyerPoLineAId,
-        orderNumber: 'PRD-ORD-P83-CLEAN',
+        orderNumber: "PRD-ORD-P83-CLEAN",
         status: ProductionStatus.COMPLETED,
         targetQuantity: 1000,
         completedQty: 1000,
@@ -327,7 +351,7 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
       data: {
         tenantId: tenantAId,
         buyerPoLineId: buyerPoLineAId,
-        orderNumber: 'PRD-ORD-P83-HELD',
+        orderNumber: "PRD-ORD-P83-HELD",
         status: ProductionStatus.COMPLETED,
         targetQuantity: 200,
         completedQty: 200,
@@ -340,7 +364,7 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
       data: {
         tenantId: tenantAId,
         buyerPoLineId: buyerPoLineAId,
-        orderNumber: 'PRD-ORD-P83-FAIL-AQL',
+        orderNumber: "PRD-ORD-P83-FAIL-AQL",
         status: ProductionStatus.COMPLETED,
         targetQuantity: 100,
         completedQty: 100,
@@ -352,7 +376,7 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
       data: {
         tenantId: tenantAId,
         buyerPoLineId: buyerPoLineAId,
-        orderNumber: 'PRD-ORD-P83-REW-AQL',
+        orderNumber: "PRD-ORD-P83-REW-AQL",
         status: ProductionStatus.COMPLETED,
         targetQuantity: 100,
         completedQty: 100,
@@ -364,7 +388,7 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
       data: {
         tenantId: tenantAId,
         buyerPoLineId: buyerPoLineAId,
-        orderNumber: 'PRD-ORD-P83-MISS-AQL',
+        orderNumber: "PRD-ORD-P83-MISS-AQL",
         status: ProductionStatus.COMPLETED,
         targetQuantity: 100,
         completedQty: 100,
@@ -375,9 +399,9 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
       data: {
         tenantId: tenantAId,
         productionOrderId: prodOrderA_Held.id,
-        reason: 'Seam tension defect batch hold',
+        reason: "Seam tension defect batch hold",
         status: QualityHoldStatus.ACTIVE,
-        idempotencyKey: 'hold-order-p83-01',
+        idempotencyKey: "hold-order-p83-01",
       },
     });
 
@@ -385,10 +409,10 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
     const matA = await prisma.material.create({
       data: {
         tenantId: tenantAId,
-        code: 'MAT-P83-FAB',
-        name: 'Cotton Twill',
-        category: 'FABRIC',
-        uom: 'YDS',
+        code: "MAT-P83-FAB",
+        name: "Cotton Twill",
+        category: "FABRIC",
+        uom: "YDS",
       },
     });
 
@@ -398,7 +422,7 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
         materialId: matA.id,
         type: InventoryTxType.ISSUE,
         quantity: 100,
-        uom: 'YDS',
+        uom: "YDS",
         actorId: adminUserA.id,
       },
     });
@@ -411,7 +435,7 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
         fabricMaterialId: matA.id,
         fabricQuantity: 100,
         cutQuantity: 450,
-        idempotencyKey: 'idem-cut-p83-01',
+        idempotencyKey: "idem-cut-p83-01",
       },
     });
 
@@ -420,12 +444,12 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
         tenantId: tenantAId,
         productionOrderId: prodOrderA1.id,
         cuttingRecordId: cuttingRecordA.id,
-        barcode: 'BND-P83-HELD-01',
+        barcode: "BND-P83-HELD-01",
         bundleSequence: 1,
         quantity: 50,
         status: BundleStatus.FINISHED,
         isQualityHold: true,
-        qualityHoldReason: 'Fabric snag on bundle 01',
+        qualityHoldReason: "Fabric snag on bundle 01",
       },
     });
     bundleA_HeldId = bundleHeld.id;
@@ -435,9 +459,9 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
         tenantId: tenantAId,
         productionOrderId: prodOrderA1.id,
         bundleId: bundleHeld.id,
-        reason: 'Fabric snag on bundle 01',
+        reason: "Fabric snag on bundle 01",
         status: QualityHoldStatus.ACTIVE,
-        idempotencyKey: 'hold-bundle-p83-01',
+        idempotencyKey: "hold-bundle-p83-01",
       },
     });
 
@@ -456,9 +480,9 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
         styleId: styleA.id,
         type: InventoryTxType.PRODUCTION_OUTPUT,
         quantity: 500,
-        uom: 'PCS',
+        uom: "PCS",
         actorId: adminUserA.id,
-        idempotencyKey: 'tx-prod-out-p83-initial',
+        idempotencyKey: "tx-prod-out-p83-initial",
       },
     });
 
@@ -468,9 +492,9 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
         tenantId: tenantAId,
         buyerId: buyerA.id,
         buyerPoId: buyerPoA.id,
-        packingListNumber: 'PL-NDS-2026-FINAL',
+        packingListNumber: "PL-NDS-2026-FINAL",
         status: PackingListStatus.FINALIZED,
-        idempotencyKey: 'pl-final-p83-01',
+        idempotencyKey: "pl-final-p83-01",
       },
     });
     finalizedPackingListAId = packingListFinalized.id;
@@ -480,9 +504,9 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
         tenantId: tenantAId,
         buyerId: buyerA.id,
         buyerPoId: buyerPoA.id,
-        packingListNumber: 'PL-NDS-2026-DRAFT',
+        packingListNumber: "PL-NDS-2026-DRAFT",
         status: PackingListStatus.DRAFT,
-        idempotencyKey: 'pl-draft-p83-01',
+        idempotencyKey: "pl-draft-p83-01",
       },
     });
     draftPackingListAId = packingListDraft.id;
@@ -493,7 +517,7 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
       data: {
         tenantId: tenantAId,
         productionOrderId: prodOrderA1.id,
-        auditNumber: 'AUD-P83-PASS',
+        auditNumber: "AUD-P83-PASS",
         stage: InspectionStage.FINAL_AUDIT,
         lotSize: 1000,
         sampleSize: 80,
@@ -502,7 +526,7 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
         status: AqlAuditStatus.PASSED,
         auditorId: auditorEmployeeA.id,
         auditDate: new Date(),
-        idempotencyKey: 'aql-audit-pass-01',
+        idempotencyKey: "aql-audit-pass-01",
       },
     });
 
@@ -510,7 +534,7 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
       data: {
         tenantId: tenantAId,
         productionOrderId: prodOrderA_Held.id,
-        auditNumber: 'AUD-P83-HELD',
+        auditNumber: "AUD-P83-HELD",
         stage: InspectionStage.FINAL_AUDIT,
         lotSize: 200,
         sampleSize: 50,
@@ -519,7 +543,7 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
         status: AqlAuditStatus.PASSED,
         auditorId: auditorEmployeeA.id,
         auditDate: new Date(),
-        idempotencyKey: 'aql-audit-held-01',
+        idempotencyKey: "aql-audit-held-01",
       },
     });
 
@@ -528,7 +552,7 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
       data: {
         tenantId: tenantAId,
         productionOrderId: prodOrderA_FailedAql.id,
-        auditNumber: 'AUD-P83-FAIL',
+        auditNumber: "AUD-P83-FAIL",
         stage: InspectionStage.FINAL_AUDIT,
         lotSize: 100,
         sampleSize: 32,
@@ -537,7 +561,7 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
         status: AqlAuditStatus.FAILED,
         auditorId: auditorEmployeeA.id,
         auditDate: new Date(),
-        idempotencyKey: 'aql-audit-fail-01',
+        idempotencyKey: "aql-audit-fail-01",
       },
     });
 
@@ -546,7 +570,7 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
       data: {
         tenantId: tenantAId,
         productionOrderId: prodOrderA_ReworkAql.id,
-        auditNumber: 'AUD-P83-REWORK',
+        auditNumber: "AUD-P83-REWORK",
         stage: InspectionStage.FINAL_AUDIT,
         lotSize: 100,
         sampleSize: 32,
@@ -555,7 +579,7 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
         status: AqlAuditStatus.PENDING_REWORK,
         auditorId: auditorEmployeeA.id,
         auditDate: new Date(),
-        idempotencyKey: 'aql-audit-rework-01',
+        idempotencyKey: "aql-audit-rework-01",
       },
     });
 
@@ -564,8 +588,8 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
     const carton1 = await prisma.carton.create({
       data: {
         tenantId: tenantAId,
-        cartonNumber: 'CTN-P83-VALID-01',
-        barcode: '(00)006141410000083001',
+        cartonNumber: "CTN-P83-VALID-01",
+        barcode: "(00)006141410000083001",
         status: CartonStatus.PACKED,
         productionOrderId: prodOrderA1.id,
         buyerPoId: buyerPoA.id,
@@ -573,15 +597,17 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
         warehouseId: fgWarehouseAId,
         binId: stagingBinAId,
         totalUnits: 50,
-        idempotencyKey: 'pack-ctn-p83-001',
+        idempotencyKey: "pack-ctn-p83-001",
         items: {
-          create: [{
-            tenantId: tenantAId,
-            styleId: styleA.id,
-            color: 'Khaki',
-            size: '32',
-            quantity: 50,
-          }],
+          create: [
+            {
+              tenantId: tenantAId,
+              styleId: styleA.id,
+              color: "Khaki",
+              size: "32",
+              quantity: 50,
+            },
+          ],
         },
       },
     });
@@ -591,8 +617,8 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
     const carton2 = await prisma.carton.create({
       data: {
         tenantId: tenantAId,
-        cartonNumber: 'CTN-P83-VALID-02',
-        barcode: '(00)006141410000083002',
+        cartonNumber: "CTN-P83-VALID-02",
+        barcode: "(00)006141410000083002",
         status: CartonStatus.PACKED,
         productionOrderId: prodOrderA1.id,
         buyerPoId: buyerPoA.id,
@@ -600,15 +626,17 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
         warehouseId: fgWarehouseAId,
         binId: stagingBinAId,
         totalUnits: 50,
-        idempotencyKey: 'pack-ctn-p83-002',
+        idempotencyKey: "pack-ctn-p83-002",
         items: {
-          create: [{
-            tenantId: tenantAId,
-            styleId: styleA.id,
-            color: 'Navy',
-            size: '34',
-            quantity: 50,
-          }],
+          create: [
+            {
+              tenantId: tenantAId,
+              styleId: styleA.id,
+              color: "Navy",
+              size: "34",
+              quantity: 50,
+            },
+          ],
         },
       },
     });
@@ -618,8 +646,8 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
     const heldOrderCarton = await prisma.carton.create({
       data: {
         tenantId: tenantAId,
-        cartonNumber: 'CTN-P83-HELD-ORD',
-        barcode: '(00)006141410000083003',
+        cartonNumber: "CTN-P83-HELD-ORD",
+        barcode: "(00)006141410000083003",
         status: CartonStatus.PACKED,
         productionOrderId: prodOrderA_Held.id,
         buyerPoId: buyerPoA.id,
@@ -627,15 +655,17 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
         warehouseId: fgWarehouseAId,
         binId: stagingBinAId,
         totalUnits: 50,
-        idempotencyKey: 'pack-ctn-p83-held-ord',
+        idempotencyKey: "pack-ctn-p83-held-ord",
         items: {
-          create: [{
-            tenantId: tenantAId,
-            styleId: styleA.id,
-            color: 'Khaki',
-            size: '30',
-            quantity: 50,
-          }],
+          create: [
+            {
+              tenantId: tenantAId,
+              styleId: styleA.id,
+              color: "Khaki",
+              size: "30",
+              quantity: 50,
+            },
+          ],
         },
       },
     });
@@ -645,8 +675,8 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
     const heldBundleCarton = await prisma.carton.create({
       data: {
         tenantId: tenantAId,
-        cartonNumber: 'CTN-P83-HELD-BND',
-        barcode: '(00)006141410000083004',
+        cartonNumber: "CTN-P83-HELD-BND",
+        barcode: "(00)006141410000083004",
         status: CartonStatus.PACKED,
         productionOrderId: prodOrderA1.id,
         buyerPoId: buyerPoA.id,
@@ -654,16 +684,18 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
         warehouseId: fgWarehouseAId,
         binId: stagingBinAId,
         totalUnits: 50,
-        idempotencyKey: 'pack-ctn-p83-held-bnd',
+        idempotencyKey: "pack-ctn-p83-held-bnd",
         items: {
-          create: [{
-            tenantId: tenantAId,
-            styleId: styleA.id,
-            bundleId: bundleHeld.id,
-            color: 'Khaki',
-            size: '32',
-            quantity: 50,
-          }],
+          create: [
+            {
+              tenantId: tenantAId,
+              styleId: styleA.id,
+              bundleId: bundleHeld.id,
+              color: "Khaki",
+              size: "32",
+              quantity: 50,
+            },
+          ],
         },
       },
     });
@@ -673,8 +705,8 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
     const failedAqlCarton = await prisma.carton.create({
       data: {
         tenantId: tenantAId,
-        cartonNumber: 'CTN-P83-FAIL-AQL',
-        barcode: '(00)006141410000083005',
+        cartonNumber: "CTN-P83-FAIL-AQL",
+        barcode: "(00)006141410000083005",
         status: CartonStatus.PACKED,
         productionOrderId: prodOrderA_FailedAql.id,
         buyerPoId: buyerPoA.id,
@@ -682,15 +714,17 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
         warehouseId: fgWarehouseAId,
         binId: stagingBinAId,
         totalUnits: 50,
-        idempotencyKey: 'pack-ctn-p83-fail-aql',
+        idempotencyKey: "pack-ctn-p83-fail-aql",
         items: {
-          create: [{
-            tenantId: tenantAId,
-            styleId: styleA.id,
-            color: 'Khaki',
-            size: '32',
-            quantity: 50,
-          }],
+          create: [
+            {
+              tenantId: tenantAId,
+              styleId: styleA.id,
+              color: "Khaki",
+              size: "32",
+              quantity: 50,
+            },
+          ],
         },
       },
     });
@@ -700,8 +734,8 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
     const reworkAqlCarton = await prisma.carton.create({
       data: {
         tenantId: tenantAId,
-        cartonNumber: 'CTN-P83-REWORK-AQL',
-        barcode: '(00)006141410000083006',
+        cartonNumber: "CTN-P83-REWORK-AQL",
+        barcode: "(00)006141410000083006",
         status: CartonStatus.PACKED,
         productionOrderId: prodOrderA_ReworkAql.id,
         buyerPoId: buyerPoA.id,
@@ -709,15 +743,17 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
         warehouseId: fgWarehouseAId,
         binId: stagingBinAId,
         totalUnits: 50,
-        idempotencyKey: 'pack-ctn-p83-rework-aql',
+        idempotencyKey: "pack-ctn-p83-rework-aql",
         items: {
-          create: [{
-            tenantId: tenantAId,
-            styleId: styleA.id,
-            color: 'Khaki',
-            size: '32',
-            quantity: 50,
-          }],
+          create: [
+            {
+              tenantId: tenantAId,
+              styleId: styleA.id,
+              color: "Khaki",
+              size: "32",
+              quantity: 50,
+            },
+          ],
         },
       },
     });
@@ -727,8 +763,8 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
     const missingAqlCarton = await prisma.carton.create({
       data: {
         tenantId: tenantAId,
-        cartonNumber: 'CTN-P83-MISS-AQL',
-        barcode: '(00)006141410000083007',
+        cartonNumber: "CTN-P83-MISS-AQL",
+        barcode: "(00)006141410000083007",
         status: CartonStatus.PACKED,
         productionOrderId: prodOrderA_MissingAql.id,
         buyerPoId: buyerPoA.id,
@@ -736,15 +772,17 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
         warehouseId: fgWarehouseAId,
         binId: stagingBinAId,
         totalUnits: 50,
-        idempotencyKey: 'pack-ctn-p83-miss-aql',
+        idempotencyKey: "pack-ctn-p83-miss-aql",
         items: {
-          create: [{
-            tenantId: tenantAId,
-            styleId: styleA.id,
-            color: 'Khaki',
-            size: '32',
-            quantity: 50,
-          }],
+          create: [
+            {
+              tenantId: tenantAId,
+              styleId: styleA.id,
+              color: "Khaki",
+              size: "32",
+              quantity: 50,
+            },
+          ],
         },
       },
     });
@@ -754,8 +792,8 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
     const quarantineCarton = await prisma.carton.create({
       data: {
         tenantId: tenantAId,
-        cartonNumber: 'CTN-P83-QRN-BIN',
-        barcode: '(00)006141410000083008',
+        cartonNumber: "CTN-P83-QRN-BIN",
+        barcode: "(00)006141410000083008",
         status: CartonStatus.PACKED,
         productionOrderId: prodOrderA1.id,
         buyerPoId: buyerPoA.id,
@@ -763,15 +801,17 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
         warehouseId: fgWarehouseAId,
         binId: quarantineBinAId,
         totalUnits: 50,
-        idempotencyKey: 'pack-ctn-p83-qrn-bin',
+        idempotencyKey: "pack-ctn-p83-qrn-bin",
         items: {
-          create: [{
-            tenantId: tenantAId,
-            styleId: styleA.id,
-            color: 'Khaki',
-            size: '32',
-            quantity: 50,
-          }],
+          create: [
+            {
+              tenantId: tenantAId,
+              styleId: styleA.id,
+              color: "Khaki",
+              size: "32",
+              quantity: 50,
+            },
+          ],
         },
       },
     });
@@ -781,8 +821,8 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
     const shippedCarton = await prisma.carton.create({
       data: {
         tenantId: tenantAId,
-        cartonNumber: 'CTN-P83-SHIPPED',
-        barcode: '(00)006141410000083009',
+        cartonNumber: "CTN-P83-SHIPPED",
+        barcode: "(00)006141410000083009",
         status: CartonStatus.SHIPPED,
         productionOrderId: prodOrderA1.id,
         buyerPoId: buyerPoA.id,
@@ -790,15 +830,17 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
         warehouseId: fgWarehouseAId,
         binId: stagingBinAId,
         totalUnits: 50,
-        idempotencyKey: 'pack-ctn-p83-shipped',
+        idempotencyKey: "pack-ctn-p83-shipped",
         items: {
-          create: [{
-            tenantId: tenantAId,
-            styleId: styleA.id,
-            color: 'Khaki',
-            size: '32',
-            quantity: 50,
-          }],
+          create: [
+            {
+              tenantId: tenantAId,
+              styleId: styleA.id,
+              color: "Khaki",
+              size: "32",
+              quantity: 50,
+            },
+          ],
         },
       },
     });
@@ -808,8 +850,8 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
     const cancelledCarton = await prisma.carton.create({
       data: {
         tenantId: tenantAId,
-        cartonNumber: 'CTN-P83-CANCELLED',
-        barcode: '(00)006141410000083010',
+        cartonNumber: "CTN-P83-CANCELLED",
+        barcode: "(00)006141410000083010",
         status: CartonStatus.CANCELLED,
         productionOrderId: prodOrderA1.id,
         buyerPoId: buyerPoA.id,
@@ -817,15 +859,17 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
         warehouseId: fgWarehouseAId,
         binId: stagingBinAId,
         totalUnits: 50,
-        idempotencyKey: 'pack-ctn-p83-cancelled',
+        idempotencyKey: "pack-ctn-p83-cancelled",
         items: {
-          create: [{
-            tenantId: tenantAId,
-            styleId: styleA.id,
-            color: 'Khaki',
-            size: '32',
-            quantity: 50,
-          }],
+          create: [
+            {
+              tenantId: tenantAId,
+              styleId: styleA.id,
+              color: "Khaki",
+              size: "32",
+              quantity: 50,
+            },
+          ],
         },
       },
     });
@@ -835,8 +879,8 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
     const draftListCarton = await prisma.carton.create({
       data: {
         tenantId: tenantAId,
-        cartonNumber: 'CTN-P83-DRAFT-PL',
-        barcode: '(00)006141410000083011',
+        cartonNumber: "CTN-P83-DRAFT-PL",
+        barcode: "(00)006141410000083011",
         status: CartonStatus.PACKED,
         productionOrderId: prodOrderA1.id,
         buyerPoId: buyerPoA.id,
@@ -844,15 +888,17 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
         warehouseId: fgWarehouseAId,
         binId: stagingBinAId,
         totalUnits: 50,
-        idempotencyKey: 'pack-ctn-p83-draft-pl',
+        idempotencyKey: "pack-ctn-p83-draft-pl",
         items: {
-          create: [{
-            tenantId: tenantAId,
-            styleId: styleA.id,
-            color: 'Khaki',
-            size: '32',
-            quantity: 50,
-          }],
+          create: [
+            {
+              tenantId: tenantAId,
+              styleId: styleA.id,
+              color: "Khaki",
+              size: "32",
+              quantity: 50,
+            },
+          ],
         },
       },
     });
@@ -862,8 +908,8 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
     const whB = await prisma.warehouse.create({
       data: {
         tenantId: tenantBId,
-        code: 'WH-FG-B-EXP',
-        name: 'Tenant B Finished Goods Terminal',
+        code: "WH-FG-B-EXP",
+        name: "Tenant B Finished Goods Terminal",
         warehouseType: WarehouseType.FINISHED_GOODS,
       },
     });
@@ -872,29 +918,36 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
     const binB = await prisma.bin.create({
       data: {
         warehouseId: whB.id,
-        code: 'BIN-B-STG-1',
-        name: 'Tenant B Staging Dock',
+        code: "BIN-B-STG-1",
+        name: "Tenant B Staging Dock",
         binType: BinType.STAGING,
       },
     });
 
     const styleB = await prisma.style.create({
-      data: { tenantId: tenantBId, code: 'STY-B-83', name: 'Tenant B Jacket' },
+      data: { tenantId: tenantBId, code: "STY-B-83", name: "Tenant B Jacket" },
     });
 
     const buyerB = await prisma.buyer.create({
-      data: { tenantId: tenantBId, code: 'BUY-B-83', name: 'Tenant B Buyer' },
+      data: { tenantId: tenantBId, code: "BUY-B-83", name: "Tenant B Buyer" },
     });
 
     const buyerPoB = await prisma.buyerPo.create({
       data: {
         tenantId: tenantBId,
         buyerId: buyerB.id,
-        poNumber: 'PO-B-2026-83',
-        status: 'CONFIRMED',
+        poNumber: "PO-B-2026-83",
+        status: "CONFIRMED",
         orderDate: new Date(),
         buyerPoLines: {
-          create: [{ styleId: styleB.id, quantity: 100, unitPrice: 50, totalPrice: 5000 }],
+          create: [
+            {
+              styleId: styleB.id,
+              quantity: 100,
+              unitPrice: 50,
+              totalPrice: 5000,
+            },
+          ],
         },
       },
       include: { buyerPoLines: true },
@@ -904,7 +957,7 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
       data: {
         tenantId: tenantBId,
         buyerPoLineId: buyerPoB.buyerPoLines[0].id,
-        orderNumber: 'PRD-B-83',
+        orderNumber: "PRD-B-83",
         status: ProductionStatus.COMPLETED,
         targetQuantity: 100,
       },
@@ -913,23 +966,25 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
     const cartonB = await prisma.carton.create({
       data: {
         tenantId: tenantBId,
-        cartonNumber: 'CTN-B-P83-001',
-        barcode: '(00)006141410000083999',
+        cartonNumber: "CTN-B-P83-001",
+        barcode: "(00)006141410000083999",
         status: CartonStatus.PACKED,
         productionOrderId: prodOrderB.id,
         buyerPoId: buyerPoB.id,
         warehouseId: whB.id,
         binId: binB.id,
         totalUnits: 50,
-        idempotencyKey: 'pack-ctn-b-p83-001',
+        idempotencyKey: "pack-ctn-b-p83-001",
         items: {
-          create: [{
-            tenantId: tenantBId,
-            styleId: styleB.id,
-            color: 'Black',
-            size: 'L',
-            quantity: 50,
-          }],
+          create: [
+            {
+              tenantId: tenantBId,
+              styleId: styleB.id,
+              color: "Black",
+              size: "L",
+              quantity: 50,
+            },
+          ],
         },
       },
     });
@@ -952,23 +1007,39 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
 
     // 11. Authenticate via login
     const loginResA = await request(app.getHttpServer())
-      .post('/auth/login')
-      .send({ tenantId: tenantAId, email: 'adminA_p83@test.com', password: 'TestPass123!' });
+      .post("/auth/login")
+      .send({
+        tenantId: tenantAId,
+        email: "adminA_p83@test.com",
+        password: "TestPass123!",
+      });
     adminTokenA = loginResA.body.accessToken;
 
     const loginResClerkA = await request(app.getHttpServer())
-      .post('/auth/login')
-      .send({ tenantId: tenantAId, email: 'staffA_p83@test.com', password: 'TestPass123!' });
+      .post("/auth/login")
+      .send({
+        tenantId: tenantAId,
+        email: "staffA_p83@test.com",
+        password: "TestPass123!",
+      });
     userWithoutApproveTokenA = loginResClerkA.body.accessToken;
 
     const loginResUnauthA = await request(app.getHttpServer())
-      .post('/auth/login')
-      .send({ tenantId: tenantAId, email: 'unauthA_p83@test.com', password: 'TestPass123!' });
+      .post("/auth/login")
+      .send({
+        tenantId: tenantAId,
+        email: "unauthA_p83@test.com",
+        password: "TestPass123!",
+      });
     unauthTokenA = loginResUnauthA.body.accessToken;
 
     const loginResB = await request(app.getHttpServer())
-      .post('/auth/login')
-      .send({ tenantId: tenantBId, email: 'adminB_p83@test.com', password: 'TestPass123!' });
+      .post("/auth/login")
+      .send({
+        tenantId: tenantBId,
+        email: "adminB_p83@test.com",
+        password: "TestPass123!",
+      });
     adminTokenB = loginResB.body.accessToken;
   });
 
@@ -980,19 +1051,19 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
   // =========================================================================
   // SUITE 1: Shipment Creation, Whole-Carton Enforcement & Tenant Isolation
   // =========================================================================
-  describe('1. Shipment Creation & Validation Gates', () => {
-    it('1.1 should create a shipment with valid carton assignment and aggregate ShipmentItems', async () => {
+  describe("1. Shipment Creation & Validation Gates", () => {
+    it("1.1 should create a shipment with valid carton assignment and aggregate ShipmentItems", async () => {
       const res = await request(app.getHttpServer())
-        .post('/shipping/shipments')
-        .set('Authorization', `Bearer ${adminTokenA}`)
+        .post("/shipping/shipments")
+        .set("Authorization", `Bearer ${adminTokenA}`)
         .send({
           buyerId: buyerAId,
           buyerPoId: buyerPoAId,
-          carrier: 'Maersk Line',
-          trackingNumber: 'MSK-EXP-83001',
-          containerNumber: 'MSKU-839210-4',
-          destinationPort: 'Long Beach, CA',
-          destinationCountry: 'USA',
+          carrier: "Maersk Line",
+          trackingNumber: "MSK-EXP-83001",
+          containerNumber: "MSKU-839210-4",
+          destinationPort: "Long Beach, CA",
+          destinationCountry: "USA",
           cartonIds: [validCarton1Id],
         })
         .expect(201);
@@ -1007,54 +1078,56 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
       expect(res.body.items[0].shippedQuantity).toBe(50);
 
       // Verify carton is reserved
-      const dbCarton = await prisma.carton.findUnique({ where: { id: validCarton1Id } });
+      const dbCarton = await prisma.carton.findUnique({
+        where: { id: validCarton1Id },
+      });
       expect(dbCarton?.shipmentId).toBe(res.body.id);
     });
 
-    it('1.2 should reject duplicate carton assignment in the same request with HTTP 409', async () => {
+    it("1.2 should reject duplicate carton assignment in the same request with HTTP 409", async () => {
       const res = await request(app.getHttpServer())
-        .post('/shipping/shipments')
-        .set('Authorization', `Bearer ${adminTokenA}`)
+        .post("/shipping/shipments")
+        .set("Authorization", `Bearer ${adminTokenA}`)
         .send({
           buyerId: buyerAId,
           cartonIds: [validCarton2Id, validCarton2Id],
         })
         .expect(409);
 
-      expect(res.body.message).toContain('Duplicate carton');
+      expect(res.body.message).toContain("Duplicate carton");
     });
 
-    it('1.3 should reject assigning a carton already committed to another active shipment with HTTP 409', async () => {
+    it("1.3 should reject assigning a carton already committed to another active shipment with HTTP 409", async () => {
       // validCarton1Id is already reserved to the shipment from 1.1
       const res = await request(app.getHttpServer())
-        .post('/shipping/shipments')
-        .set('Authorization', `Bearer ${adminTokenA}`)
+        .post("/shipping/shipments")
+        .set("Authorization", `Bearer ${adminTokenA}`)
         .send({
           buyerId: buyerAId,
           cartonIds: [validCarton1Id],
         })
         .expect(409);
 
-      expect(res.body.message).toContain('already reserved by active shipment');
+      expect(res.body.message).toContain("already reserved by active shipment");
     });
 
-    it('1.4 should reject cross-tenant carton assignment with HTTP 409', async () => {
+    it("1.4 should reject cross-tenant carton assignment with HTTP 409", async () => {
       const res = await request(app.getHttpServer())
-        .post('/shipping/shipments')
-        .set('Authorization', `Bearer ${adminTokenA}`)
+        .post("/shipping/shipments")
+        .set("Authorization", `Bearer ${adminTokenA}`)
         .send({
           buyerId: buyerAId,
           cartonIds: [cartonBId],
         })
         .expect(409);
 
-      expect(res.body.message).toContain('not found in tenant');
+      expect(res.body.message).toContain("not found in tenant");
     });
 
-    it('1.5 should reject shipment creation when user lacks SHIPPING:WRITE with HTTP 403', async () => {
+    it("1.5 should reject shipment creation when user lacks SHIPPING:WRITE with HTTP 403", async () => {
       await request(app.getHttpServer())
-        .post('/shipping/shipments')
-        .set('Authorization', `Bearer ${unauthTokenA}`)
+        .post("/shipping/shipments")
+        .set("Authorization", `Bearer ${unauthTokenA}`)
         .send({
           buyerId: buyerAId,
           cartonIds: [validCarton2Id],
@@ -1066,141 +1139,149 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
   // =========================================================================
   // SUITE 2: Packing List Finalization Gating
   // =========================================================================
-  describe('2. Packing List Quality & State Gates', () => {
-    it('2.1 should reject cartons from DRAFT packing list with HTTP 409', async () => {
+  describe("2. Packing List Quality & State Gates", () => {
+    it("2.1 should reject cartons from DRAFT packing list with HTTP 409", async () => {
       const res = await request(app.getHttpServer())
-        .post('/shipping/shipments')
-        .set('Authorization', `Bearer ${adminTokenA}`)
+        .post("/shipping/shipments")
+        .set("Authorization", `Bearer ${adminTokenA}`)
         .send({
           buyerId: buyerAId,
           cartonIds: [draftListCartonId],
         })
         .expect(409);
 
-      expect(res.body.message).toContain('is not finalized');
+      expect(res.body.message).toContain("is not finalized");
     });
   });
 
   // =========================================================================
   // SUITE 3: Quality Release Gating
   // =========================================================================
-  describe('3. Server-Authoritative Quality Release Gates', () => {
-    it('3.1 should reject carton with active order-level QualityHold with HTTP 409', async () => {
+  describe("3. Server-Authoritative Quality Release Gates", () => {
+    it("3.1 should reject carton with active order-level QualityHold with HTTP 409", async () => {
       const res = await request(app.getHttpServer())
-        .post('/shipping/shipments')
-        .set('Authorization', `Bearer ${adminTokenA}`)
+        .post("/shipping/shipments")
+        .set("Authorization", `Bearer ${adminTokenA}`)
         .send({
           buyerId: buyerAId,
           cartonIds: [heldOrderCartonId],
         })
         .expect(409);
 
-      expect(res.body.message).toContain('Active quality hold exists on production order');
+      expect(res.body.message).toContain(
+        "Active quality hold exists on production order",
+      );
     });
 
-    it('3.2 should reject carton with active bundle-level QualityHold with HTTP 409', async () => {
+    it("3.2 should reject carton with active bundle-level QualityHold with HTTP 409", async () => {
       const res = await request(app.getHttpServer())
-        .post('/shipping/shipments')
-        .set('Authorization', `Bearer ${adminTokenA}`)
+        .post("/shipping/shipments")
+        .set("Authorization", `Bearer ${adminTokenA}`)
         .send({
           buyerId: buyerAId,
           cartonIds: [heldBundleCartonId],
         })
         .expect(409);
 
-      expect(res.body.message).toContain('Active quality hold exists on bundle');
+      expect(res.body.message).toContain(
+        "Active quality hold exists on bundle",
+      );
     });
 
-    it('3.3 should reject carton with missing FINAL_AUDIT with HTTP 409', async () => {
+    it("3.3 should reject carton with missing FINAL_AUDIT with HTTP 409", async () => {
       const res = await request(app.getHttpServer())
-        .post('/shipping/shipments')
-        .set('Authorization', `Bearer ${adminTokenA}`)
+        .post("/shipping/shipments")
+        .set("Authorization", `Bearer ${adminTokenA}`)
         .send({
           buyerId: buyerAId,
           cartonIds: [missingAqlCartonId],
         })
         .expect(409);
 
-      expect(res.body.message).toContain('Missing required final quality audit');
+      expect(res.body.message).toContain(
+        "Missing required final quality audit",
+      );
     });
 
-    it('3.4 should reject carton with FAILED FINAL_AUDIT with HTTP 409', async () => {
+    it("3.4 should reject carton with FAILED FINAL_AUDIT with HTTP 409", async () => {
       const res = await request(app.getHttpServer())
-        .post('/shipping/shipments')
-        .set('Authorization', `Bearer ${adminTokenA}`)
+        .post("/shipping/shipments")
+        .set("Authorization", `Bearer ${adminTokenA}`)
         .send({
           buyerId: buyerAId,
           cartonIds: [failedAqlCartonId],
         })
         .expect(409);
 
-      expect(res.body.message).toContain('Quality audit status is FAILED');
+      expect(res.body.message).toContain("Quality audit status is FAILED");
     });
 
-    it('3.5 should reject carton with PENDING_REWORK FINAL_AUDIT with HTTP 409', async () => {
+    it("3.5 should reject carton with PENDING_REWORK FINAL_AUDIT with HTTP 409", async () => {
       const res = await request(app.getHttpServer())
-        .post('/shipping/shipments')
-        .set('Authorization', `Bearer ${adminTokenA}`)
+        .post("/shipping/shipments")
+        .set("Authorization", `Bearer ${adminTokenA}`)
         .send({
           buyerId: buyerAId,
           cartonIds: [reworkAqlCartonId],
         })
         .expect(409);
 
-      expect(res.body.message).toContain('Quality audit status is PENDING_REWORK');
+      expect(res.body.message).toContain(
+        "Quality audit status is PENDING_REWORK",
+      );
     });
 
-    it('3.6 should reject carton located in QUARANTINE bin with HTTP 409', async () => {
+    it("3.6 should reject carton located in QUARANTINE bin with HTTP 409", async () => {
       const res = await request(app.getHttpServer())
-        .post('/shipping/shipments')
-        .set('Authorization', `Bearer ${adminTokenA}`)
+        .post("/shipping/shipments")
+        .set("Authorization", `Bearer ${adminTokenA}`)
         .send({
           buyerId: buyerAId,
           cartonIds: [quarantineCartonId],
         })
         .expect(409);
 
-      expect(res.body.message).toContain('is in QUARANTINE');
+      expect(res.body.message).toContain("is in QUARANTINE");
     });
 
-    it('3.7 should reject carton already marked SHIPPED with HTTP 409', async () => {
+    it("3.7 should reject carton already marked SHIPPED with HTTP 409", async () => {
       const res = await request(app.getHttpServer())
-        .post('/shipping/shipments')
-        .set('Authorization', `Bearer ${adminTokenA}`)
+        .post("/shipping/shipments")
+        .set("Authorization", `Bearer ${adminTokenA}`)
         .send({
           buyerId: buyerAId,
           cartonIds: [shippedCartonId],
         })
         .expect(409);
 
-      expect(res.body.message).toContain('is already SHIPPED');
+      expect(res.body.message).toContain("is already SHIPPED");
     });
 
-    it('3.8 should reject carton marked CANCELLED with HTTP 409', async () => {
+    it("3.8 should reject carton marked CANCELLED with HTTP 409", async () => {
       const res = await request(app.getHttpServer())
-        .post('/shipping/shipments')
-        .set('Authorization', `Bearer ${adminTokenA}`)
+        .post("/shipping/shipments")
+        .set("Authorization", `Bearer ${adminTokenA}`)
         .send({
           buyerId: buyerAId,
           cartonIds: [cancelledCartonId],
         })
         .expect(409);
 
-      expect(res.body.message).toContain('is CANCELLED');
+      expect(res.body.message).toContain("is CANCELLED");
     });
   });
 
   // =========================================================================
   // SUITE 4: Shipment Cancellation & Atomic Reservation Release
   // =========================================================================
-  describe('4. Shipment Cancellation & Reservation Release', () => {
+  describe("4. Shipment Cancellation & Reservation Release", () => {
     let cancelableShipmentId: string;
 
     beforeAll(async () => {
       // Create a shipment reserving validCarton2Id
       const res = await request(app.getHttpServer())
-        .post('/shipping/shipments')
-        .set('Authorization', `Bearer ${adminTokenA}`)
+        .post("/shipping/shipments")
+        .set("Authorization", `Bearer ${adminTokenA}`)
         .send({
           buyerId: buyerAId,
           cartonIds: [validCarton2Id],
@@ -1208,28 +1289,32 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
       cancelableShipmentId = res.body.id;
     });
 
-    it('4.1 should cancel shipment and atomically release carton reservations', async () => {
+    it("4.1 should cancel shipment and atomically release carton reservations", async () => {
       // Verify reservation before cancel
-      const cartonBefore = await prisma.carton.findUnique({ where: { id: validCarton2Id } });
+      const cartonBefore = await prisma.carton.findUnique({
+        where: { id: validCarton2Id },
+      });
       expect(cartonBefore?.shipmentId).toBe(cancelableShipmentId);
 
       const res = await request(app.getHttpServer())
         .post(`/shipping/shipments/${cancelableShipmentId}/cancel`)
-        .set('Authorization', `Bearer ${adminTokenA}`)
-        .send({ reason: 'Commercial terms updated' })
+        .set("Authorization", `Bearer ${adminTokenA}`)
+        .send({ reason: "Commercial terms updated" })
         .expect(200);
 
       expect(res.body.status).toBe(ShipmentStatus.CANCELLED);
 
       // Verify reservation released in database
-      const cartonAfter = await prisma.carton.findUnique({ where: { id: validCarton2Id } });
+      const cartonAfter = await prisma.carton.findUnique({
+        where: { id: validCarton2Id },
+      });
       expect(cartonAfter?.shipmentId).toBeNull();
     });
 
-    it('4.2 should permit newly released carton to be reserved by another shipment', async () => {
+    it("4.2 should permit newly released carton to be reserved by another shipment", async () => {
       const res = await request(app.getHttpServer())
-        .post('/shipping/shipments')
-        .set('Authorization', `Bearer ${adminTokenA}`)
+        .post("/shipping/shipments")
+        .set("Authorization", `Bearer ${adminTokenA}`)
         .send({
           buyerId: buyerAId,
           cartonIds: [validCarton2Id],
@@ -1239,7 +1324,9 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
       expect(res.body.id).toBeDefined();
       expect(res.body.totalCartons).toBe(1);
 
-      const carton = await prisma.carton.findUnique({ where: { id: validCarton2Id } });
+      const carton = await prisma.carton.findUnique({
+        where: { id: validCarton2Id },
+      });
       expect(carton?.shipmentId).toBe(res.body.id);
     });
   });
@@ -1247,27 +1334,31 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
   // =========================================================================
   // SUITE 5: Commercial Invoice Generation & Historical Price Snapshot
   // =========================================================================
-  describe('5. Commercial Invoice Lifecycle & Pricing Snapshot', () => {
+  describe("5. Commercial Invoice Lifecycle & Pricing Snapshot", () => {
     let activeShipmentId: string;
     let commercialInvoiceId: string;
 
     beforeAll(async () => {
       // Find the shipment containing validCarton2Id
       const shipment = await prisma.shipment.findFirst({
-        where: { tenantId: tenantAId, status: ShipmentStatus.DRAFT, cartons: { some: { id: validCarton2Id } } },
+        where: {
+          tenantId: tenantAId,
+          status: ShipmentStatus.DRAFT,
+          cartons: { some: { id: validCarton2Id } },
+        },
       });
       activeShipmentId = shipment!.id;
     });
 
-    it('5.1 should generate a Commercial Invoice with PO-derived unit pricing snapshot and accurate totals', async () => {
+    it("5.1 should generate a Commercial Invoice with PO-derived unit pricing snapshot and accurate totals", async () => {
       const res = await request(app.getHttpServer())
-        .post('/shipping/invoices')
-        .set('Authorization', `Bearer ${adminTokenA}`)
+        .post("/shipping/invoices")
+        .set("Authorization", `Bearer ${adminTokenA}`)
         .send({
           shipmentId: activeShipmentId,
-          currency: 'USD',
-          incoterms: 'FOB',
-          paymentTerms: 'LC 60 Days',
+          currency: "USD",
+          incoterms: "FOB",
+          paymentTerms: "LC 60 Days",
           freightCharges: 150.0,
           insuranceCharges: 50.0,
           discountAmount: 25.0,
@@ -1297,10 +1388,10 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
       expect(ledgerCount).toBe(0);
     });
 
-    it('5.2 should transition Commercial Invoice to ISSUED status without ledger effect', async () => {
+    it("5.2 should transition Commercial Invoice to ISSUED status without ledger effect", async () => {
       const res = await request(app.getHttpServer())
         .post(`/shipping/invoices/${commercialInvoiceId}/issue`)
-        .set('Authorization', `Bearer ${adminTokenA}`)
+        .set("Authorization", `Bearer ${adminTokenA}`)
         .send()
         .expect(200);
 
@@ -1313,10 +1404,10 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
       expect(ledgerCount).toBe(0);
     });
 
-    it('5.3 should enforce tenant isolation on invoice access', async () => {
+    it("5.3 should enforce tenant isolation on invoice access", async () => {
       await request(app.getHttpServer())
         .get(`/shipping/invoices/${commercialInvoiceId}`)
-        .set('Authorization', `Bearer ${adminTokenB}`)
+        .set("Authorization", `Bearer ${adminTokenB}`)
         .expect(404);
     });
   });
@@ -1324,28 +1415,32 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
   // =========================================================================
   // SUITE 6: Gate Pass State Machine & RBAC
   // =========================================================================
-  describe('6. Gate Pass State Machine & Supervisor Approval', () => {
+  describe("6. Gate Pass State Machine & Supervisor Approval", () => {
     let activeShipmentId: string;
     let gatePassId: string;
 
     beforeAll(async () => {
       const shipment = await prisma.shipment.findFirst({
-        where: { tenantId: tenantAId, status: ShipmentStatus.DRAFT, cartons: { some: { id: validCarton2Id } } },
+        where: {
+          tenantId: tenantAId,
+          status: ShipmentStatus.DRAFT,
+          cartons: { some: { id: validCarton2Id } },
+        },
       });
       activeShipmentId = shipment!.id;
     });
 
-    it('6.1 should draft an Outbound Gate Pass with zero ledger effect', async () => {
+    it("6.1 should draft an Outbound Gate Pass with zero ledger effect", async () => {
       const res = await request(app.getHttpServer())
-        .post('/shipping/gate-pass')
-        .set('Authorization', `Bearer ${adminTokenA}`)
+        .post("/shipping/gate-pass")
+        .set("Authorization", `Bearer ${adminTokenA}`)
         .send({
           shipmentId: activeShipmentId,
-          transporter: 'DHL Global Forwarding',
-          vehicleNumber: 'TRK-2026-TX',
-          driverName: 'John Doe',
-          driverPhone: '+1-555-0199',
-          sealNumber: 'SEAL-83921',
+          transporter: "DHL Global Forwarding",
+          vehicleNumber: "TRK-2026-TX",
+          driverName: "John Doe",
+          driverPhone: "+1-555-0199",
+          sealNumber: "SEAL-83921",
         })
         .expect(201);
 
@@ -1362,18 +1457,18 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
       expect(Number(stock?.quantity)).toBe(500); // Unchanged
     });
 
-    it('6.2 should reject gate pass approval by user without SHIPPING:APPROVE with HTTP 403', async () => {
+    it("6.2 should reject gate pass approval by user without SHIPPING:APPROVE with HTTP 403", async () => {
       await request(app.getHttpServer())
         .post(`/shipping/gate-pass/${gatePassId}/approve`)
-        .set('Authorization', `Bearer ${userWithoutApproveTokenA}`)
+        .set("Authorization", `Bearer ${userWithoutApproveTokenA}`)
         .send()
         .expect(403);
     });
 
-    it('6.3 should approve gate pass by supervisor with zero ledger effect', async () => {
+    it("6.3 should approve gate pass by supervisor with zero ledger effect", async () => {
       const res = await request(app.getHttpServer())
         .post(`/shipping/gate-pass/${gatePassId}/approve`)
-        .set('Authorization', `Bearer ${adminTokenA}`)
+        .set("Authorization", `Bearer ${adminTokenA}`)
         .send()
         .expect(200);
 
@@ -1387,23 +1482,23 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
       expect(Number(stock?.quantity)).toBe(500); // Still unchanged
     });
 
-    it('6.4 should allow cancellation of an approved gate pass prior to dispatch', async () => {
+    it("6.4 should allow cancellation of an approved gate pass prior to dispatch", async () => {
       // Create and cancel another gate pass to verify cancellation
       const draft = await request(app.getHttpServer())
-        .post('/shipping/gate-pass')
-        .set('Authorization', `Bearer ${adminTokenA}`)
+        .post("/shipping/gate-pass")
+        .set("Authorization", `Bearer ${adminTokenA}`)
         .send({
           shipmentId: activeShipmentId,
-          transporter: 'FedEx Freight',
-          vehicleNumber: 'TRK-CANCEL-01',
-          driverName: 'Jane Smith',
+          transporter: "FedEx Freight",
+          vehicleNumber: "TRK-CANCEL-01",
+          driverName: "Jane Smith",
         })
         .expect(201);
 
       const cancelRes = await request(app.getHttpServer())
         .post(`/shipping/gate-pass/${draft.body.id}/cancel`)
-        .set('Authorization', `Bearer ${adminTokenA}`)
-        .send({ reason: 'Carrier substitution' })
+        .set("Authorization", `Bearer ${adminTokenA}`)
+        .send({ reason: "Carrier substitution" })
         .expect(200);
 
       expect(cancelRes.body.status).toBe(GatePassStatus.CANCELLED);
@@ -1411,7 +1506,7 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
       // Cancelled gate pass cannot be approved
       await request(app.getHttpServer())
         .post(`/shipping/gate-pass/${draft.body.id}/approve`)
-        .set('Authorization', `Bearer ${adminTokenA}`)
+        .set("Authorization", `Bearer ${adminTokenA}`)
         .send()
         .expect(409);
     });
@@ -1420,7 +1515,7 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
   // =========================================================================
   // SUITE 7: Authoritative Physical Dispatch & Ledger ISSUE Invariants
   // =========================================================================
-  describe('7. Authoritative Dispatch & Inventory Safety Invariants', () => {
+  describe("7. Authoritative Dispatch & Inventory Safety Invariants", () => {
     let activeShipmentId: string;
     let gatePassId: string;
 
@@ -1432,7 +1527,7 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
       activeShipmentId = gp!.shipmentId;
     });
 
-    it('7.1 should execute physical dispatch: post exactly ONE ISSUE transaction and transition cartons to SHIPPED', async () => {
+    it("7.1 should execute physical dispatch: post exactly ONE ISSUE transaction and transition cartons to SHIPPED", async () => {
       const initialStock = await prisma.inventoryItem.findFirst({
         where: { tenantId: tenantAId, styleId: styleAId },
       });
@@ -1440,7 +1535,7 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
 
       const res = await request(app.getHttpServer())
         .post(`/shipping/gate-pass/${gatePassId}/dispatch`)
-        .set('Authorization', `Bearer ${adminTokenA}`)
+        .set("Authorization", `Bearer ${adminTokenA}`)
         .send()
         .expect(200);
 
@@ -1449,16 +1544,23 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
       expect(res.body.dispatchedById).toBeDefined();
 
       // Invariant 1: Shipment marked DISPATCHED
-      const dbShipment = await prisma.shipment.findUnique({ where: { id: activeShipmentId } });
+      const dbShipment = await prisma.shipment.findUnique({
+        where: { id: activeShipmentId },
+      });
       expect(dbShipment?.status).toBe(ShipmentStatus.DISPATCHED);
 
       // Invariant 2: Cartons marked SHIPPED
-      const dbCarton = await prisma.carton.findUnique({ where: { id: validCarton2Id } });
+      const dbCarton = await prisma.carton.findUnique({
+        where: { id: validCarton2Id },
+      });
       expect(dbCarton?.status).toBe(CartonStatus.SHIPPED);
 
       // Invariant 3: Immutable CartonMovement record created with type DISPATCH
       const movement = await prisma.cartonMovement.findFirst({
-        where: { cartonId: validCarton2Id, movementType: CartonMovementType.DISPATCH },
+        where: {
+          cartonId: validCarton2Id,
+          movementType: CartonMovementType.DISPATCH,
+        },
       });
       expect(movement).toBeDefined();
       expect(movement?.tenantId).toBe(tenantAId);
@@ -1482,7 +1584,7 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
       expect(issueTransactions[0].styleId).toBe(styleAId);
     });
 
-    it('7.2 should be idempotent: retrying dispatch returns existing record without double-deduction', async () => {
+    it("7.2 should be idempotent: retrying dispatch returns existing record without double-deduction", async () => {
       const stockBeforeRetry = await prisma.inventoryItem.findFirst({
         where: { tenantId: tenantAId, styleId: styleAId },
       });
@@ -1490,7 +1592,7 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
 
       const res = await request(app.getHttpServer())
         .post(`/shipping/gate-pass/${gatePassId}/dispatch`)
-        .set('Authorization', `Bearer ${adminTokenA}`)
+        .set("Authorization", `Bearer ${adminTokenA}`)
         .send()
         .expect(200);
 
@@ -1513,55 +1615,59 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
       expect(issueTransactions).toHaveLength(1);
     });
 
-    it('7.3 should reject cancellation of a dispatched gate pass (terminal state) with HTTP 409', async () => {
+    it("7.3 should reject cancellation of a dispatched gate pass (terminal state) with HTTP 409", async () => {
       const res = await request(app.getHttpServer())
         .post(`/shipping/gate-pass/${gatePassId}/cancel`)
-        .set('Authorization', `Bearer ${adminTokenA}`)
-        .send({ reason: 'Attempt reversal' })
+        .set("Authorization", `Bearer ${adminTokenA}`)
+        .send({ reason: "Attempt reversal" })
         .expect(409);
 
-      expect(res.body.message).toContain('Cannot cancel gate pass in DISPATCHED status');
+      expect(res.body.message).toContain(
+        "Cannot cancel gate pass in DISPATCHED status",
+      );
     });
 
-    it('7.4 should reject approval of a dispatched gate pass with HTTP 409', async () => {
+    it("7.4 should reject approval of a dispatched gate pass with HTTP 409", async () => {
       const res = await request(app.getHttpServer())
         .post(`/shipping/gate-pass/${gatePassId}/approve`)
-        .set('Authorization', `Bearer ${adminTokenA}`)
+        .set("Authorization", `Bearer ${adminTokenA}`)
         .send()
         .expect(409);
 
-      expect(res.body.message).toContain('Cannot approve gate pass in DISPATCHED status');
+      expect(res.body.message).toContain(
+        "Cannot approve gate pass in DISPATCHED status",
+      );
     });
 
-    it('7.5 should prevent shipped cartons from ever being re-assigned with HTTP 409', async () => {
+    it("7.5 should prevent shipped cartons from ever being re-assigned with HTTP 409", async () => {
       const res = await request(app.getHttpServer())
-        .post('/shipping/shipments')
-        .set('Authorization', `Bearer ${adminTokenA}`)
+        .post("/shipping/shipments")
+        .set("Authorization", `Bearer ${adminTokenA}`)
         .send({
           buyerId: buyerAId,
           cartonIds: [validCarton2Id],
         })
         .expect(409);
 
-      expect(res.body.message).toContain('is already SHIPPED');
+      expect(res.body.message).toContain("is already SHIPPED");
     });
   });
 
   // =========================================================================
   // SUITE 8: End-to-End 14-Link Traceability Chain
   // =========================================================================
-  describe('8. End-to-End 14-Link Traceability Verification', () => {
-    it('8.1 should trace complete chain from Buyer to Outbound Gate Pass', async () => {
+  describe("8. End-to-End 14-Link Traceability Verification", () => {
+    it("8.1 should trace complete chain from Buyer to Outbound Gate Pass", async () => {
       // 1. Buyer
       const buyer = await prisma.buyer.findUnique({ where: { id: buyerAId } });
-      expect(buyer?.code).toBe('BUY-NORDSTROM');
+      expect(buyer?.code).toBe("BUY-NORDSTROM");
 
       // 2. Buyer PO
       const buyerPo = await prisma.buyerPo.findUnique({
         where: { id: buyerPoAId },
         include: { buyerPoLines: true },
       });
-      expect(buyerPo?.poNumber).toBe('PO-NDS-2026-83');
+      expect(buyerPo?.poNumber).toBe("PO-NDS-2026-83");
 
       // 3. Buyer PO Line
       const poLine = buyerPo?.buyerPoLines[0];
@@ -1570,11 +1676,13 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
 
       // 4. Style
       const style = await prisma.style.findUnique({ where: { id: styleAId } });
-      expect(style?.code).toBe('STY-CHINO-83');
+      expect(style?.code).toBe("STY-CHINO-83");
 
       // 5. Production Order
-      const prodOrder = await prisma.productionOrder.findUnique({ where: { id: prodOrderAId } });
-      expect(prodOrder?.orderNumber).toBe('PRD-ORD-P83-CLEAN');
+      const prodOrder = await prisma.productionOrder.findUnique({
+        where: { id: prodOrderAId },
+      });
+      expect(prodOrder?.orderNumber).toBe("PRD-ORD-P83-CLEAN");
 
       // 6. Production Output (Authoritative FG Receipt)
       const txFg = await prisma.inventoryTransaction.findFirst({
@@ -1587,13 +1695,13 @@ describe('ShippingModule (e2e Phase 8.3)', () => {
         where: { id: validCarton2Id },
         include: { items: true },
       });
-      expect(carton?.cartonNumber).toBe('CTN-P83-VALID-02');
+      expect(carton?.cartonNumber).toBe("CTN-P83-VALID-02");
       expect(carton?.status).toBe(CartonStatus.SHIPPED);
 
       // 8. Carton Item
       const cartonItem = carton?.items[0];
-      expect(cartonItem?.color).toBe('Navy');
-      expect(cartonItem?.size).toBe('34');
+      expect(cartonItem?.color).toBe("Navy");
+      expect(cartonItem?.size).toBe("34");
       expect(cartonItem?.quantity).toBe(50);
 
       // 9. Packing List

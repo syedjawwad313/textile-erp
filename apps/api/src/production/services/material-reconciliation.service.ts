@@ -2,12 +2,12 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
-} from '@nestjs/common';
-import { prisma, Prisma } from '@textile-erp/database';
+} from "@nestjs/common";
+import { prisma, Prisma } from "@textile-erp/database";
 import {
   ReconcileProductionOrderDto,
   QueryMaterialReconciliationsDto,
-} from '../dto/material-reconciliation.dto';
+} from "../dto/material-reconciliation.dto";
 
 @Injectable()
 export class MaterialReconciliationService {
@@ -44,7 +44,7 @@ export class MaterialReconciliationService {
 
       for (const bom of order.bomLines) {
         const qty = Number(bom.totalRequired);
-        if (bom.material.category === 'FABRIC' || !bom.material.category) {
+        if (bom.material.category === "FABRIC" || !bom.material.category) {
           plannedFabricMeters += qty;
         } else {
           // Trims / Accessories
@@ -69,22 +69,21 @@ export class MaterialReconciliationService {
       // 4. Compute Trims Consumption (Issue - Return)
       const issuedTrims = order.materialIssueNotes.reduce((sum, n) => {
         return (
-          sum +
-          n.lines.reduce((lSum, l) => lSum + Number(l.quantity || 0), 0)
+          sum + n.lines.reduce((lSum, l) => lSum + Number(l.quantity || 0), 0)
         );
       }, 0);
 
       const returnedTrims = order.materialReturnNotes.reduce((sum, n) => {
         return (
-          sum +
-          n.lines.reduce((lSum, l) => lSum + Number(l.quantity || 0), 0)
+          sum + n.lines.reduce((lSum, l) => lSum + Number(l.quantity || 0), 0)
         );
       }, 0);
 
       const actualTrimsCost = Math.max(0, issuedTrims - returnedTrims);
 
       // 5. Calculate Variances & Yield Percentage
-      const metersVariance = Math.round((actualCutMeters - plannedFabricMeters) * 10000) / 10000;
+      const metersVariance =
+        Math.round((actualCutMeters - plannedFabricMeters) * 10000) / 10000;
 
       let cuttingYieldPercentage = 100.0;
       if (plannedFabricMeters > 0 && actualCutMeters > 0) {
@@ -95,16 +94,16 @@ export class MaterialReconciliationService {
       }
 
       // 6. Status Determination
-      let status: 'BALANCED' | 'OVER_CONSUMPTION' | 'OPTIMAL' = 'BALANCED';
+      let status: "BALANCED" | "OVER_CONSUMPTION" | "OPTIMAL" = "BALANCED";
       if (metersVariance <= 0) {
-        status = 'OPTIMAL';
+        status = "OPTIMAL";
       } else {
         const varianceRatio =
           plannedFabricMeters > 0 ? metersVariance / plannedFabricMeters : 0;
         if (varianceRatio <= 0.05) {
-          status = 'BALANCED';
+          status = "BALANCED";
         } else {
-          status = 'OVER_CONSUMPTION';
+          status = "OVER_CONSUMPTION";
         }
       }
 
@@ -150,9 +149,9 @@ export class MaterialReconciliationService {
       await tx.auditEvent.create({
         data: {
           tenantId,
-          actorId: actorId || 'SYSTEM',
-          action: 'MATERIAL_RECONCILIATION_COMPLETED',
-          entity: 'MaterialReconciliation',
+          actorId: actorId || "SYSTEM",
+          action: "MATERIAL_RECONCILIATION_COMPLETED",
+          entity: "MaterialReconciliation",
           entityId: reconciliation.id,
           newValues: {
             productionOrderId,
@@ -162,7 +161,8 @@ export class MaterialReconciliationService {
             cuttingYieldPercentage,
             status,
           },
-          reason: dto.notes || 'Production order material reconciliation completed',
+          reason:
+            dto.notes || "Production order material reconciliation completed",
         },
       });
 
@@ -173,7 +173,8 @@ export class MaterialReconciliationService {
   async findAll(tenantId: string, query?: QueryMaterialReconciliationsDto) {
     const where: Prisma.MaterialReconciliationWhereInput = { tenantId };
     if (query?.status) where.status = query.status;
-    if (query?.productionOrderId) where.productionOrderId = query.productionOrderId;
+    if (query?.productionOrderId)
+      where.productionOrderId = query.productionOrderId;
 
     return prisma.materialReconciliation.findMany({
       where,
@@ -187,7 +188,7 @@ export class MaterialReconciliationService {
           },
         },
       },
-      orderBy: { reconciledAt: 'desc' },
+      orderBy: { reconciledAt: "desc" },
     });
   }
 
@@ -205,7 +206,9 @@ export class MaterialReconciliationService {
     });
 
     if (!item || item.tenantId !== tenantId) {
-      throw new NotFoundException(`MaterialReconciliation with ID ${id} not found`);
+      throw new NotFoundException(
+        `MaterialReconciliation with ID ${id} not found`,
+      );
     }
 
     return item;

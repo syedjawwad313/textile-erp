@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException } from "@nestjs/common";
 
 @Injectable()
 export class SsccService {
@@ -13,8 +13,14 @@ export class SsccService {
    * 3. Check digit = (10 - (sum % 10)) % 10.
    */
   calculateCheckDigit(payload17Digits: string): number {
-    if (!payload17Digits || payload17Digits.length !== 17 || !/^\d{17}$/.test(payload17Digits)) {
-      throw new BadRequestException('SSCC payload must be exactly 17 numeric digits to compute check digit');
+    if (
+      !payload17Digits ||
+      payload17Digits.length !== 17 ||
+      !/^\d{17}$/.test(payload17Digits)
+    ) {
+      throw new BadRequestException(
+        "SSCC payload must be exactly 17 numeric digits to compute check digit",
+      );
     }
 
     let sum = 0;
@@ -53,10 +59,19 @@ export class SsccService {
    * - 9 digits: Serial Reference (padded with leading zeros)
    * - 1 digit: Modulo-10 Check Digit
    */
-  generateSscc(extensionDigit = 0, companyPrefix = '0123456', serialNumber: number): string {
+  generateSscc(
+    extensionDigit = 0,
+    companyPrefix = "0123456",
+    serialNumber: number,
+  ): string {
     const ext = String(Math.max(0, Math.min(9, Math.floor(extensionDigit))));
-    const prefix = companyPrefix.replace(/\D/g, '').padStart(7, '0').slice(0, 7);
-    const serial = String(Math.abs(Math.floor(serialNumber))).padStart(9, '0').slice(-9);
+    const prefix = companyPrefix
+      .replace(/\D/g, "")
+      .padStart(7, "0")
+      .slice(0, 7);
+    const serial = String(Math.abs(Math.floor(serialNumber)))
+      .padStart(9, "0")
+      .slice(-9);
 
     const payload = `${ext}${prefix}${serial}`;
     const checkDigit = this.calculateCheckDigit(payload);

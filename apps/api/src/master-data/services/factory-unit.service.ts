@@ -1,14 +1,25 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { prisma } from '@textile-erp/database';
-import { CreateFactoryUnitDto, UpdateFactoryUnitDto } from '../dto/master-data.dto';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from "@nestjs/common";
+import { prisma } from "@textile-erp/database";
+import {
+  CreateFactoryUnitDto,
+  UpdateFactoryUnitDto,
+} from "../dto/master-data.dto";
 
 @Injectable()
 export class FactoryUnitService {
   async create(tenantId: string, dto: CreateFactoryUnitDto) {
     // Verify company belongs to the tenant
-    const company = await prisma.company.findUnique({ where: { id: dto.companyId } });
+    const company = await prisma.company.findUnique({
+      where: { id: dto.companyId },
+    });
     if (!company || company.tenantId !== tenantId) {
-      throw new BadRequestException(`Company with id ${dto.companyId} not found or doesn't belong to your tenant`);
+      throw new BadRequestException(
+        `Company with id ${dto.companyId} not found or doesn't belong to your tenant`,
+      );
     }
 
     return prisma.factoryUnit.create({

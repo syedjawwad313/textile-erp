@@ -1,5 +1,11 @@
-import { IsString, IsOptional, IsUUID, IsDateString, IsEnum } from 'class-validator';
-import { DowntimeStatus } from '@textile-erp/database';
+import {
+  IsString,
+  IsOptional,
+  IsUUID,
+  IsDateString,
+  IsEnum,
+} from "class-validator";
+import { DowntimeStatus } from "@textile-erp/database";
 
 export class CreateDowntimeEventDto {
   @IsUUID()

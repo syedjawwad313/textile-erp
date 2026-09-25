@@ -3,7 +3,7 @@ import {
   BadRequestException,
   NotFoundException,
   ConflictException,
-} from '@nestjs/common';
+} from "@nestjs/common";
 import {
   PrismaClient,
   Prisma,
@@ -14,12 +14,12 @@ import {
   QualityHoldStatus,
   InspectionStage,
   AqlAuditStatus,
-} from '@textile-erp/database';
+} from "@textile-erp/database";
 import {
   CreateShipmentDto,
   AssignCartonsToShipmentDto,
   QueryShipmentsDto,
-} from '../dto/shipping.dto';
+} from "../dto/shipping.dto";
 
 const prisma = new PrismaClient();
 
@@ -46,7 +46,7 @@ export class ShipmentService {
     dto: CreateShipmentDto,
   ) {
     if (!idempotencyKey) {
-      throw new BadRequestException('X-Idempotency-Key header is required');
+      throw new BadRequestException("X-Idempotency-Key header is required");
     }
 
     return prisma.$transaction(async (tx) => {
@@ -72,12 +72,16 @@ export class ShipmentService {
 
       // 3. Validate BuyerPo if specified
       if (dto.buyerPoId) {
-        const po = await tx.buyerPo.findUnique({ where: { id: dto.buyerPoId } });
+        const po = await tx.buyerPo.findUnique({
+          where: { id: dto.buyerPoId },
+        });
         if (!po || po.tenantId !== tenantId) {
           throw new NotFoundException(`BuyerPo ${dto.buyerPoId} not found`);
         }
         if (po.buyerId !== buyer.id) {
-          throw new BadRequestException(`BuyerPo ${po.poNumber} does not belong to Buyer ${buyer.name}`);
+          throw new BadRequestException(
+            `BuyerPo ${po.poNumber} does not belong to Buyer ${buyer.name}`,
+          );
         }
       }
 
@@ -86,7 +90,9 @@ export class ShipmentService {
         const seen = new Set<string>();
         for (const cId of dto.cartonIds) {
           if (seen.has(cId)) {
-            throw new ConflictException(`Duplicate carton specified in request: ${cId}`);
+            throw new ConflictException(
+              `Duplicate carton specified in request: ${cId}`,
+            );
           }
           seen.add(cId);
         }
@@ -114,7 +120,12 @@ export class ShipmentService {
       let totalCbm = 0;
       const styleAggregation: Record<
         string,
-        { cartonCount: number; totalUnits: number; grossWeightKg: number; cbm: number }
+        {
+          cartonCount: number;
+          totalUnits: number;
+          grossWeightKg: number;
+          cbm: number;
+        }
       > = {};
 
       if (resolvedCartonIds.length > 0) {
@@ -125,7 +136,9 @@ export class ShipmentService {
               include: {
                 bundle: {
                   include: {
-                    qualityHolds: { where: { status: QualityHoldStatus.ACTIVE } },
+                    qualityHolds: {
+                      where: { status: QualityHoldStatus.ACTIVE },
+                    },
                   },
                 },
               },
@@ -137,7 +150,7 @@ export class ShipmentService {
                 qualityHolds: { where: { status: QualityHoldStatus.ACTIVE } },
                 aqlAudits: {
                   where: { stage: InspectionStage.FINAL_AUDIT },
-                  orderBy: { auditDate: 'desc' },
+                  orderBy: { auditDate: "desc" },
                   take: 1,
                 },
               },
@@ -146,16 +159,22 @@ export class ShipmentService {
         });
 
         if (cartons.length !== resolvedCartonIds.length) {
-          throw new ConflictException('One or more specified cartons not found in tenant');
+          throw new ConflictException(
+            "One or more specified cartons not found in tenant",
+          );
         }
 
         for (const carton of cartons) {
           // A. Status check
           if (carton.status === CartonStatus.CANCELLED) {
-            throw new ConflictException(`Carton ${carton.cartonNumber} is CANCELLED`);
+            throw new ConflictException(
+              `Carton ${carton.cartonNumber} is CANCELLED`,
+            );
           }
           if (carton.status === CartonStatus.SHIPPED) {
-            throw new ConflictException(`Carton ${carton.cartonNumber} is already SHIPPED`);
+            throw new ConflictException(
+              `Carton ${carton.cartonNumber} is already SHIPPED`,
+            );
           }
 
           // B. Reservation check (concurrency invariant: 1 carton -> at most 1 active shipment)
@@ -173,7 +192,9 @@ export class ShipmentService {
           }
 
           // D. Quality Hold check (Order level)
-          const orderHolds = carton.productionOrder.qualityHolds?.filter((h) => !h.bundleId) || [];
+          const orderHolds =
+            carton.productionOrder.qualityHolds?.filter((h) => !h.bundleId) ||
+            [];
           if (orderHolds.length > 0) {
             const hold = orderHolds[0];
             throw new ConflictException(
@@ -183,9 +204,15 @@ export class ShipmentService {
 
           // D2. Quality Hold check (Bundle level)
           for (const item of carton.items) {
-            if (item.bundle?.isQualityHold || (item.bundle?.qualityHolds && item.bundle.qualityHolds.length > 0)) {
+            if (
+              item.bundle?.isQualityHold ||
+              (item.bundle?.qualityHolds && item.bundle.qualityHolds.length > 0)
+            ) {
               const bHold = item.bundle?.qualityHolds?.[0];
-              const reason = item.bundle?.qualityHoldReason || bHold?.reason || 'Quality Hold';
+              const reason =
+                item.bundle?.qualityHoldReason ||
+                bHold?.reason ||
+                "Quality Hold";
               throw new ConflictException(
                 `Carton ${carton.cartonNumber}: Active quality hold exists on bundle (${reason})`,
               );
@@ -250,8 +277,10 @@ export class ShipmentService {
             }
             styleAggregation[item.styleId].cartonCount += 1;
             styleAggregation[item.styleId].totalUnits += item.quantity;
-            styleAggregation[item.styleId].grossWeightKg += Number(carton.grossWeightKg || 0) / (carton.items.length || 1);
-            styleAggregation[item.styleId].cbm += Number(carton.cbm || 0) / (carton.items.length || 1);
+            styleAggregation[item.styleId].grossWeightKg +=
+              Number(carton.grossWeightKg || 0) / (carton.items.length || 1);
+            styleAggregation[item.styleId].cbm +=
+              Number(carton.cbm || 0) / (carton.items.length || 1);
           }
         }
       }
@@ -259,7 +288,7 @@ export class ShipmentService {
       // 5. Generate Shipment Number
       const shipmentNumber =
         dto.shipmentNumber?.trim() ||
-        `SHP-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Date.now().toString().slice(-4)}`;
+        `SHP-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${Date.now().toString().slice(-4)}`;
 
       // 6. Create Shipment
       const shipment = await tx.shipment.create({
@@ -277,10 +306,14 @@ export class ShipmentService {
           status: ShipmentStatus.DRAFT,
           totalCartons,
           totalUnits,
-          totalGrossWeightKg: totalGrossWeight > 0 ? new Prisma.Decimal(totalGrossWeight) : null,
-          totalNetWeightKg: totalNetWeight > 0 ? new Prisma.Decimal(totalNetWeight) : null,
+          totalGrossWeightKg:
+            totalGrossWeight > 0 ? new Prisma.Decimal(totalGrossWeight) : null,
+          totalNetWeightKg:
+            totalNetWeight > 0 ? new Prisma.Decimal(totalNetWeight) : null,
           totalCbm: totalCbm > 0 ? new Prisma.Decimal(totalCbm) : null,
-          plannedShipDate: dto.plannedShipDate ? new Date(dto.plannedShipDate) : null,
+          plannedShipDate: dto.plannedShipDate
+            ? new Date(dto.plannedShipDate)
+            : null,
           notes: dto.notes || null,
           idempotencyKey,
         },
@@ -295,7 +328,10 @@ export class ShipmentService {
             styleId,
             cartonCount: data.cartonCount,
             totalUnits: data.totalUnits,
-            grossWeightKg: data.grossWeightKg > 0 ? new Prisma.Decimal(data.grossWeightKg) : null,
+            grossWeightKg:
+              data.grossWeightKg > 0
+                ? new Prisma.Decimal(data.grossWeightKg)
+                : null,
             cbm: data.cbm > 0 ? new Prisma.Decimal(data.cbm) : null,
           },
         });
@@ -313,9 +349,9 @@ export class ShipmentService {
       await tx.auditEvent.create({
         data: {
           tenantId,
-          actorId: actorId || 'SYSTEM',
-          action: 'SHIPMENT_CREATED',
-          entity: 'Shipment',
+          actorId: actorId || "SYSTEM",
+          action: "SHIPMENT_CREATED",
+          entity: "Shipment",
           entityId: shipment.id,
           newValues: {
             shipmentNumber,
@@ -323,7 +359,7 @@ export class ShipmentService {
             totalCartons,
             totalUnits,
           },
-          reason: dto.notes || 'Shipment created and cartons reserved',
+          reason: dto.notes || "Shipment created and cartons reserved",
         },
       });
 
@@ -354,10 +390,10 @@ export class ShipmentService {
     if (query?.status) where.status = query.status;
     if (query?.search) {
       where.OR = [
-        { shipmentNumber: { contains: query.search, mode: 'insensitive' } },
-        { carrier: { contains: query.search, mode: 'insensitive' } },
-        { containerNumber: { contains: query.search, mode: 'insensitive' } },
-        { trackingNumber: { contains: query.search, mode: 'insensitive' } },
+        { shipmentNumber: { contains: query.search, mode: "insensitive" } },
+        { carrier: { contains: query.search, mode: "insensitive" } },
+        { containerNumber: { contains: query.search, mode: "insensitive" } },
+        { trackingNumber: { contains: query.search, mode: "insensitive" } },
       ];
     }
 
@@ -371,7 +407,7 @@ export class ShipmentService {
         invoices: true,
         gatePasses: true,
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       take: query?.limit || 50,
     });
 
@@ -388,7 +424,13 @@ export class ShipmentService {
         buyer: true,
         buyerPo: true,
         items: { include: { style: true } },
-        cartons: { include: { items: { include: { style: true } }, bin: true, warehouse: true } },
+        cartons: {
+          include: {
+            items: { include: { style: true } },
+            bin: true,
+            warehouse: true,
+          },
+        },
         invoices: { include: { lines: true } },
         gatePasses: { include: { approvedBy: true } },
       },
@@ -424,7 +466,9 @@ export class ShipmentService {
         shipment.status === ShipmentStatus.DELIVERED ||
         shipment.status === ShipmentStatus.CANCELLED
       ) {
-        throw new ConflictException(`Cannot add cartons to shipment in ${shipment.status} status`);
+        throw new ConflictException(
+          `Cannot add cartons to shipment in ${shipment.status} status`,
+        );
       }
 
       // Resolve carton IDs
@@ -439,7 +483,7 @@ export class ShipmentService {
 
       const resolvedCartonIds = Array.from(cartonIdSet);
       if (resolvedCartonIds.length === 0) {
-        throw new BadRequestException('No cartons specified for assignment');
+        throw new BadRequestException("No cartons specified for assignment");
       }
 
       const cartons = await tx.carton.findMany({
@@ -461,7 +505,7 @@ export class ShipmentService {
               qualityHolds: { where: { status: QualityHoldStatus.ACTIVE } },
               aqlAudits: {
                 where: { stage: InspectionStage.FINAL_AUDIT },
-                orderBy: { auditDate: 'desc' },
+                orderBy: { auditDate: "desc" },
                 take: 1,
               },
             },
@@ -470,15 +514,19 @@ export class ShipmentService {
       });
 
       if (cartons.length !== resolvedCartonIds.length) {
-        throw new BadRequestException('One or more carton IDs do not exist');
+        throw new BadRequestException("One or more carton IDs do not exist");
       }
 
       for (const carton of cartons) {
         if (carton.status === CartonStatus.CANCELLED) {
-          throw new ConflictException(`Cannot include CANCELLED carton ${carton.cartonNumber}`);
+          throw new ConflictException(
+            `Cannot include CANCELLED carton ${carton.cartonNumber}`,
+          );
         }
         if (carton.status === CartonStatus.SHIPPED) {
-          throw new ConflictException(`Carton ${carton.cartonNumber} is already SHIPPED`);
+          throw new ConflictException(
+            `Carton ${carton.cartonNumber} is already SHIPPED`,
+          );
         }
         if (carton.shipmentId && carton.shipmentId !== shipment.id) {
           throw new ConflictException(
@@ -490,14 +538,18 @@ export class ShipmentService {
             `Carton ${carton.cartonNumber} is currently located in a QUARANTINE bin`,
           );
         }
-        const orderHolds = carton.productionOrder.qualityHolds?.filter((h) => !h.bundleId) || [];
+        const orderHolds =
+          carton.productionOrder.qualityHolds?.filter((h) => !h.bundleId) || [];
         if (orderHolds.length > 0) {
           throw new ConflictException(
             `Carton ${carton.cartonNumber} has an active Quality Hold`,
           );
         }
         for (const item of carton.items) {
-          if (item.bundle?.isQualityHold || (item.bundle?.qualityHolds && item.bundle.qualityHolds.length > 0)) {
+          if (
+            item.bundle?.isQualityHold ||
+            (item.bundle?.qualityHolds && item.bundle.qualityHolds.length > 0)
+          ) {
             throw new ConflictException(
               `Carton ${carton.cartonNumber} has an active bundle Quality Hold`,
             );
@@ -509,7 +561,10 @@ export class ShipmentService {
             `Carton ${carton.cartonNumber} lacks passing FINAL_AUDIT quality release`,
           );
         }
-        if (carton.packingList && carton.packingList.status !== PackingListStatus.FINALIZED) {
+        if (
+          carton.packingList &&
+          carton.packingList.status !== PackingListStatus.FINALIZED
+        ) {
           throw new ConflictException(
             `Packing list ${carton.packingList.packingListNumber} must be FINALIZED`,
           );
@@ -528,14 +583,19 @@ export class ShipmentService {
         include: { items: true },
       });
 
-      let totalCartons = allCartons.length;
+      const totalCartons = allCartons.length;
       let totalUnits = 0;
       let totalGrossWeight = 0;
       let totalNetWeight = 0;
       let totalCbm = 0;
       const styleAggregation: Record<
         string,
-        { cartonCount: number; totalUnits: number; grossWeightKg: number; cbm: number }
+        {
+          cartonCount: number;
+          totalUnits: number;
+          grossWeightKg: number;
+          cbm: number;
+        }
       > = {};
 
       for (const c of allCartons) {
@@ -546,12 +606,19 @@ export class ShipmentService {
 
         for (const it of c.items) {
           if (!styleAggregation[it.styleId]) {
-            styleAggregation[it.styleId] = { cartonCount: 0, totalUnits: 0, grossWeightKg: 0, cbm: 0 };
+            styleAggregation[it.styleId] = {
+              cartonCount: 0,
+              totalUnits: 0,
+              grossWeightKg: 0,
+              cbm: 0,
+            };
           }
           styleAggregation[it.styleId].cartonCount += 1;
           styleAggregation[it.styleId].totalUnits += it.quantity;
-          styleAggregation[it.styleId].grossWeightKg += Number(c.grossWeightKg || 0) / (c.items.length || 1);
-          styleAggregation[it.styleId].cbm += Number(c.cbm || 0) / (c.items.length || 1);
+          styleAggregation[it.styleId].grossWeightKg +=
+            Number(c.grossWeightKg || 0) / (c.items.length || 1);
+          styleAggregation[it.styleId].cbm +=
+            Number(c.cbm || 0) / (c.items.length || 1);
         }
       }
 
@@ -561,8 +628,10 @@ export class ShipmentService {
         data: {
           totalCartons,
           totalUnits,
-          totalGrossWeightKg: totalGrossWeight > 0 ? new Prisma.Decimal(totalGrossWeight) : null,
-          totalNetWeightKg: totalNetWeight > 0 ? new Prisma.Decimal(totalNetWeight) : null,
+          totalGrossWeightKg:
+            totalGrossWeight > 0 ? new Prisma.Decimal(totalGrossWeight) : null,
+          totalNetWeightKg:
+            totalNetWeight > 0 ? new Prisma.Decimal(totalNetWeight) : null,
           totalCbm: totalCbm > 0 ? new Prisma.Decimal(totalCbm) : null,
         },
       });
@@ -577,7 +646,10 @@ export class ShipmentService {
             styleId,
             cartonCount: data.cartonCount,
             totalUnits: data.totalUnits,
-            grossWeightKg: data.grossWeightKg > 0 ? new Prisma.Decimal(data.grossWeightKg) : null,
+            grossWeightKg:
+              data.grossWeightKg > 0
+                ? new Prisma.Decimal(data.grossWeightKg)
+                : null,
             cbm: data.cbm > 0 ? new Prisma.Decimal(data.cbm) : null,
           },
         });
@@ -590,7 +662,12 @@ export class ShipmentService {
   /**
    * Cancels an un-dispatched shipment and transactionally releases all carton claims.
    */
-  async cancelShipment(tenantId: string, actorId: string, shipmentId: string, reason?: string) {
+  async cancelShipment(
+    tenantId: string,
+    actorId: string,
+    shipmentId: string,
+    reason?: string,
+  ) {
     return prisma.$transaction(async (tx) => {
       const shipment = await tx.shipment.findUnique({
         where: { id: shipmentId },
@@ -600,8 +677,13 @@ export class ShipmentService {
         throw new NotFoundException(`Shipment ${shipmentId} not found`);
       }
 
-      if (shipment.status === ShipmentStatus.DISPATCHED || shipment.status === ShipmentStatus.DELIVERED) {
-        throw new ConflictException(`Cannot cancel shipment in ${shipment.status} status (already dispatched)`);
+      if (
+        shipment.status === ShipmentStatus.DISPATCHED ||
+        shipment.status === ShipmentStatus.DELIVERED
+      ) {
+        throw new ConflictException(
+          `Cannot cancel shipment in ${shipment.status} status (already dispatched)`,
+        );
       }
 
       if (shipment.status === ShipmentStatus.CANCELLED) {
@@ -618,9 +700,9 @@ export class ShipmentService {
       await tx.outboundGatePass.updateMany({
         where: {
           shipmentId: shipment.id,
-          status: { in: ['DRAFT', 'APPROVED'] as any },
+          status: { in: ["DRAFT", "APPROVED"] as any },
         },
-        data: { status: 'CANCELLED' as any },
+        data: { status: "CANCELLED" as any },
       });
 
       // Update shipment status
@@ -633,10 +715,10 @@ export class ShipmentService {
         data: {
           tenantId,
           actorId,
-          action: 'SHIPMENT_CANCELLED',
-          entity: 'Shipment',
+          action: "SHIPMENT_CANCELLED",
+          entity: "Shipment",
           entityId: shipment.id,
-          reason: reason || 'Shipment cancelled by user; cartons released',
+          reason: reason || "Shipment cancelled by user; cartons released",
         },
       });
 

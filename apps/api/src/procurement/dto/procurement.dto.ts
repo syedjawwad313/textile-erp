@@ -7,9 +7,9 @@ import {
   IsArray,
   IsEnum,
   Min,
-} from 'class-validator';
-import { Type } from 'class-transformer';
-import { VpoStatus, SupplierReturnStatus } from '@textile-erp/database';
+} from "class-validator";
+import { Type } from "class-transformer";
+import { VpoStatus, SupplierReturnStatus } from "@textile-erp/database";
 
 export class CreateBuyerPoLineDto {
   @IsString()

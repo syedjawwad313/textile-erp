@@ -1,5 +1,5 @@
-import { IsString, IsEnum, IsOptional, IsBoolean } from 'class-validator';
-import { DefectCategory, DefectSeverity } from '@textile-erp/database';
+import { IsString, IsEnum, IsOptional, IsBoolean } from "class-validator";
+import { DefectCategory, DefectSeverity } from "@textile-erp/database";
 
 export class CreateDefectCatalogDto {
   @IsString()

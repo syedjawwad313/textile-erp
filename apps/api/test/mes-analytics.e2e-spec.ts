@@ -1,7 +1,7 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
-import * as request from 'supertest';
-import { AppModule } from '../src/app.module';
+import { Test, TestingModule } from "@nestjs/testing";
+import { INestApplication, ValidationPipe } from "@nestjs/common";
+import * as request from "supertest";
+import { AppModule } from "../src/app.module";
 import {
   prisma,
   ProductionStatus,
@@ -10,10 +10,10 @@ import {
   QualityHoldStatus,
   DefectStatus,
   EmployeeType,
-} from '@textile-erp/database';
-import * as argon2 from 'argon2';
+} from "@textile-erp/database";
+import * as argon2 from "argon2";
 
-describe('MES Production Analytics & Live Operations (e2e)', () => {
+describe("MES Production Analytics & Live Operations (e2e)", () => {
   let app: INestApplication;
   let tenantId: string;
   let foreignTenantId: string;
@@ -49,116 +49,231 @@ describe('MES Production Analytics & Live Operations (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+    app.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, transform: true }),
+    );
     await app.init();
 
     // 1. Tenants
-    const tenant = await prisma.tenant.create({ data: { name: 'Analytics Primary Tenant' } });
+    const tenant = await prisma.tenant.create({
+      data: { name: "Analytics Primary Tenant" },
+    });
     tenantId = tenant.id;
 
-    const foreignTenant = await prisma.tenant.create({ data: { name: 'Analytics Foreign Tenant' } });
+    const foreignTenant = await prisma.tenant.create({
+      data: { name: "Analytics Foreign Tenant" },
+    });
     foreignTenantId = foreignTenant.id;
 
-    const emptyTenant = await prisma.tenant.create({ data: { name: 'Analytics Empty Tenant' } });
+    const emptyTenant = await prisma.tenant.create({
+      data: { name: "Analytics Empty Tenant" },
+    });
     emptyTenantId = emptyTenant.id;
 
     // Users & Auth
-    const pwd = await argon2.hash('TestPass123!');
+    const pwd = await argon2.hash("TestPass123!");
     const user = await prisma.user.create({
-      data: { tenantId, email: 'analytics-admin@test.com', passwordHash: pwd, firstName: 'Analyst', lastName: 'Primary' },
+      data: {
+        tenantId,
+        email: "analytics-admin@test.com",
+        passwordHash: pwd,
+        firstName: "Analyst",
+        lastName: "Primary",
+      },
     });
     const foreignUser = await prisma.user.create({
-      data: { tenantId: foreignTenantId, email: 'analytics-foreign@test.com', passwordHash: pwd, firstName: 'Foreign', lastName: 'User' },
+      data: {
+        tenantId: foreignTenantId,
+        email: "analytics-foreign@test.com",
+        passwordHash: pwd,
+        firstName: "Foreign",
+        lastName: "User",
+      },
     });
 
-    const role = await prisma.role.create({ data: { tenantId, name: 'ANALYTICS_ADMIN' } });
-    const foreignRole = await prisma.role.create({ data: { tenantId: foreignTenantId, name: 'FOREIGN_ROLE' } });
+    const role = await prisma.role.create({
+      data: { tenantId, name: "ANALYTICS_ADMIN" },
+    });
+    const foreignRole = await prisma.role.create({
+      data: { tenantId: foreignTenantId, name: "FOREIGN_ROLE" },
+    });
 
-    await prisma.userRole.create({ data: { userId: user.id, roleId: role.id } });
-    await prisma.userRole.create({ data: { userId: foreignUser.id, roleId: foreignRole.id } });
+    await prisma.userRole.create({
+      data: { userId: user.id, roleId: role.id },
+    });
+    await prisma.userRole.create({
+      data: { userId: foreignUser.id, roleId: foreignRole.id },
+    });
 
     const loginRes = await request(app.getHttpServer())
-      .post('/auth/login')
-      .send({ tenantId, email: 'analytics-admin@test.com', password: 'TestPass123!' });
+      .post("/auth/login")
+      .send({
+        tenantId,
+        email: "analytics-admin@test.com",
+        password: "TestPass123!",
+      });
     accessToken = loginRes.body.accessToken;
 
     const foreignLoginRes = await request(app.getHttpServer())
-      .post('/auth/login')
-      .send({ tenantId: foreignTenantId, email: 'analytics-foreign@test.com', password: 'TestPass123!' });
+      .post("/auth/login")
+      .send({
+        tenantId: foreignTenantId,
+        email: "analytics-foreign@test.com",
+        password: "TestPass123!",
+      });
     foreignAccessToken = foreignLoginRes.body.accessToken;
 
     // 2. Factories, Lines, Machines
-    const company = await prisma.company.create({ data: { tenantId, name: 'Analytics Textile Corp' } });
-    const foreignCompany = await prisma.company.create({ data: { tenantId: foreignTenantId, name: 'Foreign Corp' } });
+    const company = await prisma.company.create({
+      data: { tenantId, name: "Analytics Textile Corp" },
+    });
+    const foreignCompany = await prisma.company.create({
+      data: { tenantId: foreignTenantId, name: "Foreign Corp" },
+    });
 
     const factory = await prisma.factoryUnit.create({
-      data: { tenantId, companyId: company.id, code: 'FAC-ANL-01', name: 'Analytics Unit 1' },
+      data: {
+        tenantId,
+        companyId: company.id,
+        code: "FAC-ANL-01",
+        name: "Analytics Unit 1",
+      },
     });
     factoryId = factory.id;
 
     const foreignFactory = await prisma.factoryUnit.create({
-      data: { tenantId: foreignTenantId, companyId: foreignCompany.id, code: 'FAC-FOR-01', name: 'Foreign Unit' },
+      data: {
+        tenantId: foreignTenantId,
+        companyId: foreignCompany.id,
+        code: "FAC-FOR-01",
+        name: "Foreign Unit",
+      },
     });
     foreignFactoryId = foreignFactory.id;
 
     // Create 4 distinct lines for state machine testing
     // Line 1: Running (active order + active WIP)
     const lineRunning = await prisma.productionLine.create({
-      data: { tenantId, factoryUnitId: factoryId, code: 'LINE-RUN', name: 'Sewing Line 1', capacity: 2000 },
+      data: {
+        tenantId,
+        factoryUnitId: factoryId,
+        code: "LINE-RUN",
+        name: "Sewing Line 1",
+        capacity: 2000,
+      },
     });
     lineRunningId = lineRunning.id;
 
     // Line 2: Stopped (has active downtime)
     const lineStopped = await prisma.productionLine.create({
-      data: { tenantId, factoryUnitId: factoryId, code: 'LINE-STOP', name: 'Sewing Line 2', capacity: 1800 },
+      data: {
+        tenantId,
+        factoryUnitId: factoryId,
+        code: "LINE-STOP",
+        name: "Sewing Line 2",
+        capacity: 1800,
+      },
     });
     lineStoppedId = lineStopped.id;
 
     // Line 3: Quality Hold (active quality hold)
     const lineHold = await prisma.productionLine.create({
-      data: { tenantId, factoryUnitId: factoryId, code: 'LINE-HOLD', name: 'Sewing Line 3', capacity: 1500 },
+      data: {
+        tenantId,
+        factoryUnitId: factoryId,
+        code: "LINE-HOLD",
+        name: "Sewing Line 3",
+        capacity: 1500,
+      },
     });
     lineHoldId = lineHold.id;
 
     // Line 4: Idle (no orders, no downtime, no holds)
     const lineIdle = await prisma.productionLine.create({
-      data: { tenantId, factoryUnitId: factoryId, code: 'LINE-IDLE', name: 'Sewing Line 4', capacity: 1200 },
+      data: {
+        tenantId,
+        factoryUnitId: factoryId,
+        code: "LINE-IDLE",
+        name: "Sewing Line 4",
+        capacity: 1200,
+      },
     });
     lineIdleId = lineIdle.id;
 
     // Foreign line
     const foreignLine = await prisma.productionLine.create({
-      data: { tenantId: foreignTenantId, factoryUnitId: foreignFactoryId, code: 'LINE-FOR-01', name: 'Foreign Line', capacity: 2500 },
+      data: {
+        tenantId: foreignTenantId,
+        factoryUnitId: foreignFactoryId,
+        code: "LINE-FOR-01",
+        name: "Foreign Line",
+        capacity: 2500,
+      },
     });
     foreignLineId = foreignLine.id;
 
     // Machine & Employee
     const machine = await prisma.machine.create({
-      data: { tenantId, factoryUnitId: factoryId, code: 'MCH-ANL-01', name: 'Overlock 01', type: 'OVERLOCK' },
+      data: {
+        tenantId,
+        factoryUnitId: factoryId,
+        code: "MCH-ANL-01",
+        name: "Overlock 01",
+        type: "OVERLOCK",
+      },
     });
     machineId = machine.id;
 
     const employee = await prisma.employee.create({
-      data: { tenantId, factoryUnitId: factoryId, code: 'EMP-ANL-01', name: 'Jamal Operator', type: EmployeeType.OPERATOR },
+      data: {
+        tenantId,
+        factoryUnitId: factoryId,
+        code: "EMP-ANL-01",
+        name: "Jamal Operator",
+        type: EmployeeType.OPERATOR,
+      },
     });
     employeeId = employee.id;
 
     // 3. Buyer & Style & PO Line
-    const buyer = await prisma.buyer.create({ data: { tenantId, code: 'BYR-ANL-01', name: 'Global Brand' } });
-    const foreignBuyer = await prisma.buyer.create({ data: { tenantId: foreignTenantId, code: 'BYR-FOR-01', name: 'Foreign Buyer' } });
+    const buyer = await prisma.buyer.create({
+      data: { tenantId, code: "BYR-ANL-01", name: "Global Brand" },
+    });
+    const foreignBuyer = await prisma.buyer.create({
+      data: {
+        tenantId: foreignTenantId,
+        code: "BYR-FOR-01",
+        name: "Foreign Buyer",
+      },
+    });
 
-    const style = await prisma.style.create({ data: { tenantId, code: 'STY-ANL-POLO', name: 'Classic Polo' } });
-    const foreignStyle = await prisma.style.create({ data: { tenantId: foreignTenantId, code: 'STY-FOR-POLO', name: 'Foreign Polo' } });
+    const style = await prisma.style.create({
+      data: { tenantId, code: "STY-ANL-POLO", name: "Classic Polo" },
+    });
+    const foreignStyle = await prisma.style.create({
+      data: {
+        tenantId: foreignTenantId,
+        code: "STY-FOR-POLO",
+        name: "Foreign Polo",
+      },
+    });
 
     const buyerPo = await prisma.buyerPo.create({
       data: {
         tenantId,
         buyerId: buyer.id,
-        poNumber: 'PO-ANL-001',
-        status: 'CONFIRMED' as any,
+        poNumber: "PO-ANL-001",
+        status: "CONFIRMED" as any,
         orderDate: new Date(),
         buyerPoLines: {
-          create: [{ styleId: style.id, quantity: 1000, unitPrice: 20, totalPrice: 20000 }],
+          create: [
+            {
+              styleId: style.id,
+              quantity: 1000,
+              unitPrice: 20,
+              totalPrice: 20000,
+            },
+          ],
         },
       },
       include: { buyerPoLines: true },
@@ -169,11 +284,18 @@ describe('MES Production Analytics & Live Operations (e2e)', () => {
       data: {
         tenantId: foreignTenantId,
         buyerId: foreignBuyer.id,
-        poNumber: 'PO-FOR-001',
-        status: 'CONFIRMED' as any,
+        poNumber: "PO-FOR-001",
+        status: "CONFIRMED" as any,
         orderDate: new Date(),
         buyerPoLines: {
-          create: [{ styleId: foreignStyle.id, quantity: 500, unitPrice: 15, totalPrice: 7500 }],
+          create: [
+            {
+              styleId: foreignStyle.id,
+              quantity: 500,
+              unitPrice: 15,
+              totalPrice: 7500,
+            },
+          ],
         },
       },
       include: { buyerPoLines: true },
@@ -187,7 +309,7 @@ describe('MES Production Analytics & Live Operations (e2e)', () => {
         tenantId,
         buyerPoLineId,
         productionLineId: lineRunningId,
-        orderNumber: 'PRD-ANL-ACTIVE-01',
+        orderNumber: "PRD-ANL-ACTIVE-01",
         status: ProductionStatus.IN_PROGRESS,
         targetQuantity: 500,
         completedQty: 200,
@@ -195,8 +317,22 @@ describe('MES Production Analytics & Live Operations (e2e)', () => {
         plannedEndDate: new Date(Date.now() + 5 * 86400000),
         operations: {
           create: [
-            { operationName: 'Sewing Assembly', sequence: 1, status: 'IN_PROGRESS' as any, inputQty: 300, outputQty: 250, defectiveQty: 20 },
-            { operationName: 'Final Finishing', sequence: 2, status: 'IN_PROGRESS' as any, inputQty: 250, outputQty: 200, defectiveQty: 5 },
+            {
+              operationName: "Sewing Assembly",
+              sequence: 1,
+              status: "IN_PROGRESS" as any,
+              inputQty: 300,
+              outputQty: 250,
+              defectiveQty: 20,
+            },
+            {
+              operationName: "Final Finishing",
+              sequence: 2,
+              status: "IN_PROGRESS" as any,
+              inputQty: 250,
+              outputQty: 200,
+              defectiveQty: 5,
+            },
           ],
         },
       },
@@ -213,7 +349,7 @@ describe('MES Production Analytics & Live Operations (e2e)', () => {
         tenantId,
         buyerPoLineId,
         productionLineId: lineStoppedId,
-        orderNumber: 'PRD-ANL-OVERDUE-02',
+        orderNumber: "PRD-ANL-OVERDUE-02",
         status: ProductionStatus.IN_PROGRESS,
         targetQuantity: 400,
         completedQty: 50,
@@ -229,7 +365,7 @@ describe('MES Production Analytics & Live Operations (e2e)', () => {
         tenantId,
         buyerPoLineId,
         productionLineId: lineHoldId,
-        orderNumber: 'PRD-ANL-COMPL-03',
+        orderNumber: "PRD-ANL-COMPL-03",
         status: ProductionStatus.COMPLETED,
         targetQuantity: 300,
         completedQty: 300,
@@ -245,12 +381,12 @@ describe('MES Production Analytics & Live Operations (e2e)', () => {
         tenantId: foreignTenantId,
         buyerPoLineId: foreignBuyerPoLineId,
         productionLineId: foreignLineId,
-        orderNumber: 'PRD-FOR-001',
+        orderNumber: "PRD-FOR-001",
         status: ProductionStatus.IN_PROGRESS,
         targetQuantity: 800,
         completedQty: 100,
         operations: {
-          create: [{ operationName: 'Foreign Sewing', sequence: 1 }],
+          create: [{ operationName: "Foreign Sewing", sequence: 1 }],
         },
       },
       include: { operations: true },
@@ -260,18 +396,26 @@ describe('MES Production Analytics & Live Operations (e2e)', () => {
 
     // 5. Cutting & Bundles for WIP
     const fabric = await prisma.material.create({
-      data: { tenantId, code: 'MAT-ANL-FAB', name: 'Cotton Pique', category: 'FABRIC', uom: 'KG' },
+      data: {
+        tenantId,
+        code: "MAT-ANL-FAB",
+        name: "Cotton Pique",
+        category: "FABRIC",
+        uom: "KG",
+      },
     });
-    const wh = await prisma.warehouse.create({ data: { tenantId, code: 'WH-ANL-01', name: 'Warehouse 1' } });
+    const wh = await prisma.warehouse.create({
+      data: { tenantId, code: "WH-ANL-01", name: "Warehouse 1" },
+    });
     const invTx = await prisma.inventoryTransaction.create({
       data: {
         tenantId,
         materialId: fabric.id,
-        type: 'ISSUE',
+        type: "ISSUE",
         quantity: 50,
-        uom: 'KG',
+        uom: "KG",
         actorId: user.id,
-        idempotencyKey: 'idem-inv-anl-cut-01',
+        idempotencyKey: "idem-inv-anl-cut-01",
       },
     });
 
@@ -283,7 +427,7 @@ describe('MES Production Analytics & Live Operations (e2e)', () => {
         fabricMaterialId: fabric.id,
         fabricQuantity: 50,
         cutQuantity: 300,
-        idempotencyKey: 'idem-cut-anl-01',
+        idempotencyKey: "idem-cut-anl-01",
       },
     });
 
@@ -292,7 +436,7 @@ describe('MES Production Analytics & Live Operations (e2e)', () => {
         tenantId,
         productionOrderId: orderActiveId,
         cuttingRecordId: cutting.id,
-        barcode: 'BNDL-ANL-001',
+        barcode: "BNDL-ANL-001",
         quantity: 50,
         currentOperationId: op1Id,
         status: BundleStatus.IN_SEWING,
@@ -305,7 +449,7 @@ describe('MES Production Analytics & Live Operations (e2e)', () => {
         tenantId,
         productionOrderId: orderActiveId,
         cuttingRecordId: cutting.id,
-        barcode: 'BNDL-ANL-002',
+        barcode: "BNDL-ANL-002",
         quantity: 40,
         currentOperationId: op2Id,
         status: BundleStatus.IN_SEWING,
@@ -319,7 +463,7 @@ describe('MES Production Analytics & Live Operations (e2e)', () => {
         tenantId,
         buyerPoLineId,
         productionLineId: lineHoldId,
-        orderNumber: 'PRD-ANL-HOLD-04',
+        orderNumber: "PRD-ANL-HOLD-04",
         status: ProductionStatus.RELEASED,
         targetQuantity: 100,
       },
@@ -328,9 +472,9 @@ describe('MES Production Analytics & Live Operations (e2e)', () => {
       data: {
         tenantId,
         productionOrderId: orderHoldActive.id,
-        reason: 'Color shading variance detected',
+        reason: "Color shading variance detected",
         status: QualityHoldStatus.ACTIVE,
-        idempotencyKey: 'idem-hold-anl-01',
+        idempotencyKey: "idem-hold-anl-01",
       },
     });
 
@@ -345,7 +489,7 @@ describe('MES Production Analytics & Live Operations (e2e)', () => {
         goodQuantity: 180,
         defectiveQuantity: 20,
         timestamp: new Date(),
-        idempotencyKey: 'idem-out-anl-01',
+        idempotencyKey: "idem-out-anl-01",
       },
     });
 
@@ -356,7 +500,7 @@ describe('MES Production Analytics & Live Operations (e2e)', () => {
         bundleId: bundle1Id,
         operationId: op1Id,
         productionOutputId: out1.id,
-        defectCode: 'BROKEN_STITCH',
+        defectCode: "BROKEN_STITCH",
         quantity: 15,
         status: DefectStatus.OPEN,
       },
@@ -369,7 +513,7 @@ describe('MES Production Analytics & Live Operations (e2e)', () => {
         bundleId: bundle1Id,
         operationId: op1Id,
         productionOutputId: out1.id,
-        defectCode: 'OIL_STAIN',
+        defectCode: "OIL_STAIN",
         quantity: 5,
         status: DefectStatus.OPEN,
       },
@@ -384,7 +528,7 @@ describe('MES Production Analytics & Live Operations (e2e)', () => {
         goodQuantity: 50,
         defectiveQuantity: 5,
         timestamp: new Date(),
-        idempotencyKey: 'idem-for-out-01',
+        idempotencyKey: "idem-for-out-01",
       },
     });
 
@@ -395,10 +539,10 @@ describe('MES Production Analytics & Live Operations (e2e)', () => {
         tenantId,
         productionLineId: lineStoppedId,
         machineId,
-        reasonCode: 'NEEDLE_BREAKAGE',
+        reasonCode: "NEEDLE_BREAKAGE",
         startTime: new Date(Date.now() - 60 * 60 * 1000),
         status: DowntimeStatus.ACTIVE,
-        idempotencyKey: 'idem-dt-anl-01',
+        idempotencyKey: "idem-dt-anl-01",
       },
     });
 
@@ -407,11 +551,11 @@ describe('MES Production Analytics & Live Operations (e2e)', () => {
       data: {
         tenantId,
         productionLineId: lineRunningId,
-        reasonCode: 'THREAD_CHANGE',
+        reasonCode: "THREAD_CHANGE",
         startTime: new Date(Date.now() - 90 * 60 * 1000),
         endTime: new Date(Date.now() - 60 * 60 * 1000),
         status: DowntimeStatus.RESOLVED,
-        idempotencyKey: 'idem-dt-anl-02',
+        idempotencyKey: "idem-dt-anl-02",
       },
     });
 
@@ -420,51 +564,109 @@ describe('MES Production Analytics & Live Operations (e2e)', () => {
       data: {
         tenantId: foreignTenantId,
         productionLineId: foreignLineId,
-        reasonCode: 'POWER_FAILURE',
+        reasonCode: "POWER_FAILURE",
         startTime: new Date(Date.now() - 120 * 60 * 1000),
         status: DowntimeStatus.ACTIVE,
-        idempotencyKey: 'idem-for-dt-01',
+        idempotencyKey: "idem-for-dt-01",
       },
     });
   });
 
   afterAll(async () => {
     // Cleanup
-    await prisma.productionDefect.deleteMany({ where: { tenantId: { in: [tenantId, foreignTenantId, emptyTenantId] } } });
-    await prisma.productionOutput.deleteMany({ where: { tenantId: { in: [tenantId, foreignTenantId, emptyTenantId] } } });
-    await prisma.qualityHold.deleteMany({ where: { tenantId: { in: [tenantId, foreignTenantId, emptyTenantId] } } });
-    await prisma.downtimeEvent.deleteMany({ where: { tenantId: { in: [tenantId, foreignTenantId, emptyTenantId] } } });
-    await prisma.bundle.deleteMany({ where: { tenantId: { in: [tenantId, foreignTenantId, emptyTenantId] } } });
-    await prisma.cuttingRecord.deleteMany({ where: { tenantId: { in: [tenantId, foreignTenantId, emptyTenantId] } } });
-    await prisma.productionOperation.deleteMany({ where: { productionOrder: { tenantId: { in: [tenantId, foreignTenantId, emptyTenantId] } } } });
-    await prisma.productionOrder.deleteMany({ where: { tenantId: { in: [tenantId, foreignTenantId, emptyTenantId] } } });
-    await prisma.inventoryTransaction.deleteMany({ where: { tenantId: { in: [tenantId, foreignTenantId, emptyTenantId] } } });
-    await prisma.warehouse.deleteMany({ where: { tenantId: { in: [tenantId, foreignTenantId, emptyTenantId] } } });
-    await prisma.buyerPoLine.deleteMany({ where: { buyerPo: { tenantId: { in: [tenantId, foreignTenantId, emptyTenantId] } } } });
-    await prisma.buyerPo.deleteMany({ where: { tenantId: { in: [tenantId, foreignTenantId, emptyTenantId] } } });
-    await prisma.buyer.deleteMany({ where: { tenantId: { in: [tenantId, foreignTenantId, emptyTenantId] } } });
-    await prisma.style.deleteMany({ where: { tenantId: { in: [tenantId, foreignTenantId, emptyTenantId] } } });
-    await prisma.material.deleteMany({ where: { tenantId: { in: [tenantId, foreignTenantId, emptyTenantId] } } });
-    await prisma.machine.deleteMany({ where: { tenantId: { in: [tenantId, foreignTenantId, emptyTenantId] } } });
-    await prisma.employee.deleteMany({ where: { tenantId: { in: [tenantId, foreignTenantId, emptyTenantId] } } });
-    await prisma.productionLine.deleteMany({ where: { tenantId: { in: [tenantId, foreignTenantId, emptyTenantId] } } });
-    await prisma.factoryUnit.deleteMany({ where: { tenantId: { in: [tenantId, foreignTenantId, emptyTenantId] } } });
-    await prisma.company.deleteMany({ where: { tenantId: { in: [tenantId, foreignTenantId, emptyTenantId] } } });
-    await prisma.userRole.deleteMany({ where: { role: { tenantId: { in: [tenantId, foreignTenantId, emptyTenantId] } } } });
-    await prisma.role.deleteMany({ where: { tenantId: { in: [tenantId, foreignTenantId, emptyTenantId] } } });
-    await prisma.user.deleteMany({ where: { tenantId: { in: [tenantId, foreignTenantId, emptyTenantId] } } });
-    await prisma.tenant.deleteMany({ where: { id: { in: [tenantId, foreignTenantId, emptyTenantId] } } });
+    await prisma.productionDefect.deleteMany({
+      where: { tenantId: { in: [tenantId, foreignTenantId, emptyTenantId] } },
+    });
+    await prisma.productionOutput.deleteMany({
+      where: { tenantId: { in: [tenantId, foreignTenantId, emptyTenantId] } },
+    });
+    await prisma.qualityHold.deleteMany({
+      where: { tenantId: { in: [tenantId, foreignTenantId, emptyTenantId] } },
+    });
+    await prisma.downtimeEvent.deleteMany({
+      where: { tenantId: { in: [tenantId, foreignTenantId, emptyTenantId] } },
+    });
+    await prisma.bundle.deleteMany({
+      where: { tenantId: { in: [tenantId, foreignTenantId, emptyTenantId] } },
+    });
+    await prisma.cuttingRecord.deleteMany({
+      where: { tenantId: { in: [tenantId, foreignTenantId, emptyTenantId] } },
+    });
+    await prisma.productionOperation.deleteMany({
+      where: {
+        productionOrder: {
+          tenantId: { in: [tenantId, foreignTenantId, emptyTenantId] },
+        },
+      },
+    });
+    await prisma.productionOrder.deleteMany({
+      where: { tenantId: { in: [tenantId, foreignTenantId, emptyTenantId] } },
+    });
+    await prisma.inventoryTransaction.deleteMany({
+      where: { tenantId: { in: [tenantId, foreignTenantId, emptyTenantId] } },
+    });
+    await prisma.warehouse.deleteMany({
+      where: { tenantId: { in: [tenantId, foreignTenantId, emptyTenantId] } },
+    });
+    await prisma.buyerPoLine.deleteMany({
+      where: {
+        buyerPo: {
+          tenantId: { in: [tenantId, foreignTenantId, emptyTenantId] },
+        },
+      },
+    });
+    await prisma.buyerPo.deleteMany({
+      where: { tenantId: { in: [tenantId, foreignTenantId, emptyTenantId] } },
+    });
+    await prisma.buyer.deleteMany({
+      where: { tenantId: { in: [tenantId, foreignTenantId, emptyTenantId] } },
+    });
+    await prisma.style.deleteMany({
+      where: { tenantId: { in: [tenantId, foreignTenantId, emptyTenantId] } },
+    });
+    await prisma.material.deleteMany({
+      where: { tenantId: { in: [tenantId, foreignTenantId, emptyTenantId] } },
+    });
+    await prisma.machine.deleteMany({
+      where: { tenantId: { in: [tenantId, foreignTenantId, emptyTenantId] } },
+    });
+    await prisma.employee.deleteMany({
+      where: { tenantId: { in: [tenantId, foreignTenantId, emptyTenantId] } },
+    });
+    await prisma.productionLine.deleteMany({
+      where: { tenantId: { in: [tenantId, foreignTenantId, emptyTenantId] } },
+    });
+    await prisma.factoryUnit.deleteMany({
+      where: { tenantId: { in: [tenantId, foreignTenantId, emptyTenantId] } },
+    });
+    await prisma.company.deleteMany({
+      where: { tenantId: { in: [tenantId, foreignTenantId, emptyTenantId] } },
+    });
+    await prisma.userRole.deleteMany({
+      where: {
+        role: { tenantId: { in: [tenantId, foreignTenantId, emptyTenantId] } },
+      },
+    });
+    await prisma.role.deleteMany({
+      where: { tenantId: { in: [tenantId, foreignTenantId, emptyTenantId] } },
+    });
+    await prisma.user.deleteMany({
+      where: { tenantId: { in: [tenantId, foreignTenantId, emptyTenantId] } },
+    });
+    await prisma.tenant.deleteMany({
+      where: { id: { in: [tenantId, foreignTenantId, emptyTenantId] } },
+    });
     await app.close();
   });
 
   // =========================================================================
   // 1. TOP KPI STRIP OVERVIEW
   // =========================================================================
-  it('1. should return authoritative Overview metrics with strict tenant scoping', async () => {
+  it("1. should return authoritative Overview metrics with strict tenant scoping", async () => {
     const res = await request(app.getHttpServer())
-      .get('/production/analytics/overview')
-      .set('Authorization', `Bearer ${accessToken}`)
-      .set('x-tenant-id', tenantId)
+      .get("/production/analytics/overview")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .set("x-tenant-id", tenantId)
       .expect(200);
 
     // Active orders in IN_PROGRESS or RELEASED: Order 1 (active), Order 2 (overdue), Order 4 (hold) = 3 active orders
@@ -481,11 +683,11 @@ describe('MES Production Analytics & Live Operations (e2e)', () => {
     expect(res.body.overdueOrdersCount).toBe(1);
   });
 
-  it('2. should verify Foreign Tenant overview is completely isolated and does not leak Primary data', async () => {
+  it("2. should verify Foreign Tenant overview is completely isolated and does not leak Primary data", async () => {
     const res = await request(app.getHttpServer())
-      .get('/production/analytics/overview')
-      .set('Authorization', `Bearer ${foreignAccessToken}`)
-      .set('x-tenant-id', foreignTenantId)
+      .get("/production/analytics/overview")
+      .set("Authorization", `Bearer ${foreignAccessToken}`)
+      .set("x-tenant-id", foreignTenantId)
       .expect(200);
 
     expect(res.body.activeOrdersCount).toBe(1);
@@ -496,11 +698,11 @@ describe('MES Production Analytics & Live Operations (e2e)', () => {
   // =========================================================================
   // 2. ORDER PROGRESS ANALYTICS
   // =========================================================================
-  it('3. should calculate accurate Order Progress metrics (target, completed, remaining, percentage, overdue)', async () => {
+  it("3. should calculate accurate Order Progress metrics (target, completed, remaining, percentage, overdue)", async () => {
     const res = await request(app.getHttpServer())
-      .get('/production/analytics/orders')
-      .set('Authorization', `Bearer ${accessToken}`)
-      .set('x-tenant-id', tenantId)
+      .get("/production/analytics/orders")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .set("x-tenant-id", tenantId)
       .expect(200);
 
     expect(Array.isArray(res.body)).toBe(true);
@@ -530,11 +732,11 @@ describe('MES Production Analytics & Live Operations (e2e)', () => {
   // =========================================================================
   // 3. LINE PERFORMANCE & STATE MACHINE
   // =========================================================================
-  it('4. should authoritatively evaluate Production Line state machine (STOPPED, QUALITY_HOLD, RUNNING, IDLE)', async () => {
+  it("4. should authoritatively evaluate Production Line state machine (STOPPED, QUALITY_HOLD, RUNNING, IDLE)", async () => {
     const res = await request(app.getHttpServer())
-      .get('/production/analytics/lines')
-      .set('Authorization', `Bearer ${accessToken}`)
-      .set('x-tenant-id', tenantId)
+      .get("/production/analytics/lines")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .set("x-tenant-id", tenantId)
       .expect(200);
 
     expect(Array.isArray(res.body)).toBe(true);
@@ -542,7 +744,7 @@ describe('MES Production Analytics & Live Operations (e2e)', () => {
 
     // Line 1: LINE-RUN -> has active order & WIP, resolved downtime -> RUNNING
     const lineRun = res.body.find((l: any) => l.id === lineRunningId);
-    expect(lineRun.status).toBe('RUNNING');
+    expect(lineRun.status).toBe("RUNNING");
     expect(lineRun.activeProductionOrders).toBe(1);
     expect(lineRun.currentWIPQuantity).toBe(90);
     expect(lineRun.activeDowntimeCount).toBe(0);
@@ -550,17 +752,17 @@ describe('MES Production Analytics & Live Operations (e2e)', () => {
 
     // Line 2: LINE-STOP -> has active downtime -> STOPPED
     const lineStop = res.body.find((l: any) => l.id === lineStoppedId);
-    expect(lineStop.status).toBe('STOPPED');
+    expect(lineStop.status).toBe("STOPPED");
     expect(lineStop.activeDowntimeCount).toBe(1);
 
     // Line 3: LINE-HOLD -> has active quality hold -> QUALITY_HOLD
     const lineHoldRecord = res.body.find((l: any) => l.id === lineHoldId);
-    expect(lineHoldRecord.status).toBe('QUALITY_HOLD');
+    expect(lineHoldRecord.status).toBe("QUALITY_HOLD");
     expect(lineHoldRecord.hasActiveHold).toBe(true);
 
     // Line 4: LINE-IDLE -> no orders, no downtime, no holds -> IDLE
     const lineIdleRecord = res.body.find((l: any) => l.id === lineIdleId);
-    expect(lineIdleRecord.status).toBe('IDLE');
+    expect(lineIdleRecord.status).toBe("IDLE");
     expect(lineIdleRecord.activeProductionOrders).toBe(0);
     expect(lineIdleRecord.currentWIPQuantity).toBe(0);
   });
@@ -568,11 +770,11 @@ describe('MES Production Analytics & Live Operations (e2e)', () => {
   // =========================================================================
   // 4. DOWNTIME ANALYTICS
   // =========================================================================
-  it('5. should aggregate Downtime Analytics with durations, active counts, and Pareto breakdown', async () => {
+  it("5. should aggregate Downtime Analytics with durations, active counts, and Pareto breakdown", async () => {
     const res = await request(app.getHttpServer())
-      .get('/production/analytics/downtime')
-      .set('Authorization', `Bearer ${accessToken}`)
-      .set('x-tenant-id', tenantId)
+      .get("/production/analytics/downtime")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .set("x-tenant-id", tenantId)
       .expect(200);
 
     expect(res.body.activeIncidentsCount).toBe(1);
@@ -582,7 +784,9 @@ describe('MES Production Analytics & Live Operations (e2e)', () => {
 
     // Pareto by reason
     expect(res.body.byReason.length).toBe(2);
-    const needleBreakage = res.body.byReason.find((r: any) => r.reasonCode === 'NEEDLE_BREAKAGE');
+    const needleBreakage = res.body.byReason.find(
+      (r: any) => r.reasonCode === "NEEDLE_BREAKAGE",
+    );
     expect(needleBreakage).toBeDefined();
     expect(needleBreakage.count).toBe(1);
 
@@ -593,11 +797,11 @@ describe('MES Production Analytics & Live Operations (e2e)', () => {
   // =========================================================================
   // 5. QUALITY & DEFECT ANALYTICS
   // =========================================================================
-  it('6. should calculate Quality Analytics with defect rates, Pareto ranking, and active holds', async () => {
+  it("6. should calculate Quality Analytics with defect rates, Pareto ranking, and active holds", async () => {
     const res = await request(app.getHttpServer())
-      .get('/production/analytics/quality')
-      .set('Authorization', `Bearer ${accessToken}`)
-      .set('x-tenant-id', tenantId)
+      .get("/production/analytics/quality")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .set("x-tenant-id", tenantId)
       .expect(200);
 
     expect(res.body.totalGood).toBe(180);
@@ -608,10 +812,10 @@ describe('MES Production Analytics & Live Operations (e2e)', () => {
 
     // Top defects Pareto sorted descending
     expect(res.body.topDefects.length).toBe(2);
-    expect(res.body.topDefects[0].defectCode).toBe('BROKEN_STITCH');
+    expect(res.body.topDefects[0].defectCode).toBe("BROKEN_STITCH");
     expect(res.body.topDefects[0].quantity).toBe(15);
     expect(res.body.topDefects[0].percentageOfDefects).toBe(75); // 15 / 20 = 75%
-    expect(res.body.topDefects[1].defectCode).toBe('OIL_STAIN');
+    expect(res.body.topDefects[1].defectCode).toBe("OIL_STAIN");
     expect(res.body.topDefects[1].quantity).toBe(5);
     expect(res.body.topDefects[1].percentageOfDefects).toBe(25); // 5 / 20 = 25%
   });
@@ -619,11 +823,11 @@ describe('MES Production Analytics & Live Operations (e2e)', () => {
   // =========================================================================
   // 6. WIP BOTTLENECK ANALYSIS
   // =========================================================================
-  it('7. should aggregate WIP Bottlenecks grouped by operation sequence', async () => {
+  it("7. should aggregate WIP Bottlenecks grouped by operation sequence", async () => {
     const res = await request(app.getHttpServer())
-      .get('/production/analytics/wip')
-      .set('Authorization', `Bearer ${accessToken}`)
-      .set('x-tenant-id', tenantId)
+      .get("/production/analytics/wip")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .set("x-tenant-id", tenantId)
       .expect(200);
 
     expect(Array.isArray(res.body)).toBe(true);
@@ -647,12 +851,12 @@ describe('MES Production Analytics & Live Operations (e2e)', () => {
   // =========================================================================
   // 7. FILTER PARAMETERS
   // =========================================================================
-  it('8. should respect line and order filters across analytics endpoints', async () => {
+  it("8. should respect line and order filters across analytics endpoints", async () => {
     // Filter orders by lineRunningId
     const resOrders = await request(app.getHttpServer())
       .get(`/production/analytics/orders?productionLineId=${lineRunningId}`)
-      .set('Authorization', `Bearer ${accessToken}`)
-      .set('x-tenant-id', tenantId)
+      .set("Authorization", `Bearer ${accessToken}`)
+      .set("x-tenant-id", tenantId)
       .expect(200);
 
     expect(resOrders.body.length).toBe(1);
@@ -661,21 +865,21 @@ describe('MES Production Analytics & Live Operations (e2e)', () => {
     // Filter downtime by lineRunningId
     const resDowntime = await request(app.getHttpServer())
       .get(`/production/analytics/downtime?productionLineId=${lineRunningId}`)
-      .set('Authorization', `Bearer ${accessToken}`)
-      .set('x-tenant-id', tenantId)
+      .set("Authorization", `Bearer ${accessToken}`)
+      .set("x-tenant-id", tenantId)
       .expect(200);
 
     expect(resDowntime.body.totalIncidentsCount).toBe(1);
-    expect(resDowntime.body.byReason[0].reasonCode).toBe('THREAD_CHANGE');
+    expect(resDowntime.body.byReason[0].reasonCode).toBe("THREAD_CHANGE");
   });
 
   // =========================================================================
   // 8. ZERO DENOMINATOR & EMPTY TENANT STABILITY
   // =========================================================================
-  it('9. should handle empty tenant datasets cleanly without errors, NaN, or 500s', async () => {
+  it("9. should handle empty tenant datasets cleanly without errors, NaN, or 500s", async () => {
     const resOverview = await request(app.getHttpServer())
-      .get('/production/analytics/overview')
-      .set('x-tenant-id', emptyTenantId)
+      .get("/production/analytics/overview")
+      .set("x-tenant-id", emptyTenantId)
       .expect(200);
 
     expect(resOverview.body.activeOrdersCount).toBe(0);
@@ -685,8 +889,8 @@ describe('MES Production Analytics & Live Operations (e2e)', () => {
     expect(resOverview.body.overdueOrdersCount).toBe(0);
 
     const resQuality = await request(app.getHttpServer())
-      .get('/production/analytics/quality')
-      .set('x-tenant-id', emptyTenantId)
+      .get("/production/analytics/quality")
+      .set("x-tenant-id", emptyTenantId)
       .expect(200);
 
     expect(resQuality.body.totalGood).toBe(0);
@@ -695,8 +899,8 @@ describe('MES Production Analytics & Live Operations (e2e)', () => {
     expect(resQuality.body.topDefects).toEqual([]);
 
     const resLines = await request(app.getHttpServer())
-      .get('/production/analytics/lines')
-      .set('x-tenant-id', emptyTenantId)
+      .get("/production/analytics/lines")
+      .set("x-tenant-id", emptyTenantId)
       .expect(200);
 
     expect(resLines.body).toEqual([]);
@@ -705,22 +909,52 @@ describe('MES Production Analytics & Live Operations (e2e)', () => {
   // =========================================================================
   // 9. READ-ONLY INVARIANCE
   // =========================================================================
-  it('10. should guarantee zero database mutations during all analytics queries', async () => {
-    const beforeOrdersCount = await prisma.productionOrder.count({ where: { tenantId } });
-    const beforeBundlesCount = await prisma.bundle.count({ where: { tenantId } });
-    const beforeDowntimeCount = await prisma.downtimeEvent.count({ where: { tenantId } });
+  it("10. should guarantee zero database mutations during all analytics queries", async () => {
+    const beforeOrdersCount = await prisma.productionOrder.count({
+      where: { tenantId },
+    });
+    const beforeBundlesCount = await prisma.bundle.count({
+      where: { tenantId },
+    });
+    const beforeDowntimeCount = await prisma.downtimeEvent.count({
+      where: { tenantId },
+    });
 
     // Fire all GET queries
-    await request(app.getHttpServer()).get('/production/analytics/overview').set('x-tenant-id', tenantId).expect(200);
-    await request(app.getHttpServer()).get('/production/analytics/orders').set('x-tenant-id', tenantId).expect(200);
-    await request(app.getHttpServer()).get('/production/analytics/lines').set('x-tenant-id', tenantId).expect(200);
-    await request(app.getHttpServer()).get('/production/analytics/downtime').set('x-tenant-id', tenantId).expect(200);
-    await request(app.getHttpServer()).get('/production/analytics/quality').set('x-tenant-id', tenantId).expect(200);
-    await request(app.getHttpServer()).get('/production/analytics/wip').set('x-tenant-id', tenantId).expect(200);
+    await request(app.getHttpServer())
+      .get("/production/analytics/overview")
+      .set("x-tenant-id", tenantId)
+      .expect(200);
+    await request(app.getHttpServer())
+      .get("/production/analytics/orders")
+      .set("x-tenant-id", tenantId)
+      .expect(200);
+    await request(app.getHttpServer())
+      .get("/production/analytics/lines")
+      .set("x-tenant-id", tenantId)
+      .expect(200);
+    await request(app.getHttpServer())
+      .get("/production/analytics/downtime")
+      .set("x-tenant-id", tenantId)
+      .expect(200);
+    await request(app.getHttpServer())
+      .get("/production/analytics/quality")
+      .set("x-tenant-id", tenantId)
+      .expect(200);
+    await request(app.getHttpServer())
+      .get("/production/analytics/wip")
+      .set("x-tenant-id", tenantId)
+      .expect(200);
 
-    const afterOrdersCount = await prisma.productionOrder.count({ where: { tenantId } });
-    const afterBundlesCount = await prisma.bundle.count({ where: { tenantId } });
-    const afterDowntimeCount = await prisma.downtimeEvent.count({ where: { tenantId } });
+    const afterOrdersCount = await prisma.productionOrder.count({
+      where: { tenantId },
+    });
+    const afterBundlesCount = await prisma.bundle.count({
+      where: { tenantId },
+    });
+    const afterDowntimeCount = await prisma.downtimeEvent.count({
+      where: { tenantId },
+    });
 
     expect(afterOrdersCount).toBe(beforeOrdersCount);
     expect(afterBundlesCount).toBe(beforeBundlesCount);

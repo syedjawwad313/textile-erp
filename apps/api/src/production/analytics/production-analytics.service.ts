@@ -1,6 +1,12 @@
-import { Injectable } from '@nestjs/common';
-import { prisma, ProductionStatus, BundleStatus, DowntimeStatus, QualityHoldStatus } from '@textile-erp/database';
-import { AnalyticsFilterDto } from './production-analytics.dto';
+import { Injectable } from "@nestjs/common";
+import {
+  prisma,
+  ProductionStatus,
+  BundleStatus,
+  DowntimeStatus,
+  QualityHoldStatus,
+} from "@textile-erp/database";
+import { AnalyticsFilterDto } from "./production-analytics.dto";
 
 @Injectable()
 export class ProductionAnalyticsService {
@@ -13,7 +19,8 @@ export class ProductionAnalyticsService {
       status: { in: [ProductionStatus.RELEASED, ProductionStatus.IN_PROGRESS] },
     };
     if (filter?.productionOrderId) orderWhere.id = filter.productionOrderId;
-    if (filter?.productionLineId) orderWhere.productionLineId = filter.productionLineId;
+    if (filter?.productionLineId)
+      orderWhere.productionLineId = filter.productionLineId;
 
     // 1. Active Orders Count
     const activeOrdersCount = await prisma.productionOrder.count({
@@ -28,7 +35,8 @@ export class ProductionAnalyticsService {
       tenantId,
       timestamp: { gte: startOfDay },
     };
-    if (filter?.productionOrderId) outputWhere.productionOrderId = filter.productionOrderId;
+    if (filter?.productionOrderId)
+      outputWhere.productionOrderId = filter.productionOrderId;
     if (filter?.from || filter?.to) {
       outputWhere.timestamp = {};
       if (filter.from) outputWhere.timestamp.gte = new Date(filter.from);
@@ -50,7 +58,9 @@ export class ProductionAnalyticsService {
     if (filter?.productionOrderId) {
       bundleWhere.productionOrderId = filter.productionOrderId;
     } else if (filter?.productionLineId) {
-      bundleWhere.productionOrder = { productionLineId: filter.productionLineId };
+      bundleWhere.productionOrder = {
+        productionLineId: filter.productionLineId,
+      };
     }
 
     const wipAgg = await prisma.bundle.aggregate({
@@ -64,7 +74,8 @@ export class ProductionAnalyticsService {
       tenantId,
       status: DowntimeStatus.ACTIVE,
     };
-    if (filter?.productionLineId) downtimeWhere.productionLineId = filter.productionLineId;
+    if (filter?.productionLineId)
+      downtimeWhere.productionLineId = filter.productionLineId;
 
     const activeDowntimeIncidents = await prisma.downtimeEvent.count({
       where: downtimeWhere,
@@ -74,7 +85,9 @@ export class ProductionAnalyticsService {
     const totalGoodAgg = await prisma.productionOutput.aggregate({
       where: {
         tenantId,
-        ...(filter?.productionOrderId ? { productionOrderId: filter.productionOrderId } : {}),
+        ...(filter?.productionOrderId
+          ? { productionOrderId: filter.productionOrderId }
+          : {}),
       },
       _sum: { goodQuantity: true },
     });
@@ -83,23 +96,32 @@ export class ProductionAnalyticsService {
     const totalDefectAgg = await prisma.productionDefect.aggregate({
       where: {
         tenantId,
-        ...(filter?.productionOrderId ? { productionOrderId: filter.productionOrderId } : {}),
+        ...(filter?.productionOrderId
+          ? { productionOrderId: filter.productionOrderId }
+          : {}),
       },
       _sum: { quantity: true },
     });
     const totalDefective = Number(totalDefectAgg._sum.quantity || 0);
 
     const totalProduced = totalGood + totalDefective;
-    const defectRate = totalProduced > 0 ? Number(((totalDefective / totalProduced) * 100).toFixed(2)) : 0;
+    const defectRate =
+      totalProduced > 0
+        ? Number(((totalDefective / totalProduced) * 100).toFixed(2))
+        : 0;
 
     // 6. Overdue Orders Count
     const now = new Date();
     const overdueOrdersCount = await prisma.productionOrder.count({
       where: {
         tenantId,
-        status: { notIn: [ProductionStatus.COMPLETED, ProductionStatus.CANCELLED] },
+        status: {
+          notIn: [ProductionStatus.COMPLETED, ProductionStatus.CANCELLED],
+        },
         plannedEndDate: { not: null, lt: now },
-        ...(filter?.productionLineId ? { productionLineId: filter.productionLineId } : {}),
+        ...(filter?.productionLineId
+          ? { productionLineId: filter.productionLineId }
+          : {}),
       },
     });
 
@@ -121,7 +143,8 @@ export class ProductionAnalyticsService {
   async getOrderProgress(tenantId: string, filter?: AnalyticsFilterDto) {
     const where: any = { tenantId };
     if (filter?.productionOrderId) where.id = filter.productionOrderId;
-    if (filter?.productionLineId) where.productionLineId = filter.productionLineId;
+    if (filter?.productionLineId)
+      where.productionLineId = filter.productionLineId;
     if (filter?.status) where.status = filter.status as ProductionStatus;
 
     const orders = await prisma.productionOrder.findMany({
@@ -129,11 +152,18 @@ export class ProductionAnalyticsService {
       include: {
         productionLine: { select: { id: true, code: true, name: true } },
         operations: {
-          select: { id: true, operationName: true, sequence: true, status: true, outputQty: true, inputQty: true },
-          orderBy: { sequence: 'asc' },
+          select: {
+            id: true,
+            operationName: true,
+            sequence: true,
+            status: true,
+            outputQty: true,
+            inputQty: true,
+          },
+          orderBy: { sequence: "asc" },
         },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
 
     const now = new Date();
@@ -142,9 +172,15 @@ export class ProductionAnalyticsService {
       orders.map(async (order) => {
         const targetQuantity = Number(order.targetQuantity);
         const completedQuantity = Number(order.completedQty);
-        const remainingQuantity = Math.max(0, targetQuantity - completedQuantity);
-        const rawPercent = targetQuantity > 0 ? (completedQuantity / targetQuantity) * 100 : 0;
-        const completionPercentage = Number(Math.min(100, Math.max(0, rawPercent)).toFixed(2));
+        const remainingQuantity = Math.max(
+          0,
+          targetQuantity - completedQuantity,
+        );
+        const rawPercent =
+          targetQuantity > 0 ? (completedQuantity / targetQuantity) * 100 : 0;
+        const completionPercentage = Number(
+          Math.min(100, Math.max(0, rawPercent)).toFixed(2),
+        );
 
         // Aggregate defects for this specific order
         const defectAgg = await prisma.productionDefect.aggregate({
@@ -162,7 +198,13 @@ export class ProductionAnalyticsService {
           new Date(order.plannedEndDate!) < now;
 
         const daysOverdue = isOverdue
-          ? Math.max(0, Math.floor((now.getTime() - new Date(order.plannedEndDate!).getTime()) / (1000 * 60 * 60 * 24)))
+          ? Math.max(
+              0,
+              Math.floor(
+                (now.getTime() - new Date(order.plannedEndDate!).getTime()) /
+                  (1000 * 60 * 60 * 24),
+              ),
+            )
           : 0;
 
         return {
@@ -181,7 +223,7 @@ export class ProductionAnalyticsService {
           productionLine: order.productionLine,
           operationsCount: order.operations.length,
         };
-      })
+      }),
     );
 
     return results;
@@ -200,7 +242,7 @@ export class ProductionAnalyticsService {
       include: {
         factoryUnit: { select: { id: true, code: true, name: true } },
       },
-      orderBy: { code: 'asc' },
+      orderBy: { code: "asc" },
     });
 
     const now = new Date();
@@ -212,14 +254,27 @@ export class ProductionAnalyticsService {
           where: {
             tenantId,
             productionLineId: line.id,
-            status: { in: [ProductionStatus.RELEASED, ProductionStatus.IN_PROGRESS] },
+            status: {
+              in: [ProductionStatus.RELEASED, ProductionStatus.IN_PROGRESS],
+            },
           },
-          select: { id: true, orderNumber: true, targetQuantity: true, completedQty: true },
+          select: {
+            id: true,
+            orderNumber: true,
+            targetQuantity: true,
+            completedQty: true,
+          },
         });
 
         const activeProductionOrders = activeOrders.length;
-        const plannedQuantity = activeOrders.reduce((sum, o) => sum + Number(o.targetQuantity), 0);
-        const completedQuantity = activeOrders.reduce((sum, o) => sum + Number(o.completedQty), 0);
+        const plannedQuantity = activeOrders.reduce(
+          (sum, o) => sum + Number(o.targetQuantity),
+          0,
+        );
+        const completedQuantity = activeOrders.reduce(
+          (sum, o) => sum + Number(o.completedQty),
+          0,
+        );
 
         // WIP currently on line
         const wipAgg = await prisma.bundle.aggregate({
@@ -256,7 +311,9 @@ export class ProductionAnalyticsService {
         let totalDowntimeMinutes = 0;
         for (const evt of downtimeEvents) {
           const start = new Date(evt.startTime).getTime();
-          const end = evt.endTime ? new Date(evt.endTime).getTime() : now.getTime();
+          const end = evt.endTime
+            ? new Date(evt.endTime).getTime()
+            : now.getTime();
           if (end > start) {
             totalDowntimeMinutes += (end - start) / 60000;
           }
@@ -280,19 +337,20 @@ export class ProductionAnalyticsService {
           },
         });
 
-        const hasActiveHold = activeHoldsCount > 0 || activeBundleHoldsCount > 0;
+        const hasActiveHold =
+          activeHoldsCount > 0 || activeBundleHoldsCount > 0;
 
         // Authoritative Line State Machine Rule:
         // STOPPED > QUALITY HOLD > RUNNING > IDLE
-        let status: 'STOPPED' | 'QUALITY_HOLD' | 'RUNNING' | 'IDLE' = 'IDLE';
+        let status: "STOPPED" | "QUALITY_HOLD" | "RUNNING" | "IDLE" = "IDLE";
         if (activeDowntimeCount > 0) {
-          status = 'STOPPED';
+          status = "STOPPED";
         } else if (hasActiveHold) {
-          status = 'QUALITY_HOLD';
+          status = "QUALITY_HOLD";
         } else if (activeProductionOrders > 0 || currentWIPQuantity > 0) {
-          status = 'RUNNING';
+          status = "RUNNING";
         } else {
-          status = 'IDLE';
+          status = "IDLE";
         }
 
         return {
@@ -309,9 +367,12 @@ export class ProductionAnalyticsService {
           activeDowntimeCount,
           totalDowntimeMinutes,
           hasActiveHold,
-          activeOrders: activeOrders.map((o) => ({ id: o.id, orderNumber: o.orderNumber })),
+          activeOrders: activeOrders.map((o) => ({
+            id: o.id,
+            orderNumber: o.orderNumber,
+          })),
         };
-      })
+      }),
     );
 
     return results;
@@ -322,7 +383,8 @@ export class ProductionAnalyticsService {
    */
   async getDowntimeAnalytics(tenantId: string, filter?: AnalyticsFilterDto) {
     const where: any = { tenantId };
-    if (filter?.productionLineId) where.productionLineId = filter.productionLineId;
+    if (filter?.productionLineId)
+      where.productionLineId = filter.productionLineId;
     if (filter?.from || filter?.to) {
       where.startTime = {};
       if (filter.from) where.startTime.gte = new Date(filter.from);
@@ -335,7 +397,7 @@ export class ProductionAnalyticsService {
         productionLine: { select: { id: true, code: true, name: true } },
         machine: { select: { id: true, code: true, name: true } },
       },
-      orderBy: { startTime: 'desc' },
+      orderBy: { startTime: "desc" },
     });
 
     const now = new Date();
@@ -343,9 +405,30 @@ export class ProductionAnalyticsService {
     let activeIncidentsCount = 0;
     let resolvedIncidentsCount = 0;
 
-    const reasonMap: Record<string, { reasonCode: string; minutes: number; count: number }> = {};
-    const lineMap: Record<string, { lineId: string; lineCode: string; lineName: string; minutes: number; count: number }> = {};
-    const machineMap: Record<string, { machineId: string; machineCode: string; machineName: string; minutes: number; count: number }> = {};
+    const reasonMap: Record<
+      string,
+      { reasonCode: string; minutes: number; count: number }
+    > = {};
+    const lineMap: Record<
+      string,
+      {
+        lineId: string;
+        lineCode: string;
+        lineName: string;
+        minutes: number;
+        count: number;
+      }
+    > = {};
+    const machineMap: Record<
+      string,
+      {
+        machineId: string;
+        machineCode: string;
+        machineName: string;
+        minutes: number;
+        count: number;
+      }
+    > = {};
 
     for (const evt of events) {
       const start = new Date(evt.startTime).getTime();
@@ -362,7 +445,11 @@ export class ProductionAnalyticsService {
 
       // Group by reasonCode
       if (!reasonMap[evt.reasonCode]) {
-        reasonMap[evt.reasonCode] = { reasonCode: evt.reasonCode, minutes: 0, count: 0 };
+        reasonMap[evt.reasonCode] = {
+          reasonCode: evt.reasonCode,
+          minutes: 0,
+          count: 0,
+        };
       }
       reasonMap[evt.reasonCode].minutes += durationMins;
       reasonMap[evt.reasonCode].count++;
@@ -460,14 +547,19 @@ export class ProductionAnalyticsService {
     const totalDefective = Number(defectAgg._sum.quantity || 0);
 
     const totalProduced = totalGood + totalDefective;
-    const defectRate = totalProduced > 0 ? Number(((totalDefective / totalProduced) * 100).toFixed(2)) : 0;
+    const defectRate =
+      totalProduced > 0
+        ? Number(((totalDefective / totalProduced) * 100).toFixed(2))
+        : 0;
 
     // Active Quality Holds
     const activeQualityHoldsCount = await prisma.qualityHold.count({
       where: {
         tenantId,
         status: QualityHoldStatus.ACTIVE,
-        ...(filter?.productionOrderId ? { productionOrderId: filter.productionOrderId } : {}),
+        ...(filter?.productionOrderId
+          ? { productionOrderId: filter.productionOrderId }
+          : {}),
       },
     });
 
@@ -477,10 +569,17 @@ export class ProductionAnalyticsService {
       select: { defectCode: true, quantity: true, status: true },
     });
 
-    const defectMap: Record<string, { defectCode: string; quantity: number; count: number }> = {};
+    const defectMap: Record<
+      string,
+      { defectCode: string; quantity: number; count: number }
+    > = {};
     for (const d of defects) {
       if (!defectMap[d.defectCode]) {
-        defectMap[d.defectCode] = { defectCode: d.defectCode, quantity: 0, count: 0 };
+        defectMap[d.defectCode] = {
+          defectCode: d.defectCode,
+          quantity: 0,
+          count: 0,
+        };
       }
       defectMap[d.defectCode].quantity += Number(d.quantity);
       defectMap[d.defectCode].count++;
@@ -489,7 +588,10 @@ export class ProductionAnalyticsService {
     const topDefects = Object.values(defectMap)
       .map((d) => ({
         ...d,
-        percentageOfDefects: totalDefective > 0 ? Number(((d.quantity / totalDefective) * 100).toFixed(1)) : 0,
+        percentageOfDefects:
+          totalDefective > 0
+            ? Number(((d.quantity / totalDefective) * 100).toFixed(1))
+            : 0,
       }))
       .sort((a, b) => b.quantity - a.quantity);
 
@@ -512,16 +614,19 @@ export class ProductionAnalyticsService {
       status: { in: [ProductionStatus.RELEASED, ProductionStatus.IN_PROGRESS] },
     };
     if (filter?.productionOrderId) orderWhere.id = filter.productionOrderId;
-    if (filter?.productionLineId) orderWhere.productionLineId = filter.productionLineId;
+    if (filter?.productionLineId)
+      orderWhere.productionLineId = filter.productionLineId;
 
     const operations = await prisma.productionOperation.findMany({
       where: {
         productionOrder: orderWhere,
       },
       include: {
-        productionOrder: { select: { id: true, orderNumber: true, status: true } },
+        productionOrder: {
+          select: { id: true, orderNumber: true, status: true },
+        },
       },
-      orderBy: [{ sequence: 'asc' }],
+      orderBy: [{ sequence: "asc" }],
     });
 
     const results = await Promise.all(
@@ -537,14 +642,19 @@ export class ProductionAnalyticsService {
         });
 
         const bundleCount = bundles.length;
-        const quantityWaiting = bundles.reduce((sum, b) => sum + Number(b.quantity), 0);
+        const quantityWaiting = bundles.reduce(
+          (sum, b) => sum + Number(b.quantity),
+          0,
+        );
         const quantityProcessed = Number(op.outputQty);
         const quantityDefective = Number(op.defectiveQty);
 
         // Oldest waiting bundle timestamp for WIP aging
         let oldestWaitingTimestamp: Date | null = null;
         if (bundles.length > 0) {
-          const timestamps = bundles.map((b) => new Date(b.updatedAt).getTime());
+          const timestamps = bundles.map((b) =>
+            new Date(b.updatedAt).getTime(),
+          );
           oldestWaitingTimestamp = new Date(Math.min(...timestamps));
         }
 
@@ -560,7 +670,7 @@ export class ProductionAnalyticsService {
           quantityDefective,
           oldestWaitingTimestamp,
         };
-      })
+      }),
     );
 
     return results;

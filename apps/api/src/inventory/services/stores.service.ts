@@ -1,7 +1,24 @@
-import { Injectable, BadRequestException, NotFoundException, ConflictException } from '@nestjs/common';
-import { prisma, RequisitionStatus, IssueStatus, ReturnStatus, InventoryTxType, RollStatus } from '@textile-erp/database';
-import { LedgerService } from './ledger.service';
-import { CreateRequisitionDto, CreateIssueNoteDto, CreateReturnNoteDto, LinkCuttingRollDto } from '../dto/stores.dto';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+  ConflictException,
+} from "@nestjs/common";
+import {
+  prisma,
+  RequisitionStatus,
+  IssueStatus,
+  ReturnStatus,
+  InventoryTxType,
+  RollStatus,
+} from "@textile-erp/database";
+import { LedgerService } from "./ledger.service";
+import {
+  CreateRequisitionDto,
+  CreateIssueNoteDto,
+  CreateReturnNoteDto,
+  LinkCuttingRollDto,
+} from "../dto/stores.dto";
 
 @Injectable()
 export class StoresService {
@@ -10,9 +27,14 @@ export class StoresService {
   // ==========================================
   // 1. MATERIAL REQUISITIONS
   // ==========================================
-  async createRequisition(tenantId: string, actorId: string, idempotencyKey: string, dto: CreateRequisitionDto) {
+  async createRequisition(
+    tenantId: string,
+    actorId: string,
+    idempotencyKey: string,
+    dto: CreateRequisitionDto,
+  ) {
     if (!idempotencyKey) {
-      throw new BadRequestException('x-idempotency-key header is required');
+      throw new BadRequestException("x-idempotency-key header is required");
     }
 
     return prisma.$transaction(async (tx) => {
@@ -20,12 +42,18 @@ export class StoresService {
         where: { tenantId_idempotencyKey: { tenantId, idempotencyKey } },
       });
       if (existing) {
-        throw new ConflictException('Idempotency key already used for Material Requisition');
+        throw new ConflictException(
+          "Idempotency key already used for Material Requisition",
+        );
       }
 
-      const order = await tx.productionOrder.findUnique({ where: { id: dto.productionOrderId } });
+      const order = await tx.productionOrder.findUnique({
+        where: { id: dto.productionOrderId },
+      });
       if (!order || order.tenantId !== tenantId) {
-        throw new NotFoundException(`Production Order with ID ${dto.productionOrderId} not found`);
+        throw new NotFoundException(
+          `Production Order with ID ${dto.productionOrderId} not found`,
+        );
       }
 
       let employee = await tx.employee.findFirst({ where: { tenantId } });
@@ -34,29 +62,39 @@ export class StoresService {
         employee = await tx.employee.create({
           data: {
             tenantId,
-            code: 'EMP-DEFAULT',
-            name: 'Default Requester',
-            type: 'SUPERVISOR',
-            factoryUnitId: factory?.id || (await tx.factoryUnit.create({
-              data: {
-                tenantId,
-                companyId: (await tx.company.findFirst({ where: { tenantId } }))?.id || '',
-                code: 'FAC-STORE',
-                name: 'Store Factory',
-              }
-            })).id,
-          }
+            code: "EMP-DEFAULT",
+            name: "Default Requester",
+            type: "SUPERVISOR",
+            factoryUnitId:
+              factory?.id ||
+              (
+                await tx.factoryUnit.create({
+                  data: {
+                    tenantId,
+                    companyId:
+                      (await tx.company.findFirst({ where: { tenantId } }))
+                        ?.id || "",
+                    code: "FAC-STORE",
+                    name: "Store Factory",
+                  },
+                })
+              ).id,
+          },
         });
       }
 
       const count = await tx.materialRequisition.count({ where: { tenantId } });
       const year = new Date().getFullYear();
-      const requisitionNumber = `REQ-${year}-${String(count + 1).padStart(4, '0')}`;
+      const requisitionNumber = `REQ-${year}-${String(count + 1).padStart(4, "0")}`;
 
       for (const line of dto.lines) {
-        const material = await tx.material.findUnique({ where: { id: line.materialId } });
+        const material = await tx.material.findUnique({
+          where: { id: line.materialId },
+        });
         if (!material || material.tenantId !== tenantId) {
-          throw new NotFoundException(`Material with ID ${line.materialId} not found`);
+          throw new NotFoundException(
+            `Material with ID ${line.materialId} not found`,
+          );
         }
       }
 
@@ -90,23 +128,39 @@ export class StoresService {
     });
   }
 
-  async findAllRequisitions(tenantId: string, filters?: { productionOrderId?: string; status?: RequisitionStatus }) {
+  async findAllRequisitions(
+    tenantId: string,
+    filters?: { productionOrderId?: string; status?: RequisitionStatus },
+  ) {
     const where: any = { tenantId };
-    if (filters?.productionOrderId) where.productionOrderId = filters.productionOrderId;
+    if (filters?.productionOrderId)
+      where.productionOrderId = filters.productionOrderId;
     if (filters?.status) where.status = filters.status;
 
     return prisma.materialRequisition.findMany({
       where,
       include: {
-        lines: { include: { material: { select: { id: true, code: true, name: true, uom: true } } } },
-        productionOrder: { select: { id: true, orderNumber: true, status: true } },
+        lines: {
+          include: {
+            material: {
+              select: { id: true, code: true, name: true, uom: true },
+            },
+          },
+        },
+        productionOrder: {
+          select: { id: true, orderNumber: true, status: true },
+        },
         requestedBy: { select: { id: true, name: true, code: true } },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
   }
 
-  async updateRequisitionStatus(tenantId: string, id: string, status: RequisitionStatus) {
+  async updateRequisitionStatus(
+    tenantId: string,
+    id: string,
+    status: RequisitionStatus,
+  ) {
     const req = await prisma.materialRequisition.findUnique({ where: { id } });
     if (!req || req.tenantId !== tenantId) {
       throw new NotFoundException(`Material Requisition ${id} not found`);
@@ -122,9 +176,14 @@ export class StoresService {
   // ==========================================
   // 2. STORE ISSUE NOTES
   // ==========================================
-  async createIssueNote(tenantId: string, actorId: string, idempotencyKey: string, dto: CreateIssueNoteDto) {
+  async createIssueNote(
+    tenantId: string,
+    actorId: string,
+    idempotencyKey: string,
+    dto: CreateIssueNoteDto,
+  ) {
     if (!idempotencyKey) {
-      throw new BadRequestException('x-idempotency-key header is required');
+      throw new BadRequestException("x-idempotency-key header is required");
     }
 
     return prisma.$transaction(async (tx) => {
@@ -132,12 +191,18 @@ export class StoresService {
         where: { tenantId_idempotencyKey: { tenantId, idempotencyKey } },
       });
       if (existing) {
-        throw new ConflictException('Idempotency key already used for Material Issue Note');
+        throw new ConflictException(
+          "Idempotency key already used for Material Issue Note",
+        );
       }
 
-      const order = await tx.productionOrder.findUnique({ where: { id: dto.productionOrderId } });
+      const order = await tx.productionOrder.findUnique({
+        where: { id: dto.productionOrderId },
+      });
       if (!order || order.tenantId !== tenantId) {
-        throw new NotFoundException(`Production Order with ID ${dto.productionOrderId} not found`);
+        throw new NotFoundException(
+          `Production Order with ID ${dto.productionOrderId} not found`,
+        );
       }
 
       let employee = await tx.employee.findFirst({ where: { tenantId } });
@@ -146,31 +211,39 @@ export class StoresService {
         employee = await tx.employee.create({
           data: {
             tenantId,
-            code: 'EMP-STORE',
-            name: 'Storekeeper',
-            type: 'OPERATOR',
-            factoryUnitId: factory?.id || '',
-          }
+            code: "EMP-STORE",
+            name: "Storekeeper",
+            type: "OPERATOR",
+            factoryUnitId: factory?.id || "",
+          },
         });
       }
 
       const count = await tx.materialIssueNote.count({ where: { tenantId } });
       const year = new Date().getFullYear();
-      const issueNumber = `MIN-${year}-${String(count + 1).padStart(4, '0')}`;
+      const issueNumber = `MIN-${year}-${String(count + 1).padStart(4, "0")}`;
 
       // Check stock and record ledger transaction for each line
       for (let i = 0; i < dto.lines.length; i++) {
         const line = dto.lines[i];
-        const material = await tx.material.findUnique({ where: { id: line.materialId } });
+        const material = await tx.material.findUnique({
+          where: { id: line.materialId },
+        });
         if (!material || material.tenantId !== tenantId) {
-          throw new NotFoundException(`Material with ID ${line.materialId} not found`);
+          throw new NotFoundException(
+            `Material with ID ${line.materialId} not found`,
+          );
         }
 
         // Lock & check on-hand balance
-        const currentQty = await this.ledgerService.lockInventoryItem(tx, tenantId, line.materialId);
+        const currentQty = await this.ledgerService.lockInventoryItem(
+          tx,
+          tenantId,
+          line.materialId,
+        );
         if (line.quantity > currentQty) {
           throw new BadRequestException(
-            `Insufficient stock to issue Material ${material.name} (${material.code}). Requested: ${line.quantity}, Available on-hand: ${currentQty}`
+            `Insufficient stock to issue Material ${material.name} (${material.code}). Requested: ${line.quantity}, Available on-hand: ${currentQty}`,
           );
         }
 
@@ -190,9 +263,13 @@ export class StoresService {
 
         // If fabric roll specified, update roll status to ISSUED
         if (line.fabricRollId) {
-          const roll = await tx.fabricRoll.findUnique({ where: { id: line.fabricRollId } });
+          const roll = await tx.fabricRoll.findUnique({
+            where: { id: line.fabricRollId },
+          });
           if (!roll || roll.tenantId !== tenantId) {
-            throw new NotFoundException(`Fabric roll ${line.fabricRollId} not found`);
+            throw new NotFoundException(
+              `Fabric roll ${line.fabricRollId} not found`,
+            );
           }
           await tx.fabricRoll.update({
             where: { id: roll.id },
@@ -232,9 +309,13 @@ export class StoresService {
     });
   }
 
-  async findAllIssueNotes(tenantId: string, filters?: { productionOrderId?: string }) {
+  async findAllIssueNotes(
+    tenantId: string,
+    filters?: { productionOrderId?: string },
+  ) {
     const where: any = { tenantId };
-    if (filters?.productionOrderId) where.productionOrderId = filters.productionOrderId;
+    if (filters?.productionOrderId)
+      where.productionOrderId = filters.productionOrderId;
 
     return prisma.materialIssueNote.findMany({
       where,
@@ -243,16 +324,21 @@ export class StoresService {
         productionOrder: true,
         issuedBy: true,
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
   }
 
   // ==========================================
   // 3. MATERIAL RETURN NOTES
   // ==========================================
-  async createReturnNote(tenantId: string, actorId: string, idempotencyKey: string, dto: CreateReturnNoteDto) {
+  async createReturnNote(
+    tenantId: string,
+    actorId: string,
+    idempotencyKey: string,
+    dto: CreateReturnNoteDto,
+  ) {
     if (!idempotencyKey) {
-      throw new BadRequestException('x-idempotency-key header is required');
+      throw new BadRequestException("x-idempotency-key header is required");
     }
 
     return prisma.$transaction(async (tx) => {
@@ -260,12 +346,18 @@ export class StoresService {
         where: { tenantId_idempotencyKey: { tenantId, idempotencyKey } },
       });
       if (existing) {
-        throw new ConflictException('Idempotency key already used for Material Return Note');
+        throw new ConflictException(
+          "Idempotency key already used for Material Return Note",
+        );
       }
 
-      const order = await tx.productionOrder.findUnique({ where: { id: dto.productionOrderId } });
+      const order = await tx.productionOrder.findUnique({
+        where: { id: dto.productionOrderId },
+      });
       if (!order || order.tenantId !== tenantId) {
-        throw new NotFoundException(`Production Order with ID ${dto.productionOrderId} not found`);
+        throw new NotFoundException(
+          `Production Order with ID ${dto.productionOrderId} not found`,
+        );
       }
 
       let employee = await tx.employee.findFirst({ where: { tenantId } });
@@ -274,28 +366,34 @@ export class StoresService {
         employee = await tx.employee.create({
           data: {
             tenantId,
-            code: 'EMP-RETURN',
-            name: 'Return Issuer',
-            type: 'OPERATOR',
-            factoryUnitId: factory?.id || '',
-          }
+            code: "EMP-RETURN",
+            name: "Return Issuer",
+            type: "OPERATOR",
+            factoryUnitId: factory?.id || "",
+          },
         });
       }
 
       const count = await tx.materialReturnNote.count({ where: { tenantId } });
       const year = new Date().getFullYear();
-      const returnNumber = `MRN-${year}-${String(count + 1).padStart(4, '0')}`;
+      const returnNumber = `MRN-${year}-${String(count + 1).padStart(4, "0")}`;
 
       // Process lines & record ledger transactions
       for (let i = 0; i < dto.lines.length; i++) {
         const line = dto.lines[i];
-        const material = await tx.material.findUnique({ where: { id: line.materialId } });
+        const material = await tx.material.findUnique({
+          where: { id: line.materialId },
+        });
         if (!material || material.tenantId !== tenantId) {
-          throw new NotFoundException(`Material with ID ${line.materialId} not found`);
+          throw new NotFoundException(
+            `Material with ID ${line.materialId} not found`,
+          );
         }
 
         // If scrap, ledger records WASTAGE; if usable return, ledger records RETURN
-        const txType = line.isScrap ? InventoryTxType.WASTAGE : InventoryTxType.RETURN;
+        const txType = line.isScrap
+          ? InventoryTxType.WASTAGE
+          : InventoryTxType.RETURN;
 
         if (!line.isScrap) {
           // Increment stock via RETURN
@@ -315,9 +413,13 @@ export class StoresService {
 
         // Update fabric roll status if specified
         if (line.fabricRollId) {
-          const roll = await tx.fabricRoll.findUnique({ where: { id: line.fabricRollId } });
+          const roll = await tx.fabricRoll.findUnique({
+            where: { id: line.fabricRollId },
+          });
           if (roll && roll.tenantId === tenantId) {
-            const nextStatus = line.isScrap ? RollStatus.EXHAUSTED : RollStatus.AVAILABLE;
+            const nextStatus = line.isScrap
+              ? RollStatus.EXHAUSTED
+              : RollStatus.AVAILABLE;
             await tx.fabricRoll.update({
               where: { id: roll.id },
               data: { status: nextStatus },
@@ -356,9 +458,13 @@ export class StoresService {
     });
   }
 
-  async findAllReturnNotes(tenantId: string, filters?: { productionOrderId?: string }) {
+  async findAllReturnNotes(
+    tenantId: string,
+    filters?: { productionOrderId?: string },
+  ) {
     const where: any = { tenantId };
-    if (filters?.productionOrderId) where.productionOrderId = filters.productionOrderId;
+    if (filters?.productionOrderId)
+      where.productionOrderId = filters.productionOrderId;
 
     return prisma.materialReturnNote.findMany({
       where,
@@ -367,22 +473,34 @@ export class StoresService {
         productionOrder: true,
         returnedBy: true,
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
   }
 
   // ==========================================
   // 4. CUTTING RECORD ROLL LINKAGE
   // ==========================================
-  async linkCuttingRoll(tenantId: string, actorId: string, dto: LinkCuttingRollDto) {
-    const cutRecord = await prisma.cuttingRecord.findUnique({ where: { id: dto.cuttingRecordId } });
+  async linkCuttingRoll(
+    tenantId: string,
+    actorId: string,
+    dto: LinkCuttingRollDto,
+  ) {
+    const cutRecord = await prisma.cuttingRecord.findUnique({
+      where: { id: dto.cuttingRecordId },
+    });
     if (!cutRecord || cutRecord.tenantId !== tenantId) {
-      throw new NotFoundException(`Cutting Record with ID ${dto.cuttingRecordId} not found`);
+      throw new NotFoundException(
+        `Cutting Record with ID ${dto.cuttingRecordId} not found`,
+      );
     }
 
-    const roll = await prisma.fabricRoll.findUnique({ where: { id: dto.fabricRollId } });
+    const roll = await prisma.fabricRoll.findUnique({
+      where: { id: dto.fabricRollId },
+    });
     if (!roll || roll.tenantId !== tenantId) {
-      throw new NotFoundException(`Fabric roll with ID ${dto.fabricRollId} not found`);
+      throw new NotFoundException(
+        `Fabric roll with ID ${dto.fabricRollId} not found`,
+      );
     }
 
     // Uniqueness check
@@ -395,7 +513,9 @@ export class StoresService {
       },
     });
     if (existing) {
-      throw new ConflictException(`Fabric roll ${roll.rollNumber} is already linked to cutting record ${cutRecord.id}`);
+      throw new ConflictException(
+        `Fabric roll ${roll.rollNumber} is already linked to cutting record ${cutRecord.id}`,
+      );
     }
 
     return prisma.$transaction(async (tx) => {
@@ -405,7 +525,7 @@ export class StoresService {
           cuttingRecordId: cutRecord.id,
           fabricRollId: roll.id,
           lengthConsumed: dto.lengthConsumed,
-          uom: dto.uom || roll.lengthUom || 'YDS',
+          uom: dto.uom || roll.lengthUom || "YDS",
         },
         include: {
           cuttingRecord: true,
@@ -414,8 +534,12 @@ export class StoresService {
       });
 
       // Update remaining usable length on roll
-      const remainingLength = Math.max(0, Number(roll.netLength) - Number(dto.lengthConsumed));
-      const nextStatus = remainingLength === 0 ? RollStatus.EXHAUSTED : RollStatus.ISSUED;
+      const remainingLength = Math.max(
+        0,
+        Number(roll.netLength) - Number(dto.lengthConsumed),
+      );
+      const nextStatus =
+        remainingLength === 0 ? RollStatus.EXHAUSTED : RollStatus.ISSUED;
 
       await tx.fabricRoll.update({
         where: { id: roll.id },

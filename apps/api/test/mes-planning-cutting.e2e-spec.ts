@@ -1,11 +1,16 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
-import * as request from 'supertest';
-import { AppModule } from '../src/app.module';
-import { prisma, ProductionStatus, CostingStatus, InventoryTxType } from '@textile-erp/database';
-import * as argon2 from 'argon2';
+import { Test, TestingModule } from "@nestjs/testing";
+import { INestApplication, ValidationPipe } from "@nestjs/common";
+import * as request from "supertest";
+import { AppModule } from "../src/app.module";
+import {
+  prisma,
+  ProductionStatus,
+  CostingStatus,
+  InventoryTxType,
+} from "@textile-erp/database";
+import * as argon2 from "argon2";
 
-describe('MES Production Planning & Cutting (e2e)', () => {
+describe("MES Production Planning & Cutting (e2e)", () => {
   let app: INestApplication;
   let tenantId: string;
   let foreignTenantId: string;
@@ -30,66 +35,68 @@ describe('MES Production Planning & Cutting (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+    app.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, transform: true }),
+    );
     await app.init();
 
     // 1. Create Primary Test Tenant
     const tenant = await prisma.tenant.create({
-      data: { name: 'Planning & Cutting MES Test Tenant' },
+      data: { name: "Planning & Cutting MES Test Tenant" },
     });
     tenantId = tenant.id;
 
     // 2. Create Foreign Tenant for isolation tests
     const foreignTenant = await prisma.tenant.create({
-      data: { name: 'Foreign Isolated Tenant' },
+      data: { name: "Foreign Isolated Tenant" },
     });
     foreignTenantId = foreignTenant.id;
 
-    const pwd = await argon2.hash('AdminPassword123!');
+    const pwd = await argon2.hash("AdminPassword123!");
     const user = await prisma.user.create({
       data: {
         tenantId,
-        email: 'mes-planner@test.com',
+        email: "mes-planner@test.com",
         passwordHash: pwd,
-        firstName: 'MES',
-        lastName: 'Planner',
+        firstName: "MES",
+        lastName: "Planner",
       },
     });
 
     const foreignUser = await prisma.user.create({
       data: {
         tenantId: foreignTenantId,
-        email: 'foreign-planner@test.com',
+        email: "foreign-planner@test.com",
         passwordHash: pwd,
-        firstName: 'Foreign',
-        lastName: 'User',
+        firstName: "Foreign",
+        lastName: "User",
       },
     });
 
     const role = await prisma.role.create({
-      data: { tenantId, name: 'MES_ADMIN' },
+      data: { tenantId, name: "MES_ADMIN" },
     });
 
     const foreignRole = await prisma.role.create({
-      data: { tenantId: foreignTenantId, name: 'FOREIGN_ADMIN' },
+      data: { tenantId: foreignTenantId, name: "FOREIGN_ADMIN" },
     });
 
     // Seed all necessary permissions
     const perms = [
-      { resource: 'PRODUCTION', action: 'WRITE' },
-      { resource: 'PRODUCTION', action: 'READ' },
-      { resource: 'PRODUCTION', action: 'PLAN' },
-      { resource: 'CUTTING', action: 'WRITE' },
-      { resource: 'CUTTING', action: 'READ' },
-      { resource: 'INVENTORY', action: 'WRITE' },
-      { resource: 'INVENTORY', action: 'READ' },
-      { resource: 'COSTING', action: 'WRITE' },
-      { resource: 'COSTING', action: 'APPROVE' },
-      { resource: 'BUYER', action: 'WRITE' },
-      { resource: 'STYLE', action: 'WRITE' },
-      { resource: 'FACTORY', action: 'WRITE' },
-      { resource: 'LINE', action: 'WRITE' },
-      { resource: 'MATERIAL', action: 'WRITE' },
+      { resource: "PRODUCTION", action: "WRITE" },
+      { resource: "PRODUCTION", action: "READ" },
+      { resource: "PRODUCTION", action: "PLAN" },
+      { resource: "CUTTING", action: "WRITE" },
+      { resource: "CUTTING", action: "READ" },
+      { resource: "INVENTORY", action: "WRITE" },
+      { resource: "INVENTORY", action: "READ" },
+      { resource: "COSTING", action: "WRITE" },
+      { resource: "COSTING", action: "APPROVE" },
+      { resource: "BUYER", action: "WRITE" },
+      { resource: "STYLE", action: "WRITE" },
+      { resource: "FACTORY", action: "WRITE" },
+      { resource: "LINE", action: "WRITE" },
+      { resource: "MATERIAL", action: "WRITE" },
     ];
 
     for (const p of perms) {
@@ -116,26 +123,34 @@ describe('MES Production Planning & Cutting (e2e)', () => {
 
     // Login to get tokens
     const loginRes = await request(app.getHttpServer())
-      .post('/auth/login')
-      .send({ tenantId, email: 'mes-planner@test.com', password: 'AdminPassword123!' });
+      .post("/auth/login")
+      .send({
+        tenantId,
+        email: "mes-planner@test.com",
+        password: "AdminPassword123!",
+      });
     accessToken = loginRes.body.accessToken;
 
     const foreignLoginRes = await request(app.getHttpServer())
-      .post('/auth/login')
-      .send({ tenantId: foreignTenantId, email: 'foreign-planner@test.com', password: 'AdminPassword123!' });
+      .post("/auth/login")
+      .send({
+        tenantId: foreignTenantId,
+        email: "foreign-planner@test.com",
+        password: "AdminPassword123!",
+      });
     foreignAccessToken = foreignLoginRes.body.accessToken;
 
     // 3. Create MDM Entities (Company, Factory, Line)
     const company = await prisma.company.create({
-      data: { tenantId, name: 'MES Test Company Alpha' },
+      data: { tenantId, name: "MES Test Company Alpha" },
     });
 
     const factory = await prisma.factoryUnit.create({
       data: {
         tenantId,
         companyId: company.id,
-        code: 'MES-FAC-01',
-        name: 'MES Main Factory',
+        code: "MES-FAC-01",
+        name: "MES Main Factory",
       },
     });
     factoryUnitId = factory.id;
@@ -144,8 +159,8 @@ describe('MES Production Planning & Cutting (e2e)', () => {
       data: {
         tenantId,
         factoryUnitId: factory.id,
-        code: 'MES-LINE-01',
-        name: 'Sewing Line Alpha',
+        code: "MES-LINE-01",
+        name: "Sewing Line Alpha",
         capacity: 1500,
       },
     });
@@ -153,22 +168,22 @@ describe('MES Production Planning & Cutting (e2e)', () => {
 
     // Foreign Factory and Line
     const foreignCompany = await prisma.company.create({
-      data: { tenantId: foreignTenantId, name: 'Foreign Company' },
+      data: { tenantId: foreignTenantId, name: "Foreign Company" },
     });
     const foreignFactory = await prisma.factoryUnit.create({
       data: {
         tenantId: foreignTenantId,
         companyId: foreignCompany.id,
-        code: 'FOR-FAC-01',
-        name: 'Foreign Factory',
+        code: "FOR-FAC-01",
+        name: "Foreign Factory",
       },
     });
     const foreignLine = await prisma.productionLine.create({
       data: {
         tenantId: foreignTenantId,
         factoryUnitId: foreignFactory.id,
-        code: 'FOR-LINE-01',
-        name: 'Foreign Sewing Line',
+        code: "FOR-LINE-01",
+        name: "Foreign Sewing Line",
         capacity: 1000,
       },
     });
@@ -178,10 +193,10 @@ describe('MES Production Planning & Cutting (e2e)', () => {
     const fabric = await prisma.material.create({
       data: {
         tenantId,
-        code: 'MAT-FAB-COTTON',
-        name: '100% Combed Cotton Single Jersey',
-        category: 'FABRIC',
-        uom: 'MTR',
+        code: "MAT-FAB-COTTON",
+        name: "100% Combed Cotton Single Jersey",
+        category: "FABRIC",
+        uom: "MTR",
       },
     });
     fabricMaterialId = fabric.id;
@@ -189,8 +204,8 @@ describe('MES Production Planning & Cutting (e2e)', () => {
     const style = await prisma.style.create({
       data: {
         tenantId,
-        code: 'STY-TSHIRT-01',
-        name: 'Heavyweight Crew T-Shirt',
+        code: "STY-TSHIRT-01",
+        name: "Heavyweight Crew T-Shirt",
       },
     });
     styleId = style.id;
@@ -198,8 +213,8 @@ describe('MES Production Planning & Cutting (e2e)', () => {
     const buyer = await prisma.buyer.create({
       data: {
         tenantId,
-        code: 'BYR-GLOBAL-01',
-        name: 'Global Apparel Retailers',
+        code: "BYR-GLOBAL-01",
+        name: "Global Apparel Retailers",
       },
     });
     buyerId = buyer.id;
@@ -240,8 +255,8 @@ describe('MES Production Planning & Cutting (e2e)', () => {
       data: {
         tenantId,
         buyerId,
-        poNumber: 'PO-MES-TEST-001',
-        status: 'CONFIRMED' as any,
+        poNumber: "PO-MES-TEST-001",
+        status: "CONFIRMED" as any,
         orderDate: new Date(),
         buyerPoLines: {
           create: [
@@ -260,18 +275,18 @@ describe('MES Production Planning & Cutting (e2e)', () => {
 
     // Production Order (target: 500 pcs)
     const orderRes = await request(app.getHttpServer())
-      .post('/production/orders')
-      .set('Authorization', `Bearer ${accessToken}`)
-      .set('x-tenant-id', tenantId)
-      .set('x-idempotency-key', 'idem-prod-order-01')
+      .post("/production/orders")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .set("x-tenant-id", tenantId)
+      .set("x-idempotency-key", "idem-prod-order-01")
       .send({
         buyerPoLineId,
-        orderNumber: 'PRD-MES-001',
+        orderNumber: "PRD-MES-001",
         targetQuantity: 500,
         operations: [
-          { operationName: 'Cutting', sequence: 1 },
-          { operationName: 'Sewing', sequence: 2 },
-          { operationName: 'Finishing', sequence: 3 },
+          { operationName: "Cutting", sequence: 1 },
+          { operationName: "Sewing", sequence: 2 },
+          { operationName: "Finishing", sequence: 3 },
         ],
       })
       .expect(201);
@@ -281,8 +296,8 @@ describe('MES Production Planning & Cutting (e2e)', () => {
     const warehouse = await prisma.warehouse.create({
       data: {
         tenantId,
-        code: 'WH-MAIN-FABRIC',
-        name: 'Main Fabric Warehouse',
+        code: "WH-MAIN-FABRIC",
+        name: "Main Fabric Warehouse",
       },
     });
     warehouseId = warehouse.id;
@@ -290,8 +305,8 @@ describe('MES Production Planning & Cutting (e2e)', () => {
     const bin = await prisma.bin.create({
       data: {
         warehouseId: warehouse.id,
-        code: 'BIN-FAB-01',
-        name: 'Fabric Bay 1',
+        code: "BIN-FAB-01",
+        name: "Fabric Bay 1",
       },
     });
     binId = bin.id;
@@ -312,9 +327,9 @@ describe('MES Production Planning & Cutting (e2e)', () => {
         binId: bin.id,
         type: InventoryTxType.RECEIPT,
         quantity: 2000,
-        uom: 'MTR',
+        uom: "MTR",
         actorId: user.id,
-        idempotencyKey: 'init-stock-receipt',
+        idempotencyKey: "init-stock-receipt",
       },
     });
   });
@@ -324,8 +339,12 @@ describe('MES Production Planning & Cutting (e2e)', () => {
     await prisma.cuttingRecord.deleteMany({ where: { tenantId } });
     await prisma.productionPlan.deleteMany({ where: { tenantId } });
     await prisma.wipTransaction.deleteMany({ where: { tenantId } });
-    await prisma.productionBomLine.deleteMany({ where: { productionOrder: { tenantId } } });
-    await prisma.productionOperation.deleteMany({ where: { productionOrder: { tenantId } } });
+    await prisma.productionBomLine.deleteMany({
+      where: { productionOrder: { tenantId } },
+    });
+    await prisma.productionOperation.deleteMany({
+      where: { productionOrder: { tenantId } },
+    });
     await prisma.productionOrder.deleteMany({ where: { tenantId } });
     await prisma.buyerPoLine.deleteMany({ where: { buyerPo: { tenantId } } });
     await prisma.buyerPo.deleteMany({ where: { tenantId } });
@@ -338,29 +357,45 @@ describe('MES Production Planning & Cutting (e2e)', () => {
     await prisma.material.deleteMany({ where: { tenantId } });
     await prisma.style.deleteMany({ where: { tenantId } });
     await prisma.buyer.deleteMany({ where: { tenantId } });
-    await prisma.productionLine.deleteMany({ where: { tenantId: { in: [tenantId, foreignTenantId] } } });
-    await prisma.factoryUnit.deleteMany({ where: { tenantId: { in: [tenantId, foreignTenantId] } } });
-    await prisma.company.deleteMany({ where: { tenantId: { in: [tenantId, foreignTenantId] } } });
-    await prisma.userRole.deleteMany({ where: { role: { tenantId: { in: [tenantId, foreignTenantId] } } } });
-    await prisma.rolePermission.deleteMany({ where: { role: { tenantId: { in: [tenantId, foreignTenantId] } } } });
-    await prisma.role.deleteMany({ where: { tenantId: { in: [tenantId, foreignTenantId] } } });
-    await prisma.user.deleteMany({ where: { tenantId: { in: [tenantId, foreignTenantId] } } });
-    await prisma.tenant.deleteMany({ where: { id: { in: [tenantId, foreignTenantId] } } });
+    await prisma.productionLine.deleteMany({
+      where: { tenantId: { in: [tenantId, foreignTenantId] } },
+    });
+    await prisma.factoryUnit.deleteMany({
+      where: { tenantId: { in: [tenantId, foreignTenantId] } },
+    });
+    await prisma.company.deleteMany({
+      where: { tenantId: { in: [tenantId, foreignTenantId] } },
+    });
+    await prisma.userRole.deleteMany({
+      where: { role: { tenantId: { in: [tenantId, foreignTenantId] } } },
+    });
+    await prisma.rolePermission.deleteMany({
+      where: { role: { tenantId: { in: [tenantId, foreignTenantId] } } },
+    });
+    await prisma.role.deleteMany({
+      where: { tenantId: { in: [tenantId, foreignTenantId] } },
+    });
+    await prisma.user.deleteMany({
+      where: { tenantId: { in: [tenantId, foreignTenantId] } },
+    });
+    await prisma.tenant.deleteMany({
+      where: { id: { in: [tenantId, foreignTenantId] } },
+    });
     await app.close();
   });
 
-  describe('Section 1: Production Order Line Planning', () => {
-    it('should successfully plan a production order onto a line with SMV and dates', async () => {
+  describe("Section 1: Production Order Line Planning", () => {
+    it("should successfully plan a production order onto a line with SMV and dates", async () => {
       const res = await request(app.getHttpServer())
         .post(`/production/orders/${productionOrderId}/plan`)
-        .set('Authorization', `Bearer ${accessToken}`)
-        .set('x-tenant-id', tenantId)
-        .set('x-actor-id', 'actor-planner-01')
-        .set('x-idempotency-key', 'idem-plan-001')
+        .set("Authorization", `Bearer ${accessToken}`)
+        .set("x-tenant-id", tenantId)
+        .set("x-actor-id", "actor-planner-01")
+        .set("x-idempotency-key", "idem-plan-001")
         .send({
           productionLineId,
-          plannedStartDate: '2026-09-01T08:00:00.000Z',
-          plannedEndDate: '2026-09-05T17:00:00.000Z',
+          plannedStartDate: "2026-09-01T08:00:00.000Z",
+          plannedEndDate: "2026-09-05T17:00:00.000Z",
           smv: 18.5,
           dailyTarget: 800,
         })
@@ -374,60 +409,64 @@ describe('MES Production Planning & Cutting (e2e)', () => {
       expect(Number(res.body.plan.dailyTarget)).toBe(800);
     });
 
-    it('should reject planning with invalid dates (startDate > endDate)', async () => {
+    it("should reject planning with invalid dates (startDate > endDate)", async () => {
       const res = await request(app.getHttpServer())
         .post(`/production/orders/${productionOrderId}/plan`)
-        .set('Authorization', `Bearer ${accessToken}`)
-        .set('x-tenant-id', tenantId)
-        .set('x-actor-id', 'actor-planner-01')
+        .set("Authorization", `Bearer ${accessToken}`)
+        .set("x-tenant-id", tenantId)
+        .set("x-actor-id", "actor-planner-01")
         .send({
           productionLineId,
-          plannedStartDate: '2026-09-10T08:00:00.000Z',
-          plannedEndDate: '2026-09-05T17:00:00.000Z',
+          plannedStartDate: "2026-09-10T08:00:00.000Z",
+          plannedEndDate: "2026-09-05T17:00:00.000Z",
           smv: 18.5,
         });
 
       expect(res.status).toBe(400);
-      expect(res.body.message).toContain('plannedStartDate must be before or equal to plannedEndDate');
+      expect(res.body.message).toContain(
+        "plannedStartDate must be before or equal to plannedEndDate",
+      );
     });
 
-    it('should reject assigning a production line from another tenant', async () => {
+    it("should reject assigning a production line from another tenant", async () => {
       const res = await request(app.getHttpServer())
         .post(`/production/orders/${productionOrderId}/plan`)
-        .set('Authorization', `Bearer ${accessToken}`)
-        .set('x-tenant-id', tenantId)
-        .set('x-actor-id', 'actor-planner-01')
+        .set("Authorization", `Bearer ${accessToken}`)
+        .set("x-tenant-id", tenantId)
+        .set("x-actor-id", "actor-planner-01")
         .send({
           productionLineId: foreignLineId,
-          plannedStartDate: '2026-09-01T08:00:00.000Z',
-          plannedEndDate: '2026-09-05T17:00:00.000Z',
+          plannedStartDate: "2026-09-01T08:00:00.000Z",
+          plannedEndDate: "2026-09-05T17:00:00.000Z",
         });
 
       expect(res.status).toBe(400);
-      expect(res.body.message).toContain('Production Line not found or belongs to another tenant');
+      expect(res.body.message).toContain(
+        "Production Line not found or belongs to another tenant",
+      );
     });
 
-    it('should reject duplicate planning request with same idempotency key', async () => {
+    it("should reject duplicate planning request with same idempotency key", async () => {
       const res = await request(app.getHttpServer())
         .post(`/production/orders/${productionOrderId}/plan`)
-        .set('Authorization', `Bearer ${accessToken}`)
-        .set('x-tenant-id', tenantId)
-        .set('x-actor-id', 'actor-planner-01')
-        .set('x-idempotency-key', 'idem-plan-001')
+        .set("Authorization", `Bearer ${accessToken}`)
+        .set("x-tenant-id", tenantId)
+        .set("x-actor-id", "actor-planner-01")
+        .set("x-idempotency-key", "idem-plan-001")
         .send({
           productionLineId,
-          plannedStartDate: '2026-09-01T08:00:00.000Z',
-          plannedEndDate: '2026-09-05T17:00:00.000Z',
+          plannedStartDate: "2026-09-01T08:00:00.000Z",
+          plannedEndDate: "2026-09-05T17:00:00.000Z",
         });
 
       expect(res.status).toBe(409);
     });
 
-    it('should list scheduled production plans for the tenant', async () => {
+    it("should list scheduled production plans for the tenant", async () => {
       const res = await request(app.getHttpServer())
-        .get('/production/plans')
-        .set('Authorization', `Bearer ${accessToken}`)
-        .set('x-tenant-id', tenantId)
+        .get("/production/plans")
+        .set("Authorization", `Bearer ${accessToken}`)
+        .set("x-tenant-id", tenantId)
         .expect(200);
 
       expect(Array.isArray(res.body)).toBe(true);
@@ -436,14 +475,14 @@ describe('MES Production Planning & Cutting (e2e)', () => {
     });
   });
 
-  describe('Section 2: Cutting Records & Double-Entry Ledger Integration', () => {
-    it('should reject recording cutting for an order in PLANNED status', async () => {
+  describe("Section 2: Cutting Records & Double-Entry Ledger Integration", () => {
+    it("should reject recording cutting for an order in PLANNED status", async () => {
       const res = await request(app.getHttpServer())
-        .post('/cutting/records')
-        .set('Authorization', `Bearer ${accessToken}`)
-        .set('x-tenant-id', tenantId)
-        .set('x-actor-id', 'actor-cutter-01')
-        .set('x-idempotency-key', 'idem-cut-pre-001')
+        .post("/cutting/records")
+        .set("Authorization", `Bearer ${accessToken}`)
+        .set("x-tenant-id", tenantId)
+        .set("x-actor-id", "actor-cutter-01")
+        .set("x-idempotency-key", "idem-cut-pre-001")
         .send({
           productionOrderId,
           fabricMaterialId,
@@ -452,16 +491,18 @@ describe('MES Production Planning & Cutting (e2e)', () => {
         });
 
       expect(res.status).toBe(400);
-      expect(res.body.message).toContain('Order must be RELEASED or IN_PROGRESS');
+      expect(res.body.message).toContain(
+        "Order must be RELEASED or IN_PROGRESS",
+      );
     });
 
-    it('should transition order to RELEASED and then record cutting with automatic fabric stock debit', async () => {
+    it("should transition order to RELEASED and then record cutting with automatic fabric stock debit", async () => {
       // 1. Transition Order to RELEASED
       await request(app.getHttpServer())
         .patch(`/production/orders/${productionOrderId}/status`)
-        .set('Authorization', `Bearer ${accessToken}`)
-        .set('x-tenant-id', tenantId)
-        .set('x-actor-id', 'actor-manager-01')
+        .set("Authorization", `Bearer ${accessToken}`)
+        .set("x-tenant-id", tenantId)
+        .set("x-actor-id", "actor-manager-01")
         .send({ status: ProductionStatus.RELEASED })
         .expect(200);
 
@@ -473,11 +514,11 @@ describe('MES Production Planning & Cutting (e2e)', () => {
 
       // 2. Record Cutting Batch: 200 cut pieces, consuming 300 MTR fabric
       const cutRes = await request(app.getHttpServer())
-        .post('/cutting/records')
-        .set('Authorization', `Bearer ${accessToken}`)
-        .set('x-tenant-id', tenantId)
-        .set('x-actor-id', 'actor-cutter-01')
-        .set('x-idempotency-key', 'idem-cut-batch-001')
+        .post("/cutting/records")
+        .set("Authorization", `Bearer ${accessToken}`)
+        .set("x-tenant-id", tenantId)
+        .set("x-actor-id", "actor-cutter-01")
+        .set("x-idempotency-key", "idem-cut-batch-001")
         .send({
           productionOrderId,
           fabricMaterialId,
@@ -516,13 +557,13 @@ describe('MES Production Planning & Cutting (e2e)', () => {
       expect(updatedOrder!.status).toBe(ProductionStatus.IN_PROGRESS);
     });
 
-    it('should reject duplicate cutting request with same idempotency key', async () => {
+    it("should reject duplicate cutting request with same idempotency key", async () => {
       const res = await request(app.getHttpServer())
-        .post('/cutting/records')
-        .set('Authorization', `Bearer ${accessToken}`)
-        .set('x-tenant-id', tenantId)
-        .set('x-actor-id', 'actor-cutter-01')
-        .set('x-idempotency-key', 'idem-cut-batch-001')
+        .post("/cutting/records")
+        .set("Authorization", `Bearer ${accessToken}`)
+        .set("x-tenant-id", tenantId)
+        .set("x-actor-id", "actor-cutter-01")
+        .set("x-idempotency-key", "idem-cut-batch-001")
         .send({
           productionOrderId,
           fabricMaterialId,
@@ -533,15 +574,15 @@ describe('MES Production Planning & Cutting (e2e)', () => {
       expect(res.status).toBe(409);
     });
 
-    it('should reject cutting when cut quantity exceeds remaining target quantity (0% overage rule)', async () => {
+    it("should reject cutting when cut quantity exceeds remaining target quantity (0% overage rule)", async () => {
       // Order target is 500. Already cut: 200. Remaining: 300.
       // Attempting to cut 350 must be rejected.
       const res = await request(app.getHttpServer())
-        .post('/cutting/records')
-        .set('Authorization', `Bearer ${accessToken}`)
-        .set('x-tenant-id', tenantId)
-        .set('x-actor-id', 'actor-cutter-01')
-        .set('x-idempotency-key', 'idem-cut-overage-001')
+        .post("/cutting/records")
+        .set("Authorization", `Bearer ${accessToken}`)
+        .set("x-tenant-id", tenantId)
+        .set("x-actor-id", "actor-cutter-01")
+        .set("x-idempotency-key", "idem-cut-overage-001")
         .send({
           productionOrderId,
           fabricMaterialId,
@@ -550,7 +591,9 @@ describe('MES Production Planning & Cutting (e2e)', () => {
         });
 
       expect(res.status).toBe(400);
-      expect(res.body.message).toContain('exceeds remaining production order capacity');
+      expect(res.body.message).toContain(
+        "exceeds remaining production order capacity",
+      );
 
       // Verify stock remained unchanged at 1700
       const stock = await prisma.inventoryItem.findFirst({
@@ -559,14 +602,14 @@ describe('MES Production Planning & Cutting (e2e)', () => {
       expect(Number(stock!.quantity)).toBe(1700);
     });
 
-    it('should reject cutting when inventory has insufficient fabric stock', async () => {
+    it("should reject cutting when inventory has insufficient fabric stock", async () => {
       // Available stock is 1700. Attempting to consume 2500 MTR fabric must fail in LedgerService.
       const res = await request(app.getHttpServer())
-        .post('/cutting/records')
-        .set('Authorization', `Bearer ${accessToken}`)
-        .set('x-tenant-id', tenantId)
-        .set('x-actor-id', 'actor-cutter-01')
-        .set('x-idempotency-key', 'idem-cut-no-stock-001')
+        .post("/cutting/records")
+        .set("Authorization", `Bearer ${accessToken}`)
+        .set("x-tenant-id", tenantId)
+        .set("x-actor-id", "actor-cutter-01")
+        .set("x-idempotency-key", "idem-cut-no-stock-001")
         .send({
           productionOrderId,
           fabricMaterialId,
@@ -575,36 +618,43 @@ describe('MES Production Planning & Cutting (e2e)', () => {
         });
 
       expect(res.status).toBe(400);
-      expect(res.body.message).toContain('Insufficient stock');
+      expect(res.body.message).toContain("Insufficient stock");
 
       // Verify no cutting record was created
       const invalidRecord = await prisma.cuttingRecord.findUnique({
-        where: { tenantId_idempotencyKey: { tenantId, idempotencyKey: 'idem-cut-no-stock-001' } },
+        where: {
+          tenantId_idempotencyKey: {
+            tenantId,
+            idempotencyKey: "idem-cut-no-stock-001",
+          },
+        },
       });
       expect(invalidRecord).toBeNull();
     });
 
-    it('should reject line planning once order is IN_PROGRESS', async () => {
+    it("should reject line planning once order is IN_PROGRESS", async () => {
       const res = await request(app.getHttpServer())
         .post(`/production/orders/${productionOrderId}/plan`)
-        .set('Authorization', `Bearer ${accessToken}`)
-        .set('x-tenant-id', tenantId)
-        .set('x-actor-id', 'actor-planner-01')
+        .set("Authorization", `Bearer ${accessToken}`)
+        .set("x-tenant-id", tenantId)
+        .set("x-actor-id", "actor-planner-01")
         .send({
           productionLineId,
-          plannedStartDate: '2026-09-01T08:00:00.000Z',
-          plannedEndDate: '2026-09-05T17:00:00.000Z',
+          plannedStartDate: "2026-09-01T08:00:00.000Z",
+          plannedEndDate: "2026-09-05T17:00:00.000Z",
         });
 
       expect(res.status).toBe(400);
-      expect(res.body.message).toContain('Cannot re-plan or change production line for order in IN_PROGRESS status');
+      expect(res.body.message).toContain(
+        "Cannot re-plan or change production line for order in IN_PROGRESS status",
+      );
     });
 
-    it('should list all cutting records with material and order metadata', async () => {
+    it("should list all cutting records with material and order metadata", async () => {
       const res = await request(app.getHttpServer())
-        .get('/cutting/records')
-        .set('Authorization', `Bearer ${accessToken}`)
-        .set('x-tenant-id', tenantId)
+        .get("/cutting/records")
+        .set("Authorization", `Bearer ${accessToken}`)
+        .set("x-tenant-id", tenantId)
         .expect(200);
 
       expect(Array.isArray(res.body)).toBe(true);

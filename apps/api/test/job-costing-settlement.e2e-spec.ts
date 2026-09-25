@@ -1,17 +1,17 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
-import * as request from 'supertest';
-import { AppModule } from './../src/app.module';
+import { Test, TestingModule } from "@nestjs/testing";
+import { INestApplication } from "@nestjs/common";
+import * as request from "supertest";
+import { AppModule } from "./../src/app.module";
 import {
   prisma,
   WarehouseType,
   ProductionStatus,
   CommercialInvoiceStatus,
   InventoryTxType,
-} from '@textile-erp/database';
-import * as argon2 from 'argon2';
+} from "@textile-erp/database";
+import * as argon2 from "argon2";
 
-describe('Job Costing & Invoice Settlement (Phase 9.3 e2e)', () => {
+describe("Job Costing & Invoice Settlement (Phase 9.3 e2e)", () => {
   let app: INestApplication;
   let tenantId: string;
   let otherTenantId: string;
@@ -32,51 +32,51 @@ describe('Job Costing & Invoice Settlement (Phase 9.3 e2e)', () => {
 
     // 1. Primary Tenant
     const tenant = await prisma.tenant.create({
-      data: { name: 'Costing & Settlement 9.3 Tenant' },
+      data: { name: "Costing & Settlement 9.3 Tenant" },
     });
     tenantId = tenant.id;
 
     // 2. Secondary Tenant
     const otherTenant = await prisma.tenant.create({
-      data: { name: 'Cross Settlement Corp' },
+      data: { name: "Cross Settlement Corp" },
     });
     otherTenantId = otherTenant.id;
 
-    const pwd = await argon2.hash('Password123!');
+    const pwd = await argon2.hash("Password123!");
     const user = await prisma.user.create({
       data: {
         tenantId,
-        email: 'cost93@test.com',
+        email: "cost93@test.com",
         passwordHash: pwd,
-        firstName: 'Cost',
-        lastName: 'Admin',
+        firstName: "Cost",
+        lastName: "Admin",
       },
     });
 
     const otherUser = await prisma.user.create({
       data: {
         tenantId: otherTenantId,
-        email: 'other93@test.com',
+        email: "other93@test.com",
         passwordHash: pwd,
-        firstName: 'Other',
-        lastName: 'Admin',
+        firstName: "Other",
+        lastName: "Admin",
       },
     });
 
     const role = await prisma.role.create({
-      data: { tenantId, name: 'COSTING_ADMIN' },
+      data: { tenantId, name: "COSTING_ADMIN" },
     });
     const otherRole = await prisma.role.create({
-      data: { tenantId: otherTenantId, name: 'OTHER_ADMIN' },
+      data: { tenantId: otherTenantId, name: "OTHER_ADMIN" },
     });
 
     const perms = [
-      { resource: 'COSTING', action: 'WRITE' },
-      { resource: 'COSTING', action: 'READ' },
-      { resource: 'SHIPPING', action: 'WRITE' },
-      { resource: 'SHIPPING', action: 'READ' },
-      { resource: 'BUYER_PO', action: 'WRITE' },
-      { resource: 'BUYER_PO', action: 'READ' },
+      { resource: "COSTING", action: "WRITE" },
+      { resource: "COSTING", action: "READ" },
+      { resource: "SHIPPING", action: "WRITE" },
+      { resource: "SHIPPING", action: "READ" },
+      { resource: "BUYER_PO", action: "WRITE" },
+      { resource: "BUYER_PO", action: "READ" },
     ];
 
     for (const p of perms) {
@@ -102,21 +102,21 @@ describe('Job Costing & Invoice Settlement (Phase 9.3 e2e)', () => {
 
     // 3. Base Entities
     const buyer = await prisma.buyer.create({
-      data: { tenantId, code: 'BUY-93', name: 'Premium Retail UK' },
+      data: { tenantId, code: "BUY-93", name: "Premium Retail UK" },
     });
 
     const style = await prisma.style.create({
-      data: { tenantId, code: 'STY-BLAZER-93', name: 'Navy Wool Blazer' },
+      data: { tenantId, code: "STY-BLAZER-93", name: "Navy Wool Blazer" },
     });
     styleId = style.id;
 
     const material = await prisma.material.create({
       data: {
         tenantId,
-        code: 'FAB-WOOL-93',
-        name: 'Wool Blend Suiting',
-        category: 'FABRIC',
-        uom: 'MTR',
+        code: "FAB-WOOL-93",
+        name: "Wool Blend Suiting",
+        category: "FABRIC",
+        uom: "MTR",
       },
     });
     materialId = material.id;
@@ -126,7 +126,7 @@ describe('Job Costing & Invoice Settlement (Phase 9.3 e2e)', () => {
       data: {
         tenantId,
         buyerId: buyer.id,
-        poNumber: 'PO-COST-93',
+        poNumber: "PO-COST-93",
         orderDate: new Date(),
       },
     });
@@ -151,7 +151,7 @@ describe('Job Costing & Invoice Settlement (Phase 9.3 e2e)', () => {
         tenantId,
         costingSheetId: costingSheet.id,
         versionNumber: 1,
-        status: 'APPROVED',
+        status: "APPROVED",
         fabricCost: 18.0,
         trimsCost: 4.0,
         cmCost: 8.0,
@@ -166,7 +166,7 @@ describe('Job Costing & Invoice Settlement (Phase 9.3 e2e)', () => {
       data: {
         tenantId,
         buyerPoLineId: poLine.id,
-        orderNumber: 'PRD-COST-93',
+        orderNumber: "PRD-COST-93",
         status: ProductionStatus.COMPLETED,
         targetQuantity: 200,
         completedQty: 200,
@@ -182,8 +182,8 @@ describe('Job Costing & Invoice Settlement (Phase 9.3 e2e)', () => {
         materialId,
         type: InventoryTxType.RECEIPT,
         quantity: 500,
-        uom: 'MTR',
-        actorId: 'SETUP',
+        uom: "MTR",
+        actorId: "SETUP",
         idempotencyKey: `cost-init-tx-${Date.now()}`,
       },
     });
@@ -207,7 +207,7 @@ describe('Job Costing & Invoice Settlement (Phase 9.3 e2e)', () => {
         tenantId,
         buyerId: buyer.id,
         buyerPoId: buyerPo.id,
-        shipmentNumber: 'SHP-93-001',
+        shipmentNumber: "SHP-93-001",
         plannedShipDate: new Date(),
         idempotencyKey: `shp-93-${Date.now()}`,
       },
@@ -219,10 +219,10 @@ describe('Job Costing & Invoice Settlement (Phase 9.3 e2e)', () => {
         tenantId,
         shipmentId: shipment.id,
         buyerId: buyer.id,
-        invoiceNumber: 'INV-2026-9301',
+        invoiceNumber: "INV-2026-9301",
         subtotal: 9000.0,
         totalAmount: 9000.0,
-        currency: 'USD',
+        currency: "USD",
         status: CommercialInvoiceStatus.ISSUED,
         idempotencyKey: `inv-cost-93-${Date.now()}`,
       },
@@ -231,16 +231,16 @@ describe('Job Costing & Invoice Settlement (Phase 9.3 e2e)', () => {
 
     // Login tokens
     const loginRes = await request(app.getHttpServer())
-      .post('/auth/login')
-      .send({ tenantId, email: 'cost93@test.com', password: 'Password123!' });
+      .post("/auth/login")
+      .send({ tenantId, email: "cost93@test.com", password: "Password123!" });
     accessToken = loginRes.body.accessToken;
 
     const otherLoginRes = await request(app.getHttpServer())
-      .post('/auth/login')
+      .post("/auth/login")
       .send({
         tenantId: otherTenantId,
-        email: 'other93@test.com',
-        password: 'Password123!',
+        email: "other93@test.com",
+        password: "Password123!",
       });
     otherAccessToken = otherLoginRes.body.accessToken;
   });
@@ -286,21 +286,21 @@ describe('Job Costing & Invoice Settlement (Phase 9.3 e2e)', () => {
     await app.close();
   });
 
-  describe('Part A: Commercial Invoice Settlement & Remittance', () => {
-    it('1. should record payment remittance and settle commercial invoice to PAID', async () => {
+  describe("Part A: Commercial Invoice Settlement & Remittance", () => {
+    it("1. should record payment remittance and settle commercial invoice to PAID", async () => {
       const settleRes = await request(app.getHttpServer())
         .post(`/shipping/invoices/${invoiceId}/settle`)
-        .set('Authorization', `Bearer ${accessToken}`)
+        .set("Authorization", `Bearer ${accessToken}`)
         .send({
-          paymentReference: 'SWIFT-TT-99823',
+          paymentReference: "SWIFT-TT-99823",
           paymentDate: new Date().toISOString(),
           paidAmount: 9000.0,
-          notes: 'Standard Chartered Bank confirmed wire receipt',
+          notes: "Standard Chartered Bank confirmed wire receipt",
         });
 
       expect(settleRes.status).toBe(200);
       expect(settleRes.body.status).toBe(CommercialInvoiceStatus.PAID);
-      expect(settleRes.body.paymentReference).toBe('SWIFT-TT-99823');
+      expect(settleRes.body.paymentReference).toBe("SWIFT-TT-99823");
       expect(Number(settleRes.body.paidAmount)).toBe(9000.0);
 
       // Verify database persistence
@@ -308,16 +308,16 @@ describe('Job Costing & Invoice Settlement (Phase 9.3 e2e)', () => {
         where: { id: invoiceId },
       });
       expect(dbInvoice.status).toBe(CommercialInvoiceStatus.PAID);
-      expect(dbInvoice.paymentReference).toBe('SWIFT-TT-99823');
+      expect(dbInvoice.paymentReference).toBe("SWIFT-TT-99823");
       expect(Number(dbInvoice.paidAmount)).toBe(9000.0);
     });
 
-    it('2. should idempotently handle repeated settlement requests', async () => {
+    it("2. should idempotently handle repeated settlement requests", async () => {
       const retryRes = await request(app.getHttpServer())
         .post(`/shipping/invoices/${invoiceId}/settle`)
-        .set('Authorization', `Bearer ${accessToken}`)
+        .set("Authorization", `Bearer ${accessToken}`)
         .send({
-          paymentReference: 'SWIFT-TT-99823',
+          paymentReference: "SWIFT-TT-99823",
           paymentDate: new Date().toISOString(),
           paidAmount: 9000.0,
         });
@@ -327,15 +327,15 @@ describe('Job Costing & Invoice Settlement (Phase 9.3 e2e)', () => {
     });
   });
 
-  describe('Part B: Actual Job Costing & Realized Profitability', () => {
-    it('3. should calculate actual job costs and realized margins against invoiced revenue', async () => {
+  describe("Part B: Actual Job Costing & Realized Profitability", () => {
+    it("3. should calculate actual job costs and realized margins against invoiced revenue", async () => {
       const costRes = await request(app.getHttpServer())
         .post(`/costing/jobs/${orderId}/calculate`)
-        .set('Authorization', `Bearer ${accessToken}`)
+        .set("Authorization", `Bearer ${accessToken}`)
         .send({
           minuteLaborRate: 0.1,
           overheadPercent: 20,
-          notes: 'Completed batch job costing calculation',
+          notes: "Completed batch job costing calculation",
         });
 
       expect(costRes.status).toBe(201);
@@ -357,20 +357,20 @@ describe('Job Costing & Invoice Settlement (Phase 9.3 e2e)', () => {
       expect(Number(costRes.body.realizedMarginPercent)).toBeCloseTo(76.17, 1);
     });
 
-    it('4. should retrieve job cost summary list for tenant', async () => {
+    it("4. should retrieve job cost summary list for tenant", async () => {
       const res = await request(app.getHttpServer())
-        .get('/costing/jobs')
-        .set('Authorization', `Bearer ${accessToken}`);
+        .get("/costing/jobs")
+        .set("Authorization", `Bearer ${accessToken}`);
 
       expect(res.status).toBe(200);
       expect(res.body.length).toBeGreaterThanOrEqual(1);
       expect(res.body[0].productionOrderId).toBe(orderId);
     });
 
-    it('5. should enforce strict tenant isolation on job costs', async () => {
+    it("5. should enforce strict tenant isolation on job costs", async () => {
       const res = await request(app.getHttpServer())
-        .get('/costing/jobs')
-        .set('Authorization', `Bearer ${otherAccessToken}`);
+        .get("/costing/jobs")
+        .set("Authorization", `Bearer ${otherAccessToken}`);
 
       expect(res.status).toBe(200);
       expect(res.body).toHaveLength(0);

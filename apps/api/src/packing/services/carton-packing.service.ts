@@ -1,4 +1,9 @@
-import { Injectable, BadRequestException, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+  ConflictException,
+} from "@nestjs/common";
 import {
   PrismaClient,
   Prisma,
@@ -8,9 +13,9 @@ import {
   ProductionStatus,
   InspectionStage,
   AqlAuditStatus,
-} from '@textile-erp/database';
-import { PackCartonDto, QueryCartonsDto } from '../dto/packing.dto';
-import { SsccService } from './sscc.service';
+} from "@textile-erp/database";
+import { PackCartonDto, QueryCartonsDto } from "../dto/packing.dto";
+import { SsccService } from "./sscc.service";
 
 const prisma = new PrismaClient();
 
@@ -29,7 +34,7 @@ export class CartonPackingService {
     dto: PackCartonDto,
   ) {
     if (!idempotencyKey) {
-      throw new BadRequestException('X-Idempotency-Key is required');
+      throw new BadRequestException("X-Idempotency-Key is required");
     }
 
     return prisma.$transaction(async (tx) => {
@@ -50,17 +55,23 @@ export class CartonPackingService {
         include: { buyerPoLine: true },
       });
       if (!order || order.tenantId !== tenantId) {
-        throw new NotFoundException('Production Order not found');
+        throw new NotFoundException("Production Order not found");
       }
 
       if (order.status === ProductionStatus.CANCELLED) {
-        throw new BadRequestException('Cannot pack goods for CANCELLED production order');
+        throw new BadRequestException(
+          "Cannot pack goods for CANCELLED production order",
+        );
       }
       if (order.status === ProductionStatus.PLANNED) {
-        throw new BadRequestException('Production order must be IN_PROGRESS or COMPLETED to pack finished goods');
+        throw new BadRequestException(
+          "Production order must be IN_PROGRESS or COMPLETED to pack finished goods",
+        );
       }
       if (Number(order.completedQty) <= 0) {
-        throw new BadRequestException('Cannot pack carton: Production Order has 0 completed goods output');
+        throw new BadRequestException(
+          "Cannot pack carton: Production Order has 0 completed goods output",
+        );
       }
 
       // 3. HARD QUALITY GATE: Reject packing if Production Order has an active QualityHold
@@ -85,7 +96,7 @@ export class CartonPackingService {
           productionOrderId: order.id,
           stage: InspectionStage.FINAL_AUDIT,
         },
-        orderBy: { auditDate: 'desc' },
+        orderBy: { auditDate: "desc" },
       });
 
       if (!latestFinalAudit) {
@@ -108,17 +119,21 @@ export class CartonPackingService {
 
       // 5. Validate Items Array
       if (!dto.items || dto.items.length === 0) {
-        throw new BadRequestException('Carton must contain at least one item');
+        throw new BadRequestException("Carton must contain at least one item");
       }
 
       let totalUnits = 0;
       for (const item of dto.items) {
         if (!item.styleId || !item.color || !item.size || item.quantity <= 0) {
-          throw new BadRequestException('Each carton item must specify valid styleId, color, size, and positive quantity');
+          throw new BadRequestException(
+            "Each carton item must specify valid styleId, color, size, and positive quantity",
+          );
         }
 
         // Validate Style existence
-        const style = await tx.style.findUnique({ where: { id: item.styleId } });
+        const style = await tx.style.findUnique({
+          where: { id: item.styleId },
+        });
         if (!style || style.tenantId !== tenantId) {
           throw new NotFoundException(`Style ${item.styleId} not found`);
         }
@@ -132,16 +147,20 @@ export class CartonPackingService {
 
         // Optional Bundle Linkage & Quality Gate
         if (item.bundleId) {
-          const bundle = await tx.bundle.findUnique({ where: { id: item.bundleId } });
+          const bundle = await tx.bundle.findUnique({
+            where: { id: item.bundleId },
+          });
           if (!bundle || bundle.tenantId !== tenantId) {
             throw new NotFoundException(`Bundle ${item.bundleId} not found`);
           }
           if (bundle.productionOrderId !== order.id) {
-            throw new BadRequestException(`Bundle ${bundle.barcode} does not belong to Production Order ${order.orderNumber}`);
+            throw new BadRequestException(
+              `Bundle ${bundle.barcode} does not belong to Production Order ${order.orderNumber}`,
+            );
           }
           if (bundle.isQualityHold) {
             throw new ConflictException(
-              `Cannot pack carton: Bundle ${bundle.barcode} is on Quality Hold (${bundle.qualityHoldReason || 'Pending inspection'})`,
+              `Cannot pack carton: Bundle ${bundle.barcode} is on Quality Hold (${bundle.qualityHoldReason || "Pending inspection"})`,
             );
           }
           const activeBundleHold = await tx.qualityHold.findFirst({
@@ -162,7 +181,9 @@ export class CartonPackingService {
       }
 
       if (totalUnits <= 0) {
-        throw new BadRequestException('Total carton units must be greater than zero');
+        throw new BadRequestException(
+          "Total carton units must be greater than zero",
+        );
       }
 
       // 5. Packing Mode Validation
@@ -172,21 +193,32 @@ export class CartonPackingService {
         // Solid Packing: All items must have identical styleId, color, and size
         const first = dto.items[0];
         const isSolid = dto.items.every(
-          (i) => i.styleId === first.styleId && i.color.trim().toUpperCase() === first.color.trim().toUpperCase() && i.size.trim().toUpperCase() === first.size.trim().toUpperCase(),
+          (i) =>
+            i.styleId === first.styleId &&
+            i.color.trim().toUpperCase() === first.color.trim().toUpperCase() &&
+            i.size.trim().toUpperCase() === first.size.trim().toUpperCase(),
         );
         if (!isSolid) {
           throw new BadRequestException(
-            'Solid packing mode requires all items in the carton to have identical style, color, and size',
+            "Solid packing mode requires all items in the carton to have identical style, color, and size",
           );
         }
       } else if (packingMode === CartonPackingMode.RATIO) {
         // Ratio Packing: Pre-pack ratio assortment validation
-        if (dto.ratioAssortment && Object.keys(dto.ratioAssortment).length > 0) {
+        if (
+          dto.ratioAssortment &&
+          Object.keys(dto.ratioAssortment).length > 0
+        ) {
           const ratioEntries = Object.entries(dto.ratioAssortment);
-          const ratioSum = ratioEntries.reduce((acc, [, w]) => acc + Math.floor(w), 0);
+          const ratioSum = ratioEntries.reduce(
+            (acc, [, w]) => acc + Math.floor(w),
+            0,
+          );
 
           if (ratioSum <= 0) {
-            throw new BadRequestException('Ratio assortment sum must be greater than zero');
+            throw new BadRequestException(
+              "Ratio assortment sum must be greater than zero",
+            );
           }
 
           if (totalUnits % ratioSum !== 0) {
@@ -201,7 +233,10 @@ export class CartonPackingService {
           for (const [sizeName, weight] of ratioEntries) {
             const expectedQty = multiplier * Math.floor(weight);
             const actualQty = dto.items
-              .filter((i) => i.size.trim().toUpperCase() === sizeName.trim().toUpperCase())
+              .filter(
+                (i) =>
+                  i.size.trim().toUpperCase() === sizeName.trim().toUpperCase(),
+              )
               .reduce((acc, i) => acc + Math.floor(i.quantity), 0);
 
             if (actualQty !== expectedQty) {
@@ -236,24 +271,31 @@ export class CartonPackingService {
       const timestamp = Date.now();
       const cartonNumber =
         dto.cartonNumber?.trim() ||
-        `CTN-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${String(alreadyPacked + 1).padStart(4, '0')}`;
+        `CTN-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${String(alreadyPacked + 1).padStart(4, "0")}`;
 
       // Barcode / SSCC-18
       let barcode = dto.barcode?.trim();
       if (barcode) {
         if (!this.ssccService.validateSscc(barcode)) {
-          throw new BadRequestException(`Provided barcode ${barcode} is not a valid 18-digit GS1-128 / SSCC-18 code`);
+          throw new BadRequestException(
+            `Provided barcode ${barcode} is not a valid 18-digit GS1-128 / SSCC-18 code`,
+          );
         }
       } else {
         // Deterministic generation
-        const serialSeed = Math.abs((timestamp % 1000000000) + (alreadyPacked * 1000));
-        barcode = this.ssccService.generateSscc(0, '0123456', serialSeed);
+        const serialSeed = Math.abs(
+          (timestamp % 1000000000) + alreadyPacked * 1000,
+        );
+        barcode = this.ssccService.generateSscc(0, "0123456", serialSeed);
       }
 
       // CBM Calculation
       let cbm: number | null = null;
       if (dto.lengthCm && dto.widthCm && dto.heightCm) {
-        cbm = Math.round(((dto.lengthCm * dto.widthCm * dto.heightCm) / 1000000) * 10000) / 10000;
+        cbm =
+          Math.round(
+            ((dto.lengthCm * dto.widthCm * dto.heightCm) / 1000000) * 10000,
+          ) / 10000;
       }
 
       // 8. Create Carton Record
@@ -266,11 +308,24 @@ export class CartonPackingService {
           status: CartonStatus.PACKED,
           productionOrderId: order.id,
           buyerPoId: dto.buyerPoId || order.buyerPoLine.buyerPoId || null,
-          grossWeightKg: dto.grossWeightKg !== undefined ? new Prisma.Decimal(dto.grossWeightKg) : null,
-          netWeightKg: dto.netWeightKg !== undefined ? new Prisma.Decimal(dto.netWeightKg) : null,
-          lengthCm: dto.lengthCm !== undefined ? new Prisma.Decimal(dto.lengthCm) : null,
-          widthCm: dto.widthCm !== undefined ? new Prisma.Decimal(dto.widthCm) : null,
-          heightCm: dto.heightCm !== undefined ? new Prisma.Decimal(dto.heightCm) : null,
+          grossWeightKg:
+            dto.grossWeightKg !== undefined
+              ? new Prisma.Decimal(dto.grossWeightKg)
+              : null,
+          netWeightKg:
+            dto.netWeightKg !== undefined
+              ? new Prisma.Decimal(dto.netWeightKg)
+              : null,
+          lengthCm:
+            dto.lengthCm !== undefined
+              ? new Prisma.Decimal(dto.lengthCm)
+              : null,
+          widthCm:
+            dto.widthCm !== undefined ? new Prisma.Decimal(dto.widthCm) : null,
+          heightCm:
+            dto.heightCm !== undefined
+              ? new Prisma.Decimal(dto.heightCm)
+              : null,
           cbm: cbm !== null ? new Prisma.Decimal(cbm) : null,
           totalUnits,
           notes: dto.notes || null,
@@ -289,7 +344,7 @@ export class CartonPackingService {
             color: item.color.trim().toUpperCase(),
             size: item.size.trim().toUpperCase(),
             quantity: Math.floor(item.quantity),
-            uom: item.uom || 'PCS',
+            uom: item.uom || "PCS",
           },
         });
       }
@@ -298,9 +353,9 @@ export class CartonPackingService {
       await tx.auditEvent.create({
         data: {
           tenantId,
-          actorId: actorId || 'SYSTEM',
-          action: 'CARTON_PACKED',
-          entity: 'Carton',
+          actorId: actorId || "SYSTEM",
+          action: "CARTON_PACKED",
+          entity: "Carton",
           entityId: carton.id,
           newValues: {
             cartonNumber,
@@ -309,7 +364,7 @@ export class CartonPackingService {
             totalUnits,
             productionOrderId: order.id,
           },
-          reason: dto.notes || 'Finished goods packed into carton',
+          reason: dto.notes || "Finished goods packed into carton",
         },
       });
 
@@ -330,7 +385,8 @@ export class CartonPackingService {
   async getCartons(tenantId: string, query?: QueryCartonsDto) {
     const where: Prisma.CartonWhereInput = { tenantId };
 
-    if (query?.productionOrderId) where.productionOrderId = query.productionOrderId;
+    if (query?.productionOrderId)
+      where.productionOrderId = query.productionOrderId;
     if (query?.buyerPoId) where.buyerPoId = query.buyerPoId;
     if (query?.packingListId) where.packingListId = query.packingListId;
     if (query?.status) where.status = query.status;
@@ -344,7 +400,7 @@ export class CartonPackingService {
         buyerPo: true,
         packingList: true,
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       take: query?.limit || 100,
     });
   }
@@ -373,7 +429,12 @@ export class CartonPackingService {
   /**
    * Cancels a carton.
    */
-  async cancelCarton(tenantId: string, actorId: string, id: string, reason?: string) {
+  async cancelCarton(
+    tenantId: string,
+    actorId: string,
+    id: string,
+    reason?: string,
+  ) {
     return prisma.$transaction(async (tx) => {
       const carton = await tx.carton.findUnique({ where: { id } });
       if (!carton || carton.tenantId !== tenantId) {
@@ -381,7 +442,9 @@ export class CartonPackingService {
       }
 
       if (carton.status === CartonStatus.SHIPPED) {
-        throw new BadRequestException('Cannot cancel a carton that has already been SHIPPED');
+        throw new BadRequestException(
+          "Cannot cancel a carton that has already been SHIPPED",
+        );
       }
 
       const updated = await tx.carton.update({
@@ -393,12 +456,12 @@ export class CartonPackingService {
         data: {
           tenantId,
           actorId,
-          action: 'CARTON_CANCELLED',
-          entity: 'Carton',
+          action: "CARTON_CANCELLED",
+          entity: "Carton",
           entityId: carton.id,
           oldValues: { status: carton.status },
           newValues: { status: CartonStatus.CANCELLED },
-          reason: reason || 'Carton cancelled by operator',
+          reason: reason || "Carton cancelled by operator",
         },
       });
 

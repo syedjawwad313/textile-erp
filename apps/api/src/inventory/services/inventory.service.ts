@@ -1,8 +1,20 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
-import { PrismaClient, InventoryTxType, VpoStatus } from '@textile-erp/database';
-import { LedgerService } from './ledger.service';
-import { StateMachineService } from '../../common/state-machine/state-machine.service';
-import { InventoryReceiptDto, InventoryTransferDto, InventoryAdjustmentDto } from '../dto/inventory.dto';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from "@nestjs/common";
+import {
+  PrismaClient,
+  InventoryTxType,
+  VpoStatus,
+} from "@textile-erp/database";
+import { LedgerService } from "./ledger.service";
+import { StateMachineService } from "../../common/state-machine/state-machine.service";
+import {
+  InventoryReceiptDto,
+  InventoryTransferDto,
+  InventoryAdjustmentDto,
+} from "../dto/inventory.dto";
 
 const prisma = new PrismaClient();
 
@@ -10,29 +22,44 @@ const prisma = new PrismaClient();
 export class InventoryService {
   constructor(
     private readonly ledgerService: LedgerService,
-    private readonly stateMachineService: StateMachineService
+    private readonly stateMachineService: StateMachineService,
   ) {}
 
-  async receiveVpo(tenantId: string, actorId: string, idempotencyKey: string, dto: InventoryReceiptDto) {
+  async receiveVpo(
+    tenantId: string,
+    actorId: string,
+    idempotencyKey: string,
+    dto: InventoryReceiptDto,
+  ) {
     return prisma.$transaction(async (tx) => {
       // 1. Fetch VPO and VpoLine
       const vpo = await tx.vpo.findUnique({
         where: { id: dto.vpoId, tenantId },
-        include: { vpoLines: true }
+        include: { vpoLines: true },
       });
 
       if (!vpo) {
-        throw new NotFoundException('VPO not found');
+        throw new NotFoundException("VPO not found");
       }
 
       // Check VPO status
-      if (!([VpoStatus.APPROVED, VpoStatus.ISSUED, VpoStatus.PARTIALLY_RECEIVED] as VpoStatus[]).includes(vpo.status)) {
-        throw new BadRequestException(`Cannot receive against VPO in ${vpo.status} state`);
+      if (
+        !(
+          [
+            VpoStatus.APPROVED,
+            VpoStatus.ISSUED,
+            VpoStatus.PARTIALLY_RECEIVED,
+          ] as VpoStatus[]
+        ).includes(vpo.status)
+      ) {
+        throw new BadRequestException(
+          `Cannot receive against VPO in ${vpo.status} state`,
+        );
       }
 
-      const line = vpo.vpoLines.find(l => l.materialId === dto.materialId);
+      const line = vpo.vpoLines.find((l) => l.materialId === dto.materialId);
       if (!line) {
-        throw new BadRequestException('Material not found on VPO');
+        throw new BadRequestException("Material not found on VPO");
       }
 
       // 2. Calculate outstanding quantity
@@ -41,22 +68,28 @@ export class InventoryService {
         where: {
           tenantId,
           referenceId: line.id, // we tie receipts to VpoLine
-          type: InventoryTxType.RECEIPT
+          type: InventoryTxType.RECEIPT,
         },
-        _sum: { quantity: true }
+        _sum: { quantity: true },
       });
 
-      const receivedAlready = previousReceipts._sum.quantity ? Number(previousReceipts._sum.quantity) : 0;
+      const receivedAlready = previousReceipts._sum.quantity
+        ? Number(previousReceipts._sum.quantity)
+        : 0;
       const outstanding = Number(line.quantity) - receivedAlready;
 
       // 3. Reject over-receipt
       if (dto.quantity > outstanding) {
-        throw new BadRequestException(`Cannot receive ${dto.quantity}. Only ${outstanding} outstanding on VPO line.`);
+        throw new BadRequestException(
+          `Cannot receive ${dto.quantity}. Only ${outstanding} outstanding on VPO line.`,
+        );
       }
 
       // 4. Record ledger transaction and update inventory item balance
-      const material = await tx.material.findUnique({ where: { id: dto.materialId } });
-      
+      const material = await tx.material.findUnique({
+        where: { id: dto.materialId },
+      });
+
       const ledgerEntry = await this.ledgerService.recordTransaction(tx, {
         tenantId,
         materialId: dto.materialId,
@@ -66,33 +99,38 @@ export class InventoryService {
         uom: material.uom,
         referenceId: line.id, // Store VpoLine ID as reference
         actorId,
-        reason: 'VPO Receipt',
-        idempotencyKey
+        reason: "VPO Receipt",
+        idempotencyKey,
       });
 
       // 5. Transition VPO state
       const remainingOutstanding = outstanding - dto.quantity;
-      
-      // Determine if VPO is fully received. 
+
+      // Determine if VPO is fully received.
       // For simplicity, we check if all lines are fully received.
       const allLines = vpo.vpoLines;
       let isFullyReceived = true;
       for (const l of allLines) {
         const lineReceipts = await tx.inventoryTransaction.aggregate({
           where: { tenantId, referenceId: l.id, type: InventoryTxType.RECEIPT },
-          _sum: { quantity: true }
+          _sum: { quantity: true },
         });
-        const lReceived = lineReceipts._sum.quantity ? Number(lineReceipts._sum.quantity) : 0;
+        const lReceived = lineReceipts._sum.quantity
+          ? Number(lineReceipts._sum.quantity)
+          : 0;
         // include the current line's new receipt in this calculation
-        const totalReceived = l.id === line.id ? lReceived + dto.quantity : lReceived;
-        
+        const totalReceived =
+          l.id === line.id ? lReceived + dto.quantity : lReceived;
+
         if (totalReceived < Number(l.quantity)) {
           isFullyReceived = false;
           break;
         }
       }
 
-      const targetStatus = isFullyReceived ? VpoStatus.RECEIVED : VpoStatus.PARTIALLY_RECEIVED;
+      const targetStatus = isFullyReceived
+        ? VpoStatus.RECEIVED
+        : VpoStatus.PARTIALLY_RECEIVED;
 
       if (vpo.status !== targetStatus) {
         await this.stateMachineService.transitionVpo(
@@ -102,7 +140,7 @@ export class InventoryService {
           actorId,
           vpo.status,
           targetStatus,
-          'VPO Received'
+          "VPO Received",
         );
       }
 
@@ -110,9 +148,16 @@ export class InventoryService {
     });
   }
 
-  async transferInventory(tenantId: string, actorId: string, idempotencyKey: string, dto: InventoryTransferDto) {
+  async transferInventory(
+    tenantId: string,
+    actorId: string,
+    idempotencyKey: string,
+    dto: InventoryTransferDto,
+  ) {
     return prisma.$transaction(async (tx) => {
-      const material = await tx.material.findUnique({ where: { id: dto.materialId } });
+      const material = await tx.material.findUnique({
+        where: { id: dto.materialId },
+      });
 
       // Transfer Out
       const outEntry = await this.ledgerService.recordTransaction(tx, {
@@ -123,8 +168,8 @@ export class InventoryService {
         quantity: dto.quantity,
         uom: material.uom,
         actorId,
-        reason: 'Bin to Bin Transfer',
-        idempotencyKey: idempotencyKey + '-OUT'
+        reason: "Bin to Bin Transfer",
+        idempotencyKey: idempotencyKey + "-OUT",
       });
 
       // Transfer In
@@ -136,17 +181,24 @@ export class InventoryService {
         quantity: dto.quantity,
         uom: material.uom,
         actorId,
-        reason: 'Bin to Bin Transfer',
-        idempotencyKey: idempotencyKey + '-IN'
+        reason: "Bin to Bin Transfer",
+        idempotencyKey: idempotencyKey + "-IN",
       });
 
       return outEntry;
     });
   }
 
-  async adjustInventory(tenantId: string, actorId: string, idempotencyKey: string, dto: InventoryAdjustmentDto) {
+  async adjustInventory(
+    tenantId: string,
+    actorId: string,
+    idempotencyKey: string,
+    dto: InventoryAdjustmentDto,
+  ) {
     return prisma.$transaction(async (tx) => {
-      const material = await tx.material.findUnique({ where: { id: dto.materialId } });
+      const material = await tx.material.findUnique({
+        where: { id: dto.materialId },
+      });
 
       const ledgerEntry = await this.ledgerService.recordTransaction(tx, {
         tenantId,
@@ -157,7 +209,7 @@ export class InventoryService {
         uom: material.uom,
         actorId,
         reason: dto.reason,
-        idempotencyKey
+        idempotencyKey,
       });
 
       // Write an AuditEvent for the adjustment
@@ -165,19 +217,22 @@ export class InventoryService {
         data: {
           tenantId,
           actorId,
-          action: 'INVENTORY_ADJUSTMENT',
-          entity: 'InventoryItem',
+          action: "INVENTORY_ADJUSTMENT",
+          entity: "InventoryItem",
           entityId: dto.materialId,
           newValues: { quantityAdjusted: dto.quantity, reason: dto.reason },
           reason: dto.reason,
-        }
+        },
       });
 
       return ledgerEntry;
     });
   }
 
-  async getItems(tenantId: string, filters?: { materialId?: string; category?: string }) {
+  async getItems(
+    tenantId: string,
+    filters?: { materialId?: string; category?: string },
+  ) {
     const where: any = { tenantId };
     if (filters?.materialId) where.materialId = filters.materialId;
     if (filters?.category) {
@@ -190,14 +245,14 @@ export class InventoryService {
         material: true,
         style: true,
       },
-      orderBy: { updatedAt: 'desc' },
+      orderBy: { updatedAt: "desc" },
     });
 
     const reservations = await prisma.materialReservationLine.groupBy({
-      by: ['materialId'],
+      by: ["materialId"],
       where: {
         tenantId,
-        reservation: { status: 'ACTIVE' },
+        reservation: { status: "ACTIVE" },
       },
       _sum: { quantity: true },
     });
@@ -210,7 +265,7 @@ export class InventoryService {
 
     return items.map((item) => {
       const onHand = Number(item.quantity);
-      const reserved = item.materialId ? (resMap.get(item.materialId) || 0) : 0;
+      const reserved = item.materialId ? resMap.get(item.materialId) || 0 : 0;
       const available = Math.max(0, onHand - reserved);
       return {
         id: item.id,
@@ -228,14 +283,17 @@ export class InventoryService {
     });
   }
 
-  async getTransactions(tenantId: string, filters?: {
-    materialId?: string;
-    type?: InventoryTxType;
-    binId?: string;
-    startDate?: string;
-    endDate?: string;
-    limit?: number;
-  }) {
+  async getTransactions(
+    tenantId: string,
+    filters?: {
+      materialId?: string;
+      type?: InventoryTxType;
+      binId?: string;
+      startDate?: string;
+      endDate?: string;
+      limit?: number;
+    },
+  ) {
     const where: any = { tenantId };
     if (filters?.materialId) where.materialId = filters.materialId;
     if (filters?.type) where.type = filters.type;
@@ -251,7 +309,7 @@ export class InventoryService {
       include: {
         bin: { include: { warehouse: true } },
       },
-      orderBy: { timestamp: 'desc' },
+      orderBy: { timestamp: "desc" },
       take: filters?.limit ? Number(filters.limit) : 100,
     });
   }
@@ -261,15 +319,18 @@ export class InventoryService {
     const totalSkus = items.length;
     const totalOnHand = items.reduce((acc, i) => acc + i.onHandQuantity, 0);
     const totalReserved = items.reduce((acc, i) => acc + i.reservedQuantity, 0);
-    const totalAvailable = items.reduce((acc, i) => acc + i.availableQuantity, 0);
+    const totalAvailable = items.reduce(
+      (acc, i) => acc + i.availableQuantity,
+      0,
+    );
     const lowStockCount = items.filter((i) => i.availableQuantity <= 10).length;
 
     const rollsCount = await prisma.fabricRoll.count({ where: { tenantId } });
     const activeReservationsCount = await prisma.materialReservation.count({
-      where: { tenantId, status: 'ACTIVE' },
+      where: { tenantId, status: "ACTIVE" },
     });
     const pendingRequisitionsCount = await prisma.materialRequisition.count({
-      where: { tenantId, status: 'SUBMITTED' },
+      where: { tenantId, status: "SUBMITTED" },
     });
 
     return {
@@ -284,4 +345,3 @@ export class InventoryService {
     };
   }
 }
-

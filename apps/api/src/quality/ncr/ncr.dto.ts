@@ -5,9 +5,15 @@ import {
   IsUUID,
   IsDateString,
   IsNumber,
-} from 'class-validator';
-import { Type } from 'class-transformer';
-import { NcrSource, NcrStatus, DefectSeverity, CapaType, CapaStatus } from '@textile-erp/database';
+} from "class-validator";
+import { Type } from "class-transformer";
+import {
+  NcrSource,
+  NcrStatus,
+  DefectSeverity,
+  CapaType,
+  CapaStatus,
+} from "@textile-erp/database";
 
 export class CreateNcrDto {
   @IsString()

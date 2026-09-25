@@ -25,7 +25,13 @@ export class UpdateSupplierDto {
   name?: string;
 }
 
-import { IsString, IsNotEmpty, IsOptional, IsNumber, IsEnum } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsNumber,
+  IsEnum,
+} from "class-validator";
 
 export class CreateFactoryUnitDto {
   @IsString()
@@ -112,8 +118,8 @@ export class CreateEmployeeDto {
   @IsNotEmpty()
   name: string;
 
-  @IsEnum(['OPERATOR', 'SUPERVISOR', 'QC'])
-  type: 'OPERATOR' | 'SUPERVISOR' | 'QC';
+  @IsEnum(["OPERATOR", "SUPERVISOR", "QC"])
+  type: "OPERATOR" | "SUPERVISOR" | "QC";
 
   @IsString()
   @IsNotEmpty()
@@ -125,7 +131,7 @@ export class UpdateEmployeeDto {
   @IsOptional()
   name?: string;
 
-  @IsEnum(['OPERATOR', 'SUPERVISOR', 'QC'])
+  @IsEnum(["OPERATOR", "SUPERVISOR", "QC"])
   @IsOptional()
-  type?: 'OPERATOR' | 'SUPERVISOR' | 'QC';
+  type?: "OPERATOR" | "SUPERVISOR" | "QC";
 }

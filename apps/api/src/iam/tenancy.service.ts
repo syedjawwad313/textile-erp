@@ -1,4 +1,4 @@
-import { Injectable, ForbiddenException } from '@nestjs/common';
+import { Injectable, ForbiddenException } from "@nestjs/common";
 
 @Injectable()
 export class TenancyService {
@@ -8,7 +8,9 @@ export class TenancyService {
    */
   verifyTenantAccess(userTenantId: string, requestedTenantId: string) {
     if (userTenantId !== requestedTenantId) {
-      throw new ForbiddenException('Tenant access denied. Cross-tenant access is strictly prohibited.');
+      throw new ForbiddenException(
+        "Tenant access denied. Cross-tenant access is strictly prohibited.",
+      );
     }
   }
 

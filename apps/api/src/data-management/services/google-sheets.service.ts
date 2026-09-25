@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger } from "@nestjs/common";
 
 @Injectable()
 export class GoogleSheetsService {
@@ -7,38 +7,46 @@ export class GoogleSheetsService {
   /**
    * Validates a Google Sheets URL with strict SSRF protection.
    */
-  validateAndParseUrl(urlString: string): { spreadsheetId: string; gid?: string } {
-    if (!urlString || typeof urlString !== 'string') {
-      throw new BadRequestException('A valid Google Sheets URL is required.');
+  validateAndParseUrl(urlString: string): {
+    spreadsheetId: string;
+    gid?: string;
+  } {
+    if (!urlString || typeof urlString !== "string") {
+      throw new BadRequestException("A valid Google Sheets URL is required.");
     }
 
     let parsedUrl: URL;
     try {
       parsedUrl = new URL(urlString.trim());
     } catch {
-      throw new BadRequestException('Malformed URL. Please provide a valid Google Sheets URL.');
+      throw new BadRequestException(
+        "Malformed URL. Please provide a valid Google Sheets URL.",
+      );
     }
 
     // SSRF Prevention: Protocol must be strictly HTTPS and Hostname must strictly be docs.google.com
     const hostname = parsedUrl.hostname.toLowerCase();
-    if (parsedUrl.protocol !== 'https:' || hostname !== 'docs.google.com') {
+    if (parsedUrl.protocol !== "https:" || hostname !== "docs.google.com") {
       throw new BadRequestException(
-        'Only Google Sheets URLs from docs.google.com are permitted.',
+        "Only Google Sheets URLs from docs.google.com are permitted.",
       );
     }
 
     // Extract spreadsheetId from path: /spreadsheets/d/{spreadsheetId}/...
-    const match = parsedUrl.pathname.match(/\/spreadsheets\/d\/([a-zA-Z0-9\-_]+)/);
+    const match = parsedUrl.pathname.match(
+      /\/spreadsheets\/d\/([a-zA-Z0-9\-_]+)/,
+    );
     if (!match || !match[1]) {
       throw new BadRequestException(
-        'Invalid Google Sheets URL format. Expected pattern: https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/edit',
+        "Invalid Google Sheets URL format. Expected pattern: https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/edit",
       );
     }
 
     const spreadsheetId = match[1];
 
     // Extract optional gid (sheet/tab identifier) from search params or hash
-    let gid: string | undefined = parsedUrl.searchParams.get('gid') || undefined;
+    let gid: string | undefined =
+      parsedUrl.searchParams.get("gid") || undefined;
     if (!gid && parsedUrl.hash) {
       const hashMatch = parsedUrl.hash.match(/gid=([0-9]+)/);
       if (hashMatch) {
@@ -57,16 +65,16 @@ export class GoogleSheetsService {
 
     // Google Sheets allows exporting the complete workbook as XLSX
     const exportUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=xlsx${
-      gid ? `&gid=${gid}` : ''
+      gid ? `&gid=${gid}` : ""
     }`;
 
     try {
       const response = await fetch(exportUrl, {
-        method: 'GET',
+        method: "GET",
         headers: {
-          'User-Agent': 'Textile-ERP-BulkDataImporter/1.0',
+          "User-Agent": "Textile-ERP-BulkDataImporter/1.0",
         },
-        redirect: 'follow',
+        redirect: "follow",
       });
 
       if (!response.ok) {
@@ -80,10 +88,10 @@ export class GoogleSheetsService {
         );
       }
 
-      const contentType = response.headers.get('content-type') || '';
+      const contentType = response.headers.get("content-type") || "";
 
       // If redirected to a Google login page, Google returned HTML instead of XLSX
-      if (contentType.includes('text/html')) {
+      if (contentType.includes("text/html")) {
         throw new BadRequestException(
           'Google Sheet requires interactive Google Account sign-in. To import without exposing credentials, please configure sharing to "Anyone with the link can view" or download as XLSX/CSV and upload directly.',
         );
@@ -93,7 +101,7 @@ export class GoogleSheetsService {
       const buffer = Buffer.from(arrayBuffer);
 
       if (buffer.length === 0) {
-        throw new BadRequestException('Retrieved Google Sheet was empty.');
+        throw new BadRequestException("Retrieved Google Sheet was empty.");
       }
 
       return buffer;

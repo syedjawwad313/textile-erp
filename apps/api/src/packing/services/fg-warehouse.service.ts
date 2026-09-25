@@ -4,7 +4,7 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
-} from '@nestjs/common';
+} from "@nestjs/common";
 import {
   prisma,
   WarehouseType,
@@ -13,7 +13,7 @@ import {
   CartonMovementType,
   QualityHoldStatus,
   Prisma,
-} from '@textile-erp/database';
+} from "@textile-erp/database";
 import {
   PutawayCartonDto,
   RelocateCartonDto,
@@ -23,7 +23,7 @@ import {
   QueryCartonMovementsDto,
   UpdateWarehouseTypeDto,
   UpdateBinTypeDto,
-} from '../dto/fg-warehouse.dto';
+} from "../dto/fg-warehouse.dto";
 
 @Injectable()
 export class FgWarehouseService {
@@ -35,7 +35,7 @@ export class FgWarehouseService {
       where: { tenantId },
       include: {
         bins: {
-          orderBy: { code: 'asc' },
+          orderBy: { code: "asc" },
         },
         _count: {
           select: {
@@ -44,7 +44,7 @@ export class FgWarehouseService {
           },
         },
       },
-      orderBy: { code: 'asc' },
+      orderBy: { code: "asc" },
     });
   }
 
@@ -60,7 +60,7 @@ export class FgWarehouseService {
       where: { id: warehouseId },
     });
     if (!warehouse || warehouse.tenantId !== tenantId) {
-      throw new NotFoundException('Warehouse not found');
+      throw new NotFoundException("Warehouse not found");
     }
 
     // Guard: Cannot change to RAW_MATERIAL if it already contains packed/staged finished goods cartons
@@ -95,7 +95,7 @@ export class FgWarehouseService {
       include: { warehouse: true },
     });
     if (!bin || bin.warehouse.tenantId !== tenantId) {
-      throw new NotFoundException('Bin not found');
+      throw new NotFoundException("Bin not found");
     }
 
     return prisma.bin.update({
@@ -155,7 +155,7 @@ export class FgWarehouseService {
       if (flaggedBundle) {
         return {
           hasHold: true,
-          reason: `Contained bundle ${flaggedBundle.barcode} is flagged for Quality Hold (${flaggedBundle.qualityHoldReason || 'Pending resolution'})`,
+          reason: `Contained bundle ${flaggedBundle.barcode} is flagged for Quality Hold (${flaggedBundle.qualityHoldReason || "Pending resolution"})`,
         };
       }
     }
@@ -205,19 +205,19 @@ export class FgWarehouseService {
         include: { items: true, productionOrder: true },
       });
       if (!carton || carton.tenantId !== tenantId) {
-        throw new NotFoundException('Carton not found');
+        throw new NotFoundException("Carton not found");
       }
 
       // 3. Status checks
       if (carton.status === CartonStatus.CANCELLED) {
-        throw new BadRequestException('Cannot putaway a CANCELLED carton');
+        throw new BadRequestException("Cannot putaway a CANCELLED carton");
       }
       if (carton.status === CartonStatus.SHIPPED) {
-        throw new BadRequestException('Cannot putaway a SHIPPED carton');
+        throw new BadRequestException("Cannot putaway a SHIPPED carton");
       }
       if (carton.status === CartonStatus.STAGED) {
         throw new BadRequestException(
-          'Carton is currently STAGED. Unstage the carton before putting away to storage.',
+          "Carton is currently STAGED. Unstage the carton before putting away to storage.",
         );
       }
 
@@ -226,11 +226,11 @@ export class FgWarehouseService {
         where: { id: dto.warehouseId },
       });
       if (!warehouse || warehouse.tenantId !== tenantId) {
-        throw new NotFoundException('Target warehouse not found');
+        throw new NotFoundException("Target warehouse not found");
       }
       if (warehouse.warehouseType === WarehouseType.RAW_MATERIAL) {
         throw new BadRequestException(
-          'Finished goods cartons cannot be placed into a RAW_MATERIAL warehouse',
+          "Finished goods cartons cannot be placed into a RAW_MATERIAL warehouse",
         );
       }
 
@@ -245,7 +245,7 @@ export class FgWarehouseService {
       }
       if (bin.binType === BinType.STAGING) {
         throw new BadRequestException(
-          'Putaway target bin cannot be a STAGING bin. Use the staging workflow to stage cartons.',
+          "Putaway target bin cannot be a STAGING bin. Use the staging workflow to stage cartons.",
         );
       }
 
@@ -295,7 +295,7 @@ export class FgWarehouseService {
           toStatus: updatedCarton.status,
           movementType: CartonMovementType.PUTAWAY,
           actorId,
-          notes: dto.notes || 'Putaway to finished goods warehouse',
+          notes: dto.notes || "Putaway to finished goods warehouse",
           idempotencyKey,
         },
         include: {
@@ -354,18 +354,18 @@ export class FgWarehouseService {
         include: { items: true, productionOrder: true },
       });
       if (!carton || carton.tenantId !== tenantId) {
-        throw new NotFoundException('Carton not found');
+        throw new NotFoundException("Carton not found");
       }
 
       if (carton.status === CartonStatus.CANCELLED) {
-        throw new BadRequestException('Cannot relocate a CANCELLED carton');
+        throw new BadRequestException("Cannot relocate a CANCELLED carton");
       }
       if (carton.status === CartonStatus.SHIPPED) {
-        throw new BadRequestException('Cannot relocate a SHIPPED carton');
+        throw new BadRequestException("Cannot relocate a SHIPPED carton");
       }
       if (!carton.warehouseId || !carton.binId) {
         throw new BadRequestException(
-          'Carton has not been put away yet. Perform putaway first before relocating.',
+          "Carton has not been put away yet. Perform putaway first before relocating.",
         );
       }
 
@@ -375,11 +375,11 @@ export class FgWarehouseService {
         where: { id: targetWarehouseId },
       });
       if (!targetWarehouse || targetWarehouse.tenantId !== tenantId) {
-        throw new NotFoundException('Target warehouse not found');
+        throw new NotFoundException("Target warehouse not found");
       }
       if (targetWarehouse.warehouseType === WarehouseType.RAW_MATERIAL) {
         throw new BadRequestException(
-          'Finished goods cartons cannot be relocated to a RAW_MATERIAL warehouse',
+          "Finished goods cartons cannot be relocated to a RAW_MATERIAL warehouse",
         );
       }
 
@@ -394,7 +394,7 @@ export class FgWarehouseService {
       }
       if (targetBin.binType === BinType.STAGING) {
         throw new BadRequestException(
-          'Cannot relocate directly into a STAGING bin. Use the staging workflow.',
+          "Cannot relocate directly into a STAGING bin. Use the staging workflow.",
         );
       }
 
@@ -404,7 +404,7 @@ export class FgWarehouseService {
         carton.binId === targetBin.id
       ) {
         throw new BadRequestException(
-          'Source and destination locations are identical',
+          "Source and destination locations are identical",
         );
       }
 
@@ -453,7 +453,7 @@ export class FgWarehouseService {
           toStatus: updatedCarton.status,
           movementType: CartonMovementType.RELOCATION,
           actorId,
-          notes: dto.notes || 'Relocated carton location',
+          notes: dto.notes || "Relocated carton location",
           idempotencyKey,
         },
         include: {
@@ -515,17 +515,17 @@ export class FgWarehouseService {
         include: { items: true, productionOrder: true },
       });
       if (!carton || carton.tenantId !== tenantId) {
-        throw new NotFoundException('Carton not found');
+        throw new NotFoundException("Carton not found");
       }
 
       if (carton.status === CartonStatus.CANCELLED) {
-        throw new BadRequestException('Cannot stage a CANCELLED carton');
+        throw new BadRequestException("Cannot stage a CANCELLED carton");
       }
       if (carton.status === CartonStatus.SHIPPED) {
-        throw new BadRequestException('Cannot stage a SHIPPED carton');
+        throw new BadRequestException("Cannot stage a SHIPPED carton");
       }
       if (carton.status === CartonStatus.STAGED) {
-        throw new BadRequestException('Carton is already in STAGED status');
+        throw new BadRequestException("Carton is already in STAGED status");
       }
 
       // 3. Staging Bin validation
@@ -534,7 +534,7 @@ export class FgWarehouseService {
         include: { warehouse: true },
       });
       if (!stagingBin || stagingBin.warehouse.tenantId !== tenantId) {
-        throw new NotFoundException('Staging bin not found');
+        throw new NotFoundException("Staging bin not found");
       }
       if (stagingBin.binType !== BinType.STAGING) {
         throw new BadRequestException(
@@ -543,7 +543,7 @@ export class FgWarehouseService {
       }
       if (stagingBin.warehouse.warehouseType === WarehouseType.RAW_MATERIAL) {
         throw new BadRequestException(
-          'Cannot stage finished goods cartons in a RAW_MATERIAL warehouse',
+          "Cannot stage finished goods cartons in a RAW_MATERIAL warehouse",
         );
       }
 
@@ -592,7 +592,7 @@ export class FgWarehouseService {
           toStatus: CartonStatus.STAGED,
           movementType: CartonMovementType.STAGE,
           actorId,
-          notes: dto.notes || 'Staged for outbound dispatch',
+          notes: dto.notes || "Staged for outbound dispatch",
           idempotencyKey,
         },
         include: {
@@ -652,7 +652,7 @@ export class FgWarehouseService {
         include: { items: true },
       });
       if (!carton || carton.tenantId !== tenantId) {
-        throw new NotFoundException('Carton not found');
+        throw new NotFoundException("Carton not found");
       }
 
       if (carton.status !== CartonStatus.STAGED) {
@@ -667,16 +667,16 @@ export class FgWarehouseService {
         include: { warehouse: true },
       });
       if (!storageBin || storageBin.warehouse.tenantId !== tenantId) {
-        throw new NotFoundException('Storage bin not found');
+        throw new NotFoundException("Storage bin not found");
       }
       if (storageBin.binType === BinType.STAGING) {
         throw new BadRequestException(
-          'Destination bin for un-staging must be a STORAGE or QUARANTINE bin, not STAGING.',
+          "Destination bin for un-staging must be a STORAGE or QUARANTINE bin, not STAGING.",
         );
       }
       if (storageBin.warehouse.warehouseType === WarehouseType.RAW_MATERIAL) {
         throw new BadRequestException(
-          'Cannot move finished goods cartons into a RAW_MATERIAL warehouse',
+          "Cannot move finished goods cartons into a RAW_MATERIAL warehouse",
         );
       }
 
@@ -709,7 +709,7 @@ export class FgWarehouseService {
           toStatus: CartonStatus.PACKED,
           movementType: CartonMovementType.UNSTAGE,
           actorId,
-          notes: dto.notes || 'Unstaged back to finished goods storage',
+          notes: dto.notes || "Unstaged back to finished goods storage",
           idempotencyKey,
         },
         include: {
@@ -758,7 +758,7 @@ export class FgWarehouseService {
         fromBin: true,
         toBin: true,
       },
-      orderBy: { timestamp: 'desc' },
+      orderBy: { timestamp: "desc" },
       take: query.limit || 50,
     });
   }
@@ -781,7 +781,7 @@ export class FgWarehouseService {
       },
     });
     if (!carton || carton.tenantId !== tenantId) {
-      throw new NotFoundException('Carton not found');
+      throw new NotFoundException("Carton not found");
     }
 
     const movements = await prisma.cartonMovement.findMany({
@@ -792,7 +792,7 @@ export class FgWarehouseService {
         fromBin: true,
         toBin: true,
       },
-      orderBy: { timestamp: 'asc' },
+      orderBy: { timestamp: "asc" },
     });
 
     return {
@@ -808,7 +808,9 @@ export class FgWarehouseService {
   async getFgInventory(tenantId: string, query: QueryFgInventoryDto) {
     const where: Prisma.CartonWhereInput = {
       tenantId,
-      status: query.status || { in: [CartonStatus.PACKED, CartonStatus.STAGED] },
+      status: query.status || {
+        in: [CartonStatus.PACKED, CartonStatus.STAGED],
+      },
     };
 
     if (query.warehouseId) {
@@ -840,7 +842,7 @@ export class FgWarehouseService {
             select: { id: true, orderNumber: true, status: true },
           },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: "desc" },
         skip,
         take: limit,
       }),
@@ -911,7 +913,7 @@ export class FgWarehouseService {
     }
 
     const cartonItems = await prisma.cartonItem.groupBy({
-      by: ['styleId'],
+      by: ["styleId"],
       where: cartonItemsWhere,
       _sum: {
         quantity: true,
@@ -921,7 +923,10 @@ export class FgWarehouseService {
       },
     });
 
-    const cartonStyleMap = new Map<string, { units: number; cartons: number }>();
+    const cartonStyleMap = new Map<
+      string,
+      { units: number; cartons: number }
+    >();
     for (const c of cartonItems) {
       cartonStyleMap.set(c.styleId, {
         units: c._sum.quantity || 0,
@@ -931,7 +936,7 @@ export class FgWarehouseService {
 
     // 3. Staged breakdown
     const stagedCartonItems = await prisma.cartonItem.groupBy({
-      by: ['styleId'],
+      by: ["styleId"],
       where: {
         tenantId,
         carton: { status: CartonStatus.STAGED },
@@ -945,7 +950,10 @@ export class FgWarehouseService {
       },
     });
 
-    const stagedStyleMap = new Map<string, { units: number; cartons: number }>();
+    const stagedStyleMap = new Map<
+      string,
+      { units: number; cartons: number }
+    >();
     for (const s of stagedCartonItems) {
       stagedStyleMap.set(s.styleId, {
         units: s._sum.quantity || 0,
@@ -986,7 +994,8 @@ export class FgWarehouseService {
       // In finished goods: loose/unpacked units = ledger balance - cartonized units
       const unpacked = Math.max(0, ledgerQty - cartonInfo.units);
       // Variance should be 0 unless cartonized units exceed ledger balance
-      const variance = cartonInfo.units > ledgerQty ? cartonInfo.units - ledgerQty : 0;
+      const variance =
+        cartonInfo.units > ledgerQty ? cartonInfo.units - ledgerQty : 0;
 
       totalLedgerUnits += ledgerQty;
       totalCartonizedUnits += cartonInfo.units;
@@ -994,8 +1003,8 @@ export class FgWarehouseService {
 
       lines.push({
         styleId: id,
-        styleCode: ledgerRecord?.style?.code || 'UNKNOWN',
-        styleName: ledgerRecord?.style?.name || 'Unknown Style',
+        styleCode: ledgerRecord?.style?.code || "UNKNOWN",
+        styleName: ledgerRecord?.style?.name || "Unknown Style",
         ledgerBalance: ledgerQty,
         cartonizedUnits: cartonInfo.units,
         cartonCount: cartonInfo.cartons,
@@ -1013,7 +1022,10 @@ export class FgWarehouseService {
         totalLedgerUnits,
         totalCartonizedUnits,
         totalStagedUnits,
-        totalUnpackedLooseUnits: Math.max(0, totalLedgerUnits - totalCartonizedUnits),
+        totalUnpackedLooseUnits: Math.max(
+          0,
+          totalLedgerUnits - totalCartonizedUnits,
+        ),
         totalVariance: lines.reduce((acc, l) => acc + l.variance, 0),
         isReconciled: lines.every((l) => l.variance === 0),
       },

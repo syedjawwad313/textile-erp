@@ -1,4 +1,4 @@
-export type FieldType = 'string' | 'number' | 'date' | 'boolean' | 'enum';
+export type FieldType = "string" | "number" | "date" | "boolean" | "enum";
 
 export interface EntityFieldDefinition {
   field: string;
@@ -12,44 +12,49 @@ export interface EntityFieldDefinition {
 }
 
 export type SupportedImportEntity =
-  | 'BUYER'
-  | 'SUPPLIER'
-  | 'STYLE'
-  | 'MATERIAL'
-  | 'WAREHOUSE'
-  | 'BIN'
-  | 'DEFECT_CATALOG'
-  | 'BUYER_PO'
-  | 'PRODUCTION_ORDER'
-  | 'FABRIC_ROLL'
-  | 'CUTTING_RECORD'
-  | 'BUNDLE'
-  | 'CARTON';
+  | "BUYER"
+  | "SUPPLIER"
+  | "STYLE"
+  | "MATERIAL"
+  | "WAREHOUSE"
+  | "BIN"
+  | "DEFECT_CATALOG"
+  | "BUYER_PO"
+  | "PRODUCTION_ORDER"
+  | "FABRIC_ROLL"
+  | "CUTTING_RECORD"
+  | "BUNDLE"
+  | "CARTON";
 
 export type SupportedExportEntity =
   | SupportedImportEntity
-  | 'BUYER_PO_LINE'
-  | 'PRODUCTION_PLAN'
-  | 'PRODUCTION_OUTPUT'
-  | 'QUALITY_INSPECTION'
-  | 'DEFECT'
-  | 'NCR'
-  | 'CAPA'
-  | 'INVENTORY'
-  | 'PACKING_LIST'
-  | 'SHIPMENT'
-  | 'SHIPMENT_ITEM'
-  | 'COMMERCIAL_INVOICE'
-  | 'GATE_PASS'
-  | 'VPO'
-  | 'COSTING_SUMMARY';
+  | "BUYER_PO_LINE"
+  | "PRODUCTION_PLAN"
+  | "PRODUCTION_OUTPUT"
+  | "QUALITY_INSPECTION"
+  | "DEFECT"
+  | "NCR"
+  | "CAPA"
+  | "INVENTORY"
+  | "PACKING_LIST"
+  | "SHIPMENT"
+  | "SHIPMENT_ITEM"
+  | "COMMERCIAL_INVOICE"
+  | "GATE_PASS"
+  | "VPO"
+  | "COSTING_SUMMARY";
 
 export interface EntityImportRule {
   entity: SupportedImportEntity;
   displayName: string;
-  category: 'MASTER_DATA' | 'TRANSACTIONAL' | 'ORDERS_COSTING' | 'INVENTORY' | 'MES_QUALITY';
+  category:
+    | "MASTER_DATA"
+    | "TRANSACTIONAL"
+    | "ORDERS_COSTING"
+    | "INVENTORY"
+    | "MES_QUALITY";
   description: string;
-  supportedModes: Array<'CREATE' | 'UPSERT'>;
+  supportedModes: Array<"CREATE" | "UPSERT">;
   supportsUpsert?: boolean;
   uniqueKeyFields: string[]; // e.g. ['code'] or ['poNumber']
   requiredPermissions: string[];
@@ -58,9 +63,9 @@ export interface EntityImportRule {
 
 export interface RowValidationResult {
   rowNumber: number;
-  status: 'VALID' | 'WARNING' | 'ERROR';
+  status: "VALID" | "WARNING" | "ERROR";
   isValid: boolean;
-  action: 'CREATE' | 'UPDATE' | 'SKIP';
+  action: "CREATE" | "UPDATE" | "SKIP";
   errors: string[];
   warnings: string[];
   originalData: Record<string, any>;
@@ -69,7 +74,7 @@ export interface RowValidationResult {
 
 export interface ImportPreviewResult {
   entity: SupportedImportEntity;
-  sourceType: 'CSV' | 'XLSX' | 'GOOGLE_SHEETS';
+  sourceType: "CSV" | "XLSX" | "GOOGLE_SHEETS";
   sourceName: string;
   selectedSheet?: string;
   availableSheets?: string[];

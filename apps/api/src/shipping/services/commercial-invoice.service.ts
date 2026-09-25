@@ -3,18 +3,18 @@ import {
   BadRequestException,
   NotFoundException,
   ConflictException,
-} from '@nestjs/common';
+} from "@nestjs/common";
 import {
   PrismaClient,
   Prisma,
   CommercialInvoiceStatus,
   ShipmentStatus,
-} from '@textile-erp/database';
+} from "@textile-erp/database";
 import {
   CreateCommercialInvoiceDto,
   QueryInvoicesDto,
   SettleCommercialInvoiceDto,
-} from '../dto/shipping.dto';
+} from "../dto/shipping.dto";
 
 const prisma = new PrismaClient();
 
@@ -42,7 +42,7 @@ export class CommercialInvoiceService {
     dto: CreateCommercialInvoiceDto,
   ) {
     if (!idempotencyKey) {
-      throw new BadRequestException('X-Idempotency-Key header is required');
+      throw new BadRequestException("X-Idempotency-Key header is required");
     }
 
     return prisma.$transaction(async (tx) => {
@@ -72,11 +72,15 @@ export class CommercialInvoiceService {
       }
 
       if (shipment.status === ShipmentStatus.CANCELLED) {
-        throw new ConflictException('Cannot generate commercial invoice for a CANCELLED shipment');
+        throw new ConflictException(
+          "Cannot generate commercial invoice for a CANCELLED shipment",
+        );
       }
 
       if (shipment.items.length === 0) {
-        throw new BadRequestException('Cannot generate commercial invoice for shipment with zero items');
+        throw new BadRequestException(
+          "Cannot generate commercial invoice for shipment with zero items",
+        );
       }
 
       // 3. Build Invoice Lines & Pricing Snapshot
@@ -105,11 +109,16 @@ export class CommercialInvoiceService {
         // Fallback: If no PO line found on header, check through production orders linked to cartons
         if (unitPrice === 0) {
           const sampleCarton = await tx.carton.findFirst({
-            where: { shipmentId: shipment.id, items: { some: { styleId: item.styleId } } },
+            where: {
+              shipmentId: shipment.id,
+              items: { some: { styleId: item.styleId } },
+            },
             include: { productionOrder: { include: { buyerPoLine: true } } },
           });
           if (sampleCarton?.productionOrder?.buyerPoLine?.unitPrice) {
-            unitPrice = Number(sampleCarton.productionOrder.buyerPoLine.unitPrice);
+            unitPrice = Number(
+              sampleCarton.productionOrder.buyerPoLine.unitPrice,
+            );
           }
         }
 
@@ -124,7 +133,7 @@ export class CommercialInvoiceService {
 
         lineData.push({
           styleId: item.styleId,
-          hsCode: '6109.10', // Standard HS Code for apparel / cotton knitwear
+          hsCode: "6109.10", // Standard HS Code for apparel / cotton knitwear
           description: `${item.style.name} (${item.style.code})`,
           quantity,
           unitPrice,
@@ -137,12 +146,16 @@ export class CommercialInvoiceService {
       const insurance = dto.insuranceCharges || 0;
       const discount = dto.discountAmount || 0;
       const tax = dto.taxAmount || 0;
-      const totalAmount = Math.max(0, Math.round((subtotal + freight + insurance + tax - discount) * 100) / 100);
+      const totalAmount = Math.max(
+        0,
+        Math.round((subtotal + freight + insurance + tax - discount) * 100) /
+          100,
+      );
 
       // Generate Invoice Number
       const invoiceNumber =
         dto.invoiceNumber?.trim() ||
-        `INV-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Date.now().toString().slice(-4)}`;
+        `INV-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${Date.now().toString().slice(-4)}`;
 
       // 4. Create CommercialInvoice
       const invoice = await tx.commercialInvoice.create({
@@ -151,9 +164,9 @@ export class CommercialInvoiceService {
           invoiceNumber,
           shipmentId: shipment.id,
           buyerId: shipment.buyerId,
-          currency: dto.currency || 'USD',
-          incoterms: dto.incoterms || 'FOB',
-          paymentTerms: dto.paymentTerms || 'LC at sight',
+          currency: dto.currency || "USD",
+          incoterms: dto.incoterms || "FOB",
+          paymentTerms: dto.paymentTerms || "LC at sight",
           status: CommercialInvoiceStatus.DRAFT,
           subtotal: new Prisma.Decimal(subtotal),
           freightCharges: new Prisma.Decimal(freight),
@@ -187,9 +200,9 @@ export class CommercialInvoiceService {
       await tx.auditEvent.create({
         data: {
           tenantId,
-          actorId: actorId || 'SYSTEM',
-          action: 'COMMERCIAL_INVOICE_CREATED',
-          entity: 'CommercialInvoice',
+          actorId: actorId || "SYSTEM",
+          action: "COMMERCIAL_INVOICE_CREATED",
+          entity: "CommercialInvoice",
           entityId: invoice.id,
           newValues: {
             invoiceNumber,
@@ -197,7 +210,7 @@ export class CommercialInvoiceService {
             subtotal,
             totalAmount,
           },
-          reason: 'Commercial invoice created with frozen pricing snapshot',
+          reason: "Commercial invoice created with frozen pricing snapshot",
         },
       });
 
@@ -231,7 +244,7 @@ export class CommercialInvoiceService {
         shipment: true,
         lines: { include: { style: true } },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       take: query?.limit || 50,
     });
 
@@ -277,7 +290,9 @@ export class CommercialInvoiceService {
       }
 
       if (invoice.status === CommercialInvoiceStatus.CANCELLED) {
-        throw new ConflictException('Cannot issue a CANCELLED commercial invoice');
+        throw new ConflictException(
+          "Cannot issue a CANCELLED commercial invoice",
+        );
       }
 
       if (invoice.status === CommercialInvoiceStatus.ISSUED) {
@@ -298,10 +313,10 @@ export class CommercialInvoiceService {
         data: {
           tenantId,
           actorId,
-          action: 'COMMERCIAL_INVOICE_ISSUED',
-          entity: 'CommercialInvoice',
+          action: "COMMERCIAL_INVOICE_ISSUED",
+          entity: "CommercialInvoice",
           entityId: invoice.id,
-          reason: 'Commercial invoice issued by operator',
+          reason: "Commercial invoice issued by operator",
         },
       });
 
@@ -333,7 +348,9 @@ export class CommercialInvoiceService {
       }
 
       if (invoice.status === CommercialInvoiceStatus.CANCELLED) {
-        throw new ConflictException('Cannot settle a CANCELLED commercial invoice');
+        throw new ConflictException(
+          "Cannot settle a CANCELLED commercial invoice",
+        );
       }
 
       if (invoice.status === CommercialInvoiceStatus.PAID) {
@@ -359,8 +376,8 @@ export class CommercialInvoiceService {
         data: {
           tenantId,
           actorId,
-          action: 'COMMERCIAL_INVOICE_SETTLED',
-          entity: 'CommercialInvoice',
+          action: "COMMERCIAL_INVOICE_SETTLED",
+          entity: "CommercialInvoice",
           entityId: invoice.id,
           newValues: {
             paymentReference: dto.paymentReference,
@@ -368,7 +385,8 @@ export class CommercialInvoiceService {
             paymentDate: dto.paymentDate,
             status: CommercialInvoiceStatus.PAID,
           },
-          reason: dto.notes || 'Commercial invoice payment received and settled',
+          reason:
+            dto.notes || "Commercial invoice payment received and settled",
         },
       });
 
@@ -376,4 +394,3 @@ export class CommercialInvoiceService {
     });
   }
 }
-

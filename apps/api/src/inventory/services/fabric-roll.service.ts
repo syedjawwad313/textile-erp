@@ -1,7 +1,16 @@
-import { Injectable, BadRequestException, NotFoundException, ConflictException } from '@nestjs/common';
-import { prisma, RollStatus, InspectionResult } from '@textile-erp/database';
-import { AstmD5430EngineService } from './astm-d5430-engine.service';
-import { CreateFabricRollDto, RecordRollInspectionDto, UpdateRollStatusDto } from '../dto/fabric-roll.dto';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+  ConflictException,
+} from "@nestjs/common";
+import { prisma, RollStatus, InspectionResult } from "@textile-erp/database";
+import { AstmD5430EngineService } from "./astm-d5430-engine.service";
+import {
+  CreateFabricRollDto,
+  RecordRollInspectionDto,
+  UpdateRollStatusDto,
+} from "../dto/fabric-roll.dto";
 
 @Injectable()
 export class FabricRollService {
@@ -13,18 +22,28 @@ export class FabricRollService {
       where: { tenantId_rollNumber: { tenantId, rollNumber: dto.rollNumber } },
     });
     if (existing) {
-      throw new ConflictException(`Fabric roll with number ${dto.rollNumber} already exists`);
+      throw new ConflictException(
+        `Fabric roll with number ${dto.rollNumber} already exists`,
+      );
     }
 
     // 2. Validate Material and Warehouse
-    const material = await prisma.material.findUnique({ where: { id: dto.materialId } });
+    const material = await prisma.material.findUnique({
+      where: { id: dto.materialId },
+    });
     if (!material || material.tenantId !== tenantId) {
-      throw new NotFoundException(`Material with ID ${dto.materialId} not found`);
+      throw new NotFoundException(
+        `Material with ID ${dto.materialId} not found`,
+      );
     }
 
-    const warehouse = await prisma.warehouse.findUnique({ where: { id: dto.warehouseId } });
+    const warehouse = await prisma.warehouse.findUnique({
+      where: { id: dto.warehouseId },
+    });
     if (!warehouse || warehouse.tenantId !== tenantId) {
-      throw new NotFoundException(`Warehouse with ID ${dto.warehouseId} not found`);
+      throw new NotFoundException(
+        `Warehouse with ID ${dto.warehouseId} not found`,
+      );
     }
 
     return prisma.fabricRoll.create({
@@ -40,10 +59,10 @@ export class FabricRollService {
         shade: dto.shade,
         grossLength: dto.grossLength,
         netLength: dto.netLength,
-        lengthUom: dto.lengthUom || 'YDS',
+        lengthUom: dto.lengthUom || "YDS",
         width: dto.width,
         cuttableWidth: dto.cuttableWidth || dto.width,
-        widthUom: dto.widthUom || 'INCH',
+        widthUom: dto.widthUom || "INCH",
         weightGsm: dto.weightGsm,
         shrinkagePercent: dto.shrinkagePercent,
         status: RollStatus.RECEIVED,
@@ -56,13 +75,16 @@ export class FabricRollService {
     });
   }
 
-  async findAll(tenantId: string, filters?: {
-    materialId?: string;
-    lotNumber?: string;
-    shade?: string;
-    status?: RollStatus;
-    warehouseId?: string;
-  }) {
+  async findAll(
+    tenantId: string,
+    filters?: {
+      materialId?: string;
+      lotNumber?: string;
+      shade?: string;
+      status?: RollStatus;
+      warehouseId?: string;
+    },
+  ) {
     const where: any = { tenantId };
     if (filters?.materialId) where.materialId = filters.materialId;
     if (filters?.lotNumber) where.lotNumber = filters.lotNumber;
@@ -76,9 +98,9 @@ export class FabricRollService {
         material: { select: { id: true, code: true, name: true, uom: true } },
         warehouse: { select: { id: true, code: true, name: true } },
         bin: { select: { id: true, code: true, name: true } },
-        inspections: { orderBy: { createdAt: 'desc' }, take: 1 },
+        inspections: { orderBy: { createdAt: "desc" }, take: 1 },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
   }
 
@@ -90,8 +112,10 @@ export class FabricRollService {
         warehouse: true,
         bin: true,
         inspections: {
-          include: { inspectedBy: { select: { id: true, name: true, code: true } } },
-          orderBy: { createdAt: 'desc' },
+          include: {
+            inspectedBy: { select: { id: true, name: true, code: true } },
+          },
+          orderBy: { createdAt: "desc" },
         },
         cuttingRolls: {
           include: { cuttingRecord: true },
@@ -106,7 +130,12 @@ export class FabricRollService {
     return roll;
   }
 
-  async recordInspection(tenantId: string, actorId: string, rollId: string, dto: RecordRollInspectionDto) {
+  async recordInspection(
+    tenantId: string,
+    actorId: string,
+    rollId: string,
+    dto: RecordRollInspectionDto,
+  ) {
     const roll = await this.findOne(tenantId, rollId);
 
     // Compute ASTM D5430 evaluation
@@ -124,22 +153,30 @@ export class FabricRollService {
     let employee = await prisma.employee.findFirst({ where: { tenantId } });
     if (!employee) {
       // Fallback: create default inspector employee if needed
-      const factory = await prisma.factoryUnit.findFirst({ where: { tenantId } });
+      const factory = await prisma.factoryUnit.findFirst({
+        where: { tenantId },
+      });
       employee = await prisma.employee.create({
         data: {
           tenantId,
-          code: 'QC-INSPECTOR',
-          name: 'QC Inspector',
-          type: 'QC',
-          factoryUnitId: factory?.id || (await prisma.factoryUnit.create({
-            data: {
-              tenantId,
-              companyId: (await prisma.company.findFirst({ where: { tenantId } }))?.id || '',
-              code: 'FAC-DEFAULT',
-              name: 'Default Factory',
-            }
-          })).id,
-        }
+          code: "QC-INSPECTOR",
+          name: "QC Inspector",
+          type: "QC",
+          factoryUnitId:
+            factory?.id ||
+            (
+              await prisma.factoryUnit.create({
+                data: {
+                  tenantId,
+                  companyId:
+                    (await prisma.company.findFirst({ where: { tenantId } }))
+                      ?.id || "",
+                  code: "FAC-DEFAULT",
+                  name: "Default Factory",
+                },
+              })
+            ).id,
+        },
       });
     }
 
@@ -166,7 +203,10 @@ export class FabricRollService {
       });
 
       // Update Roll status based on ASTM evaluation
-      const nextStatus = calculation.result === InspectionResult.PASS ? RollStatus.AVAILABLE : RollStatus.ON_HOLD;
+      const nextStatus =
+        calculation.result === InspectionResult.PASS
+          ? RollStatus.AVAILABLE
+          : RollStatus.ON_HOLD;
       const updatedRoll = await tx.fabricRoll.update({
         where: { id: roll.id },
         data: {
@@ -185,12 +225,21 @@ export class FabricRollService {
     });
   }
 
-  async updateStatus(tenantId: string, rollId: string, dto: UpdateRollStatusDto) {
+  async updateStatus(
+    tenantId: string,
+    rollId: string,
+    dto: UpdateRollStatusDto,
+  ) {
     const roll = await this.findOne(tenantId, rollId);
 
     // Validate state transitions
-    if (roll.status === RollStatus.EXHAUSTED && dto.status !== RollStatus.EXHAUSTED) {
-      throw new BadRequestException('Cannot reactivate an EXHAUSTED fabric roll without storekeeper clearance');
+    if (
+      roll.status === RollStatus.EXHAUSTED &&
+      dto.status !== RollStatus.EXHAUSTED
+    ) {
+      throw new BadRequestException(
+        "Cannot reactivate an EXHAUSTED fabric roll without storekeeper clearance",
+      );
     }
 
     return prisma.fabricRoll.update({

@@ -1,5 +1,13 @@
-import { IsString, IsNotEmpty, IsNumber, IsPositive, IsOptional, IsArray, ValidateNested } from 'class-validator';
-import { Type } from 'class-transformer';
+import {
+  IsString,
+  IsNotEmpty,
+  IsNumber,
+  IsPositive,
+  IsOptional,
+  IsArray,
+  ValidateNested,
+} from "class-validator";
+import { Type } from "class-transformer";
 
 export class ReservationLineDto {
   @IsString()

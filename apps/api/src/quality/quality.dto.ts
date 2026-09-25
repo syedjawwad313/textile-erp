@@ -1,6 +1,16 @@
-import { IsString, IsNumber, IsOptional, IsArray, ValidateNested, IsUUID, IsEnum, IsBoolean, Min } from 'class-validator';
-import { Type } from 'class-transformer';
-import { InspectionResult, DefectSeverity } from '@textile-erp/database';
+import {
+  IsString,
+  IsNumber,
+  IsOptional,
+  IsArray,
+  ValidateNested,
+  IsUUID,
+  IsEnum,
+  IsBoolean,
+  Min,
+} from "class-validator";
+import { Type } from "class-transformer";
+import { InspectionResult, DefectSeverity } from "@textile-erp/database";
 
 export class RecordDefectItemDto {
   @IsString()

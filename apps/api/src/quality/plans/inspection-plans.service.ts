@@ -1,14 +1,22 @@
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
-import { prisma } from '@textile-erp/database';
+import {
+  Injectable,
+  ConflictException,
+  NotFoundException,
+} from "@nestjs/common";
+import { prisma } from "@textile-erp/database";
 import {
   CreateInspectionPlanDto,
   UpdateInspectionPlanDto,
   QueryInspectionPlanDto,
-} from './inspection-plans.dto';
+} from "./inspection-plans.dto";
 
 @Injectable()
 export class InspectionPlansService {
-  async create(tenantId: string, actorId: string, dto: CreateInspectionPlanDto) {
+  async create(
+    tenantId: string,
+    actorId: string,
+    dto: CreateInspectionPlanDto,
+  ) {
     const existing = await prisma.inspectionPlan.findUnique({
       where: {
         tenantId_code: {
@@ -19,7 +27,9 @@ export class InspectionPlansService {
     });
 
     if (existing) {
-      throw new ConflictException(`Inspection plan code "${dto.code}" already exists in this tenant`);
+      throw new ConflictException(
+        `Inspection plan code "${dto.code}" already exists in this tenant`,
+      );
     }
 
     if (dto.styleId) {
@@ -27,7 +37,7 @@ export class InspectionPlansService {
         where: { id: dto.styleId },
       });
       if (!style || style.tenantId !== tenantId) {
-        throw new NotFoundException('Style not found in this tenant');
+        throw new NotFoundException("Style not found in this tenant");
       }
     }
 
@@ -40,7 +50,7 @@ export class InspectionPlansService {
           styleId: dto.styleId || null,
           stage: dto.stage,
           aqlLevel: dto.aqlLevel ?? 2.5,
-          inspectionLevel: dto.inspectionLevel || 'LEVEL_II',
+          inspectionLevel: dto.inspectionLevel || "LEVEL_II",
           active: dto.active ?? true,
           checklists:
             dto.checklists && dto.checklists.length > 0
@@ -56,7 +66,7 @@ export class InspectionPlansService {
               : undefined,
         },
         include: {
-          checklists: { orderBy: { sequence: 'asc' } },
+          checklists: { orderBy: { sequence: "asc" } },
           style: true,
         },
       });
@@ -64,9 +74,9 @@ export class InspectionPlansService {
       await tx.auditEvent.create({
         data: {
           tenantId,
-          actorId: actorId || 'SYSTEM',
-          action: 'INSPECTION_PLAN_CREATED',
-          entity: 'InspectionPlan',
+          actorId: actorId || "SYSTEM",
+          action: "INSPECTION_PLAN_CREATED",
+          entity: "InspectionPlan",
           entityId: plan.id,
           newValues: plan as any,
           reason: `Created inspection plan ${plan.code}`,
@@ -83,23 +93,23 @@ export class InspectionPlansService {
     if (query.styleId) where.styleId = query.styleId;
     if (query.stage) where.stage = query.stage;
     if (query.active !== undefined) {
-      where.active = String(query.active) === 'true' || query.active === true;
+      where.active = String(query.active) === "true" || query.active === true;
     }
     if (query.search) {
       const term = query.search.trim();
       where.OR = [
-        { code: { contains: term, mode: 'insensitive' } },
-        { name: { contains: term, mode: 'insensitive' } },
+        { code: { contains: term, mode: "insensitive" } },
+        { name: { contains: term, mode: "insensitive" } },
       ];
     }
 
     return prisma.inspectionPlan.findMany({
       where,
       include: {
-        checklists: { orderBy: { sequence: 'asc' } },
+        checklists: { orderBy: { sequence: "asc" } },
         style: true,
       },
-      orderBy: [{ stage: 'asc' }, { code: 'asc' }],
+      orderBy: [{ stage: "asc" }, { code: "asc" }],
     });
   }
 
@@ -107,19 +117,24 @@ export class InspectionPlansService {
     const plan = await prisma.inspectionPlan.findUnique({
       where: { id },
       include: {
-        checklists: { orderBy: { sequence: 'asc' } },
+        checklists: { orderBy: { sequence: "asc" } },
         style: true,
       },
     });
 
     if (!plan || plan.tenantId !== tenantId) {
-      throw new NotFoundException('Inspection plan not found');
+      throw new NotFoundException("Inspection plan not found");
     }
 
     return plan;
   }
 
-  async update(tenantId: string, actorId: string, id: string, dto: UpdateInspectionPlanDto) {
+  async update(
+    tenantId: string,
+    actorId: string,
+    id: string,
+    dto: UpdateInspectionPlanDto,
+  ) {
     const plan = await this.findById(tenantId, id);
 
     if (dto.styleId) {
@@ -127,7 +142,7 @@ export class InspectionPlansService {
         where: { id: dto.styleId },
       });
       if (!style || style.tenantId !== tenantId) {
-        throw new NotFoundException('Style not found in this tenant');
+        throw new NotFoundException("Style not found in this tenant");
       }
     }
 
@@ -163,7 +178,7 @@ export class InspectionPlansService {
           active: dto.active,
         },
         include: {
-          checklists: { orderBy: { sequence: 'asc' } },
+          checklists: { orderBy: { sequence: "asc" } },
           style: true,
         },
       });
@@ -171,9 +186,9 @@ export class InspectionPlansService {
       await tx.auditEvent.create({
         data: {
           tenantId,
-          actorId: actorId || 'SYSTEM',
-          action: 'INSPECTION_PLAN_UPDATED',
-          entity: 'InspectionPlan',
+          actorId: actorId || "SYSTEM",
+          action: "INSPECTION_PLAN_UPDATED",
+          entity: "InspectionPlan",
           entityId: plan.id,
           oldValues: plan as any,
           newValues: updated as any,

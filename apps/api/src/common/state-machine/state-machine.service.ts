@@ -1,6 +1,11 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
-import { prisma } from '@textile-erp/database';
-import { CostingStatus, PoStatus, VpoStatus, ProductionStatus } from '@textile-erp/database';
+import { Injectable, BadRequestException } from "@nestjs/common";
+import { prisma } from "@textile-erp/database";
+import {
+  CostingStatus,
+  PoStatus,
+  VpoStatus,
+  ProductionStatus,
+} from "@textile-erp/database";
 
 type StateGraph<T extends string> = {
   [key in T]?: T[];
@@ -10,8 +15,15 @@ type StateGraph<T extends string> = {
 export class StateMachineService {
   private readonly costingGraph: StateGraph<CostingStatus> = {
     [CostingStatus.DRAFT]: [CostingStatus.SUBMITTED],
-    [CostingStatus.SUBMITTED]: [CostingStatus.PENDING_APPROVAL, CostingStatus.APPROVED, CostingStatus.REJECTED],
-    [CostingStatus.PENDING_APPROVAL]: [CostingStatus.APPROVED, CostingStatus.REJECTED],
+    [CostingStatus.SUBMITTED]: [
+      CostingStatus.PENDING_APPROVAL,
+      CostingStatus.APPROVED,
+      CostingStatus.REJECTED,
+    ],
+    [CostingStatus.PENDING_APPROVAL]: [
+      CostingStatus.APPROVED,
+      CostingStatus.REJECTED,
+    ],
     [CostingStatus.APPROVED]: [CostingStatus.SUPERSEDED],
     [CostingStatus.REJECTED]: [CostingStatus.DRAFT],
   };
@@ -27,16 +39,34 @@ export class StateMachineService {
   private readonly vpoGraph: StateGraph<VpoStatus> = {
     [VpoStatus.DRAFT]: [VpoStatus.PENDING_APPROVAL],
     [VpoStatus.PENDING_APPROVAL]: [VpoStatus.APPROVED, VpoStatus.CANCELLED],
-    [VpoStatus.APPROVED]: [VpoStatus.ISSUED, VpoStatus.PARTIALLY_RECEIVED, VpoStatus.RECEIVED, VpoStatus.CANCELLED],
-    [VpoStatus.ISSUED]: [VpoStatus.PARTIALLY_RECEIVED, VpoStatus.RECEIVED, VpoStatus.CANCELLED],
+    [VpoStatus.APPROVED]: [
+      VpoStatus.ISSUED,
+      VpoStatus.PARTIALLY_RECEIVED,
+      VpoStatus.RECEIVED,
+      VpoStatus.CANCELLED,
+    ],
+    [VpoStatus.ISSUED]: [
+      VpoStatus.PARTIALLY_RECEIVED,
+      VpoStatus.RECEIVED,
+      VpoStatus.CANCELLED,
+    ],
     [VpoStatus.PARTIALLY_RECEIVED]: [VpoStatus.RECEIVED, VpoStatus.CANCELLED],
     [VpoStatus.RECEIVED]: [VpoStatus.CLOSED],
   };
 
   private readonly productionGraph: StateGraph<ProductionStatus> = {
-    [ProductionStatus.PLANNED]: [ProductionStatus.RELEASED, ProductionStatus.CANCELLED],
-    [ProductionStatus.RELEASED]: [ProductionStatus.IN_PROGRESS, ProductionStatus.CANCELLED],
-    [ProductionStatus.IN_PROGRESS]: [ProductionStatus.COMPLETED, ProductionStatus.CANCELLED],
+    [ProductionStatus.PLANNED]: [
+      ProductionStatus.RELEASED,
+      ProductionStatus.CANCELLED,
+    ],
+    [ProductionStatus.RELEASED]: [
+      ProductionStatus.IN_PROGRESS,
+      ProductionStatus.CANCELLED,
+    ],
+    [ProductionStatus.IN_PROGRESS]: [
+      ProductionStatus.COMPLETED,
+      ProductionStatus.CANCELLED,
+    ],
   };
 
   /**
@@ -48,7 +78,7 @@ export class StateMachineService {
     actorId: string,
     currentState: CostingStatus,
     targetState: CostingStatus,
-    reason?: string
+    reason?: string,
   ) {
     this.validateTransition(currentState, targetState, this.costingGraph);
 
@@ -62,8 +92,8 @@ export class StateMachineService {
         data: {
           tenantId,
           actorId,
-          action: 'STATE_TRANSITION',
-          entity: 'CostingVersion',
+          action: "STATE_TRANSITION",
+          entity: "CostingVersion",
           entityId: id,
           oldValues: { status: currentState },
           newValues: { status: targetState },
@@ -84,7 +114,7 @@ export class StateMachineService {
     actorId: string,
     currentState: PoStatus,
     targetState: PoStatus,
-    reason?: string
+    reason?: string,
   ) {
     this.validateTransition(currentState, targetState, this.buyerPoGraph);
 
@@ -98,8 +128,8 @@ export class StateMachineService {
         data: {
           tenantId,
           actorId,
-          action: 'STATE_TRANSITION',
-          entity: 'BuyerPo',
+          action: "STATE_TRANSITION",
+          entity: "BuyerPo",
           entityId: id,
           oldValues: { status: currentState },
           newValues: { status: targetState },
@@ -121,7 +151,7 @@ export class StateMachineService {
     actorId: string,
     currentState: VpoStatus,
     targetState: VpoStatus,
-    reason?: string
+    reason?: string,
   ) {
     this.validateTransition(currentState, targetState, this.vpoGraph);
 
@@ -134,8 +164,8 @@ export class StateMachineService {
       data: {
         tenantId,
         actorId,
-        action: 'STATE_TRANSITION',
-        entity: 'Vpo',
+        action: "STATE_TRANSITION",
+        entity: "Vpo",
         entityId: id,
         oldValues: { status: currentState },
         newValues: { status: targetState },
@@ -156,7 +186,7 @@ export class StateMachineService {
     actorId: string,
     currentState: ProductionStatus,
     targetState: ProductionStatus,
-    reason?: string
+    reason?: string,
   ) {
     this.validateTransition(currentState, targetState, this.productionGraph);
 
@@ -169,8 +199,8 @@ export class StateMachineService {
       data: {
         tenantId,
         actorId,
-        action: 'STATE_TRANSITION',
-        entity: 'ProductionOrder',
+        action: "STATE_TRANSITION",
+        entity: "ProductionOrder",
         entityId: id,
         oldValues: { status: currentState },
         newValues: { status: targetState },
@@ -181,10 +211,16 @@ export class StateMachineService {
     return updated;
   }
 
-  private validateTransition<T extends string>(currentState: T, targetState: T, graph: StateGraph<T>) {
+  private validateTransition<T extends string>(
+    currentState: T,
+    targetState: T,
+    graph: StateGraph<T>,
+  ) {
     const allowed = graph[currentState];
     if (!allowed || !allowed.includes(targetState)) {
-      throw new BadRequestException(`Invalid state transition from ${currentState} to ${targetState}`);
+      throw new BadRequestException(
+        `Invalid state transition from ${currentState} to ${targetState}`,
+      );
     }
   }
 }

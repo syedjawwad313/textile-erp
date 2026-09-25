@@ -1,7 +1,17 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
-import { prisma, QualityHoldStatus, AqlAuditStatus, DefectSeverity, InspectionStage } from '@textile-erp/database';
-import { AqlEngineService } from './aql-engine.service';
-import { CreateAqlAuditDto, QueryAqlAuditDto } from './aql-audits.dto';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from "@nestjs/common";
+import {
+  prisma,
+  QualityHoldStatus,
+  AqlAuditStatus,
+  DefectSeverity,
+  InspectionStage,
+} from "@textile-erp/database";
+import { AqlEngineService } from "./aql-engine.service";
+import { CreateAqlAuditDto, QueryAqlAuditDto } from "./aql-audits.dto";
 
 @Injectable()
 export class AqlAuditsService {
@@ -11,10 +21,10 @@ export class AqlAuditsService {
     tenantId: string,
     actorId: string,
     idempotencyKey: string,
-    dto: CreateAqlAuditDto
+    dto: CreateAqlAuditDto,
   ) {
     if (!idempotencyKey) {
-      throw new BadRequestException('X-Idempotency-Key header is required');
+      throw new BadRequestException("X-Idempotency-Key header is required");
     }
 
     return prisma.$transaction(async (tx) => {
@@ -39,7 +49,7 @@ export class AqlAuditsService {
       });
 
       if (!order || order.tenantId !== tenantId) {
-        throw new NotFoundException('Production order not found');
+        throw new NotFoundException("Production order not found");
       }
 
       // 3. Validate Auditor (Employee)
@@ -48,7 +58,7 @@ export class AqlAuditsService {
       });
 
       if (!auditor || auditor.tenantId !== tenantId) {
-        throw new NotFoundException('Auditor not found or unauthorized');
+        throw new NotFoundException("Auditor not found or unauthorized");
       }
 
       // 4. Validate Plan if provided
@@ -58,20 +68,21 @@ export class AqlAuditsService {
           where: { id: dto.planId },
         });
         if (!plan || plan.tenantId !== tenantId) {
-          throw new NotFoundException('Inspection plan not found');
+          throw new NotFoundException("Inspection plan not found");
         }
       }
 
       // 5. Calculate AQL Sampling Parameters
       const aqlMajor = dto.aqlMajor ?? (plan ? Number(plan.aqlLevel) : 2.5);
       const aqlMinor = dto.aqlMinor ?? 4.0;
-      const inspectionLevel = dto.inspectionLevel ?? (plan ? plan.inspectionLevel : 'LEVEL_II');
+      const inspectionLevel =
+        dto.inspectionLevel ?? (plan ? plan.inspectionLevel : "LEVEL_II");
 
       const samplingPlan = this.aqlEngine.calculateSamplingPlan(
         dto.lotSize,
         inspectionLevel,
         aqlMajor,
-        aqlMinor
+        aqlMinor,
       );
 
       // 6. Aggregate defect quantities by severity
@@ -97,14 +108,16 @@ export class AqlAuditsService {
         samplingPlan,
         criticalDefects,
         majorDefects,
-        minorDefects
+        minorDefects,
       );
 
-      const status: AqlAuditStatus = evaluation.passed ? AqlAuditStatus.PASSED : AqlAuditStatus.FAILED;
+      const status: AqlAuditStatus = evaluation.passed
+        ? AqlAuditStatus.PASSED
+        : AqlAuditStatus.FAILED;
 
       // 8. Generate Audit Number
       const auditCount = await tx.aqlAudit.count({ where: { tenantId } });
-      const auditNumber = `AUD-${new Date().getFullYear()}-${String(auditCount + 1).padStart(4, '0')}`;
+      const auditNumber = `AUD-${new Date().getFullYear()}-${String(auditCount + 1).padStart(4, "0")}`;
 
       // 9. Persist AqlAudit record
       const audit = await tx.aqlAudit.create({
@@ -127,7 +140,9 @@ export class AqlAuditsService {
           minorDefects,
           status,
           auditorId: auditor.id,
-          notes: dto.notes ? `${dto.notes} | ${evaluation.summary}` : evaluation.summary,
+          notes: dto.notes
+            ? `${dto.notes} | ${evaluation.summary}`
+            : evaluation.summary,
           idempotencyKey,
           defects:
             dto.defects && dto.defects.length > 0
@@ -170,8 +185,8 @@ export class AqlAuditsService {
           data: {
             tenantId,
             actorId: actorId || auditor.id,
-            action: 'ORDER_HOLD_APPLIED',
-            entity: 'ProductionOrder',
+            action: "ORDER_HOLD_APPLIED",
+            entity: "ProductionOrder",
             entityId: order.id,
             newValues: {
               holdId: autoHold.id,
@@ -179,7 +194,8 @@ export class AqlAuditsService {
               auditId: audit.id,
               auditNumber: audit.auditNumber,
             },
-            reason: 'Automatic quality hold applied due to failed AQL lot audit',
+            reason:
+              "Automatic quality hold applied due to failed AQL lot audit",
           },
         });
       }
@@ -189,8 +205,8 @@ export class AqlAuditsService {
         data: {
           tenantId,
           actorId: actorId || auditor.id,
-          action: 'AQL_AUDIT_RECORDED',
-          entity: 'AqlAudit',
+          action: "AQL_AUDIT_RECORDED",
+          entity: "AqlAudit",
           entityId: audit.id,
           newValues: {
             auditNumber: audit.auditNumber,
@@ -211,12 +227,13 @@ export class AqlAuditsService {
         status === AqlAuditStatus.FAILED
           ? {
               title: `NCR for Failed AQL Audit ${audit.auditNumber}`,
-              source: 'AQL_AUDIT',
-              severity: criticalDefects > 0 ? 'CRITICAL' : 'MAJOR',
+              source: "AQL_AUDIT",
+              severity: criticalDefects > 0 ? "CRITICAL" : "MAJOR",
               productionOrderId: order.id,
               aqlAuditId: audit.id,
               description: `AQL Lot Audit failed with ${criticalDefects} critical, ${majorDefects} major, and ${minorDefects} minor defects out of ${samplingPlan.sampleSize} sampled pieces (Lot: ${samplingPlan.lotSize}).`,
-              containmentAction: 'Order placed on Quality Hold. Shipment blocked pending root-cause analysis.',
+              containmentAction:
+                "Order placed on Quality Hold. Shipment blocked pending root-cause analysis.",
             }
           : null;
 
@@ -233,7 +250,8 @@ export class AqlAuditsService {
   async findAll(tenantId: string, query: QueryAqlAuditDto) {
     const where: any = { tenantId };
 
-    if (query.productionOrderId) where.productionOrderId = query.productionOrderId;
+    if (query.productionOrderId)
+      where.productionOrderId = query.productionOrderId;
     if (query.status) where.status = query.status;
     if (query.stage) where.stage = query.stage;
     if (query.auditorId) where.auditorId = query.auditorId;
@@ -281,7 +299,7 @@ export class AqlAuditsService {
           },
         },
       },
-      orderBy: { auditDate: 'desc' },
+      orderBy: { auditDate: "desc" },
       take: query.limit ? Number(query.limit) : 50,
     });
   }
@@ -294,7 +312,7 @@ export class AqlAuditsService {
         productionOrder: true,
         auditor: true,
         plan: {
-          include: { checklists: { orderBy: { sequence: 'asc' } } },
+          include: { checklists: { orderBy: { sequence: "asc" } } },
         },
         ncrs: {
           include: { capaActions: true },
@@ -303,7 +321,7 @@ export class AqlAuditsService {
     });
 
     if (!audit || audit.tenantId !== tenantId) {
-      throw new NotFoundException('AQL audit not found');
+      throw new NotFoundException("AQL audit not found");
     }
 
     return audit;

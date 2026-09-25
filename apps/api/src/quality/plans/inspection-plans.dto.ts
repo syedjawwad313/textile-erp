@@ -8,9 +8,9 @@ import {
   ValidateNested,
   IsUUID,
   Min,
-} from 'class-validator';
-import { Type } from 'class-transformer';
-import { InspectionStage, DefectSeverity } from '@textile-erp/database';
+} from "class-validator";
+import { Type } from "class-transformer";
+import { InspectionStage, DefectSeverity } from "@textile-erp/database";
 
 export class ChecklistItemDto {
   @IsString()

@@ -1,7 +1,7 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
-import * as request from 'supertest';
-import { AppModule } from '../src/app.module';
+import { Test, TestingModule } from "@nestjs/testing";
+import { INestApplication, ValidationPipe } from "@nestjs/common";
+import * as request from "supertest";
+import { AppModule } from "../src/app.module";
 import {
   PrismaClient,
   WarehouseType,
@@ -13,11 +13,11 @@ import {
   InspectionStage,
   AqlAuditStatus,
   InventoryTxType,
-} from '@textile-erp/database';
-import * as argon2 from 'argon2';
-import * as crypto from 'crypto';
+} from "@textile-erp/database";
+import * as argon2 from "argon2";
+import * as crypto from "crypto";
 
-describe('FgWarehouseModule (e2e Phase 8.2)', () => {
+describe("FgWarehouseModule (e2e Phase 8.2)", () => {
   let app: INestApplication;
   let prisma: PrismaClient;
 
@@ -58,13 +58,13 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
   beforeAll(async () => {
     const DB_URL =
       process.env.DATABASE_URL ||
-      'postgresql://postgres:postgres@localhost:5432/textile_erp?schema=public';
+      "postgresql://postgres:postgres@localhost:5432/textile_erp?schema=public";
     process.env.DATABASE_URL = DB_URL;
     process.env.JWT_SECRET =
-      process.env.JWT_SECRET || 'super-secret-jwt-key-for-development-only';
+      process.env.JWT_SECRET || "super-secret-jwt-key-for-development-only";
     prisma = new PrismaClient({ datasourceUrl: DB_URL });
 
-    const passwordHash = await argon2.hash('TestPass123!', {
+    const passwordHash = await argon2.hash("TestPass123!", {
       type: argon2.argon2id,
       memoryCost: 65536,
       timeCost: 3,
@@ -73,34 +73,34 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
 
     // 1. Setup Tenant A
     await prisma.tenant.create({
-      data: { id: tenantAId, name: 'Tenant A Warehousing Global' },
+      data: { id: tenantAId, name: "Tenant A Warehousing Global" },
     });
 
     const companyA = await prisma.company.create({
-      data: { tenantId: tenantAId, name: 'Tenant A Enterprise' },
+      data: { tenantId: tenantAId, name: "Tenant A Enterprise" },
     });
 
     const factoryA = await prisma.factoryUnit.create({
       data: {
         tenantId: tenantAId,
         companyId: companyA.id,
-        code: 'FAC-A-WH',
-        name: 'Unit A Finished Goods Hub',
+        code: "FAC-A-WH",
+        name: "Unit A Finished Goods Hub",
       },
     });
 
     const adminUserA = await prisma.user.create({
       data: {
         tenantId: tenantAId,
-        email: 'adminA_p82@test.com',
+        email: "adminA_p82@test.com",
         passwordHash,
-        firstName: 'WarehouseAdmin',
-        lastName: 'A',
+        firstName: "WarehouseAdmin",
+        lastName: "A",
       },
     });
 
     const roleA = await prisma.role.create({
-      data: { tenantId: tenantAId, name: 'ADMIN' },
+      data: { tenantId: tenantAId, name: "ADMIN" },
     });
 
     await prisma.userRole.create({
@@ -110,43 +110,43 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
     await prisma.user.create({
       data: {
         tenantId: tenantAId,
-        email: 'unauthA_p82@test.com',
+        email: "unauthA_p82@test.com",
         passwordHash,
-        firstName: 'Guest',
-        lastName: 'A',
+        firstName: "Guest",
+        lastName: "A",
       },
     });
 
     // 2. Setup Tenant B
     await prisma.tenant.create({
-      data: { id: tenantBId, name: 'Tenant B Logistics Corp' },
+      data: { id: tenantBId, name: "Tenant B Logistics Corp" },
     });
 
     const companyB = await prisma.company.create({
-      data: { tenantId: tenantBId, name: 'Tenant B Enterprise' },
+      data: { tenantId: tenantBId, name: "Tenant B Enterprise" },
     });
 
     const factoryB = await prisma.factoryUnit.create({
       data: {
         tenantId: tenantBId,
         companyId: companyB.id,
-        code: 'FAC-B-WH',
-        name: 'Unit B Hub',
+        code: "FAC-B-WH",
+        name: "Unit B Hub",
       },
     });
 
     const adminUserB = await prisma.user.create({
       data: {
         tenantId: tenantBId,
-        email: 'adminB_p82@test.com',
+        email: "adminB_p82@test.com",
         passwordHash,
-        firstName: 'Admin',
-        lastName: 'B',
+        firstName: "Admin",
+        lastName: "B",
       },
     });
 
     const roleB = await prisma.role.create({
-      data: { tenantId: tenantBId, name: 'ADMIN' },
+      data: { tenantId: tenantBId, name: "ADMIN" },
     });
 
     await prisma.userRole.create({
@@ -155,12 +155,12 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
 
     // 3. Seed Permissions for WAREHOUSE and PACKING
     const permissionsToSeed = [
-      { resource: 'WAREHOUSE', action: 'READ' },
-      { resource: 'WAREHOUSE', action: 'WRITE' },
-      { resource: 'PACKING', action: 'READ' },
-      { resource: 'PACKING', action: 'WRITE' },
-      { resource: 'INVENTORY', action: 'READ' },
-      { resource: 'INVENTORY', action: 'WRITE' },
+      { resource: "WAREHOUSE", action: "READ" },
+      { resource: "WAREHOUSE", action: "WRITE" },
+      { resource: "PACKING", action: "READ" },
+      { resource: "PACKING", action: "WRITE" },
+      { resource: "INVENTORY", action: "READ" },
+      { resource: "INVENTORY", action: "WRITE" },
     ];
 
     for (const p of permissionsToSeed) {
@@ -170,12 +170,16 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
         create: p,
       });
       await prisma.rolePermission.upsert({
-        where: { roleId_permissionId: { roleId: roleA.id, permissionId: perm.id } },
+        where: {
+          roleId_permissionId: { roleId: roleA.id, permissionId: perm.id },
+        },
         update: {},
         create: { roleId: roleA.id, permissionId: perm.id },
       });
       await prisma.rolePermission.upsert({
-        where: { roleId_permissionId: { roleId: roleB.id, permissionId: perm.id } },
+        where: {
+          roleId_permissionId: { roleId: roleB.id, permissionId: perm.id },
+        },
         update: {},
         create: { roleId: roleB.id, permissionId: perm.id },
       });
@@ -185,8 +189,8 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
     const fgWhA = await prisma.warehouse.create({
       data: {
         tenantId: tenantAId,
-        code: 'WH-FG-MAIN',
-        name: 'Finished Goods Central Warehouse',
+        code: "WH-FG-MAIN",
+        name: "Finished Goods Central Warehouse",
         warehouseType: WarehouseType.FINISHED_GOODS,
       },
     });
@@ -195,8 +199,8 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
     const rawWhA = await prisma.warehouse.create({
       data: {
         tenantId: tenantAId,
-        code: 'WH-RAW-MAIN',
-        name: 'Raw Materials Warehouse',
+        code: "WH-RAW-MAIN",
+        name: "Raw Materials Warehouse",
         warehouseType: WarehouseType.RAW_MATERIAL,
       },
     });
@@ -205,8 +209,8 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
     const binA1 = await prisma.bin.create({
       data: {
         warehouseId: fgWhA.id,
-        code: 'BIN-STORAGE-01',
-        name: 'High Bay Storage Rack 01',
+        code: "BIN-STORAGE-01",
+        name: "High Bay Storage Rack 01",
         binType: BinType.STORAGE,
       },
     });
@@ -215,8 +219,8 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
     const binA2 = await prisma.bin.create({
       data: {
         warehouseId: fgWhA.id,
-        code: 'BIN-STORAGE-02',
-        name: 'High Bay Storage Rack 02',
+        code: "BIN-STORAGE-02",
+        name: "High Bay Storage Rack 02",
         binType: BinType.STORAGE,
       },
     });
@@ -225,8 +229,8 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
     const stagingBinA = await prisma.bin.create({
       data: {
         warehouseId: fgWhA.id,
-        code: 'BIN-STAGE-DOCK-1',
-        name: 'Outbound Staging Bay 1',
+        code: "BIN-STAGE-DOCK-1",
+        name: "Outbound Staging Bay 1",
         binType: BinType.STAGING,
       },
     });
@@ -235,8 +239,8 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
     const quarantineBinA = await prisma.bin.create({
       data: {
         warehouseId: fgWhA.id,
-        code: 'BIN-QUARANTINE-01',
-        name: 'QA Quarantine Inspection Hold Bay',
+        code: "BIN-QUARANTINE-01",
+        name: "QA Quarantine Inspection Hold Bay",
         binType: BinType.QUARANTINE,
       },
     });
@@ -246,20 +250,28 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
     await prisma.bin.create({
       data: {
         warehouseId: rawWhA.id,
-        code: 'BIN-RAW-01',
-        name: 'Fabric Storage Rack 01',
+        code: "BIN-RAW-01",
+        name: "Fabric Storage Rack 01",
         binType: BinType.STORAGE,
       },
     });
 
     // 5. Tenant A Orders, Styles & Ledger Baseline
     const buyerA = await prisma.buyer.create({
-      data: { tenantId: tenantAId, code: 'BUY-TARGET', name: 'Target Corporation' },
+      data: {
+        tenantId: tenantAId,
+        code: "BUY-TARGET",
+        name: "Target Corporation",
+      },
     });
     buyerAId = buyerA.id;
 
     const styleA = await prisma.style.create({
-      data: { tenantId: tenantAId, code: 'STY-POLO-82', name: 'Pique Knit Polo' },
+      data: {
+        tenantId: tenantAId,
+        code: "STY-POLO-82",
+        name: "Pique Knit Polo",
+      },
     });
     styleAId = styleA.id;
 
@@ -267,11 +279,18 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
       data: {
         tenantId: tenantAId,
         buyerId: buyerA.id,
-        poNumber: 'PO-TGT-2026-82',
-        status: 'CONFIRMED',
+        poNumber: "PO-TGT-2026-82",
+        status: "CONFIRMED",
         orderDate: new Date(),
         buyerPoLines: {
-          create: [{ styleId: styleA.id, quantity: 1000, unitPrice: 12.0, totalPrice: 12000 }],
+          create: [
+            {
+              styleId: styleA.id,
+              quantity: 1000,
+              unitPrice: 12.0,
+              totalPrice: 12000,
+            },
+          ],
         },
       },
       include: { buyerPoLines: true },
@@ -283,7 +302,7 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
       data: {
         tenantId: tenantAId,
         buyerPoLineId: buyerPoA.buyerPoLines[0].id,
-        orderNumber: 'PRD-ORD-P82-01',
+        orderNumber: "PRD-ORD-P82-01",
         status: ProductionStatus.COMPLETED,
         targetQuantity: 500,
         completedQty: 500,
@@ -296,7 +315,7 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
       data: {
         tenantId: tenantAId,
         buyerPoLineId: buyerPoA.buyerPoLines[0].id,
-        orderNumber: 'PRD-ORD-P82-HELD',
+        orderNumber: "PRD-ORD-P82-HELD",
         status: ProductionStatus.COMPLETED,
         targetQuantity: 200,
         completedQty: 200,
@@ -308,9 +327,9 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
       data: {
         tenantId: tenantAId,
         productionOrderId: prodOrderA_Held.id,
-        reason: 'Shade variation failure on batch 82',
+        reason: "Shade variation failure on batch 82",
         status: QualityHoldStatus.ACTIVE,
-        idempotencyKey: 'hold-order-p82-01',
+        idempotencyKey: "hold-order-p82-01",
       },
     });
 
@@ -329,9 +348,9 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
         styleId: styleA.id,
         type: InventoryTxType.PRODUCTION_OUTPUT,
         quantity: 700,
-        uom: 'PCS',
+        uom: "PCS",
         actorId: adminUserA.id,
-        idempotencyKey: 'tx-prod-out-p82-01',
+        idempotencyKey: "tx-prod-out-p82-01",
       },
     });
 
@@ -340,21 +359,23 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
     const cartonA1 = await prisma.carton.create({
       data: {
         tenantId: tenantAId,
-        cartonNumber: 'CTN-P82-001',
-        barcode: '(00)006141410000082001',
+        cartonNumber: "CTN-P82-001",
+        barcode: "(00)006141410000082001",
         status: CartonStatus.PACKED,
         productionOrderId: prodOrderA1.id,
         buyerPoId: buyerPoA.id,
         totalUnits: 50,
-        idempotencyKey: 'pack-ctn-p82-001',
+        idempotencyKey: "pack-ctn-p82-001",
         items: {
-          create: [{
-            tenantId: tenantAId,
-            styleId: styleA.id,
-            color: 'Navy',
-            size: 'L',
-            quantity: 50,
-          }],
+          create: [
+            {
+              tenantId: tenantAId,
+              styleId: styleA.id,
+              color: "Navy",
+              size: "L",
+              quantity: 50,
+            },
+          ],
         },
       },
     });
@@ -364,21 +385,23 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
     const cartonA2 = await prisma.carton.create({
       data: {
         tenantId: tenantAId,
-        cartonNumber: 'CTN-P82-002',
-        barcode: '(00)006141410000082002',
+        cartonNumber: "CTN-P82-002",
+        barcode: "(00)006141410000082002",
         status: CartonStatus.PACKED,
         productionOrderId: prodOrderA1.id,
         buyerPoId: buyerPoA.id,
         totalUnits: 50,
-        idempotencyKey: 'pack-ctn-p82-002',
+        idempotencyKey: "pack-ctn-p82-002",
         items: {
-          create: [{
-            tenantId: tenantAId,
-            styleId: styleA.id,
-            color: 'Navy',
-            size: 'M',
-            quantity: 50,
-          }],
+          create: [
+            {
+              tenantId: tenantAId,
+              styleId: styleA.id,
+              color: "Navy",
+              size: "M",
+              quantity: 50,
+            },
+          ],
         },
       },
     });
@@ -388,21 +411,23 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
     const heldCarton = await prisma.carton.create({
       data: {
         tenantId: tenantAId,
-        cartonNumber: 'CTN-P82-HELD',
-        barcode: '(00)006141410000082999',
+        cartonNumber: "CTN-P82-HELD",
+        barcode: "(00)006141410000082999",
         status: CartonStatus.PACKED,
         productionOrderId: prodOrderA_Held.id,
         buyerPoId: buyerPoA.id,
         totalUnits: 40,
-        idempotencyKey: 'pack-ctn-p82-held',
+        idempotencyKey: "pack-ctn-p82-held",
         items: {
-          create: [{
-            tenantId: tenantAId,
-            styleId: styleA.id,
-            color: 'Heather Grey',
-            size: 'S',
-            quantity: 40,
-          }],
+          create: [
+            {
+              tenantId: tenantAId,
+              styleId: styleA.id,
+              color: "Heather Grey",
+              size: "S",
+              quantity: 40,
+            },
+          ],
         },
       },
     });
@@ -412,13 +437,13 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
     const cancelledCarton = await prisma.carton.create({
       data: {
         tenantId: tenantAId,
-        cartonNumber: 'CTN-P82-CANCELLED',
-        barcode: '(00)006141410000082888',
+        cartonNumber: "CTN-P82-CANCELLED",
+        barcode: "(00)006141410000082888",
         status: CartonStatus.CANCELLED,
         productionOrderId: prodOrderA1.id,
         buyerPoId: buyerPoA.id,
         totalUnits: 30,
-        idempotencyKey: 'pack-ctn-p82-cancelled',
+        idempotencyKey: "pack-ctn-p82-cancelled",
       },
     });
     cancelledCartonAId = cancelledCarton.id;
@@ -427,13 +452,13 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
     const shippedCarton = await prisma.carton.create({
       data: {
         tenantId: tenantAId,
-        cartonNumber: 'CTN-P82-SHIPPED',
-        barcode: '(00)006141410000082777',
+        cartonNumber: "CTN-P82-SHIPPED",
+        barcode: "(00)006141410000082777",
         status: CartonStatus.SHIPPED,
         productionOrderId: prodOrderA1.id,
         buyerPoId: buyerPoA.id,
         totalUnits: 25,
-        idempotencyKey: 'pack-ctn-p82-shipped',
+        idempotencyKey: "pack-ctn-p82-shipped",
       },
     });
     shippedCartonAId = shippedCarton.id;
@@ -442,8 +467,8 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
     const whB = await prisma.warehouse.create({
       data: {
         tenantId: tenantBId,
-        code: 'WH-FG-B-MAIN',
-        name: 'Tenant B Central Warehouse',
+        code: "WH-FG-B-MAIN",
+        name: "Tenant B Central Warehouse",
         warehouseType: WarehouseType.FINISHED_GOODS,
       },
     });
@@ -452,26 +477,33 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
     const binB = await prisma.bin.create({
       data: {
         warehouseId: whB.id,
-        code: 'BIN-STORAGE-B1',
-        name: 'Storage Rack B1',
+        code: "BIN-STORAGE-B1",
+        name: "Storage Rack B1",
         binType: BinType.STORAGE,
       },
     });
     storageBinBId = binB.id;
 
     const styleB = await prisma.style.create({
-      data: { tenantId: tenantBId, code: 'STY-B-01', name: 'Tenant B Hoodies' },
+      data: { tenantId: tenantBId, code: "STY-B-01", name: "Tenant B Hoodies" },
     });
 
     const buyerPoB = await prisma.buyerPo.create({
       data: {
         tenantId: tenantBId,
         buyerId: buyerA.id,
-        poNumber: 'PO-B-2026-001',
-        status: 'CONFIRMED',
+        poNumber: "PO-B-2026-001",
+        status: "CONFIRMED",
         orderDate: new Date(),
         buyerPoLines: {
-          create: [{ styleId: styleB.id, quantity: 200, unitPrice: 20.0, totalPrice: 4000 }],
+          create: [
+            {
+              styleId: styleB.id,
+              quantity: 200,
+              unitPrice: 20.0,
+              totalPrice: 4000,
+            },
+          ],
         },
       },
       include: { buyerPoLines: true },
@@ -481,7 +513,7 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
       data: {
         tenantId: tenantBId,
         buyerPoLineId: buyerPoB.buyerPoLines[0].id,
-        orderNumber: 'PRD-ORD-B-01',
+        orderNumber: "PRD-ORD-B-01",
         status: ProductionStatus.COMPLETED,
         targetQuantity: 100,
         completedQty: 100,
@@ -491,12 +523,12 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
     const cartonB = await prisma.carton.create({
       data: {
         tenantId: tenantBId,
-        cartonNumber: 'CTN-B-001',
-        barcode: '(00)006141419999982001',
+        cartonNumber: "CTN-B-001",
+        barcode: "(00)006141419999982001",
         status: CartonStatus.PACKED,
         productionOrderId: prodOrderB.id,
         totalUnits: 20,
-        idempotencyKey: 'pack-ctn-b-001',
+        idempotencyKey: "pack-ctn-b-001",
       },
     });
     cartonBId = cartonB.id;
@@ -507,34 +539,32 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+    app.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, transform: true }),
+    );
     await app.init();
 
     // Authenticate Tokens
-    const resA = await request(app.getHttpServer())
-      .post('/auth/login')
-      .send({
-        tenantId: tenantAId,
-        email: 'adminA_p82@test.com',
-        password: 'TestPass123!',
-      });
+    const resA = await request(app.getHttpServer()).post("/auth/login").send({
+      tenantId: tenantAId,
+      email: "adminA_p82@test.com",
+      password: "TestPass123!",
+    });
     adminTokenA = resA.body.accessToken;
 
-    const resB = await request(app.getHttpServer())
-      .post('/auth/login')
-      .send({
-        tenantId: tenantBId,
-        email: 'adminB_p82@test.com',
-        password: 'TestPass123!',
-      });
+    const resB = await request(app.getHttpServer()).post("/auth/login").send({
+      tenantId: tenantBId,
+      email: "adminB_p82@test.com",
+      password: "TestPass123!",
+    });
     adminTokenB = resB.body.accessToken;
 
     const resUnauth = await request(app.getHttpServer())
-      .post('/auth/login')
+      .post("/auth/login")
       .send({
         tenantId: tenantAId,
-        email: 'unauthA_p82@test.com',
-        password: 'TestPass123!',
+        email: "unauthA_p82@test.com",
+        password: "TestPass123!",
       });
     unauthTokenA = resUnauth.body.accessToken;
   });
@@ -548,23 +578,23 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
   // TEST SCENARIOS (ALL 22 REQUIRED CRITERIA COVERED)
   // ===========================================================================
 
-  describe('1. Tenant Isolation', () => {
-    it('should isolate warehouse queries per tenant', async () => {
+  describe("1. Tenant Isolation", () => {
+    it("should isolate warehouse queries per tenant", async () => {
       const res = await request(app.getHttpServer())
-        .get('/api/v1/packing/warehouse/warehouses')
-        .set('Authorization', `Bearer ${adminTokenA}`)
+        .get("/api/v1/packing/warehouse/warehouses")
+        .set("Authorization", `Bearer ${adminTokenA}`)
         .expect(200);
 
       expect(Array.isArray(res.body)).toBe(true);
       const whCodes = res.body.map((w: any) => w.code);
-      expect(whCodes).toContain('WH-FG-MAIN');
-      expect(whCodes).not.toContain('WH-FG-B-MAIN');
+      expect(whCodes).toContain("WH-FG-MAIN");
+      expect(whCodes).not.toContain("WH-FG-B-MAIN");
     });
 
-    it('should prevent Tenant B from seeing Tenant A carton movements', async () => {
+    it("should prevent Tenant B from seeing Tenant A carton movements", async () => {
       const res = await request(app.getHttpServer())
-        .get('/api/v1/packing/warehouse/movements')
-        .set('Authorization', `Bearer ${adminTokenB}`)
+        .get("/api/v1/packing/warehouse/movements")
+        .set("Authorization", `Bearer ${adminTokenB}`)
         .expect(200);
 
       expect(Array.isArray(res.body)).toBe(true);
@@ -572,25 +602,25 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
     });
   });
 
-  describe('2. RBAC Enforcement', () => {
-    it('should reject unauthenticated request with 401', async () => {
+  describe("2. RBAC Enforcement", () => {
+    it("should reject unauthenticated request with 401", async () => {
       await request(app.getHttpServer())
-        .get('/api/v1/packing/warehouse/warehouses')
+        .get("/api/v1/packing/warehouse/warehouses")
         .expect(401);
     });
 
-    it('should reject unauthorized user without WAREHOUSE:READ with 403', async () => {
+    it("should reject unauthorized user without WAREHOUSE:READ with 403", async () => {
       await request(app.getHttpServer())
-        .get('/api/v1/packing/warehouse/warehouses')
-        .set('Authorization', `Bearer ${unauthTokenA}`)
+        .get("/api/v1/packing/warehouse/warehouses")
+        .set("Authorization", `Bearer ${unauthTokenA}`)
         .expect(403);
     });
 
-    it('should reject unauthorized user without WAREHOUSE:WRITE on putaway with 403', async () => {
+    it("should reject unauthorized user without WAREHOUSE:WRITE on putaway with 403", async () => {
       await request(app.getHttpServer())
-        .post('/api/v1/packing/warehouse/putaway')
-        .set('Authorization', `Bearer ${unauthTokenA}`)
-        .set('x-idempotency-key', 'unauth-putaway-key')
+        .post("/api/v1/packing/warehouse/putaway")
+        .set("Authorization", `Bearer ${unauthTokenA}`)
+        .set("x-idempotency-key", "unauth-putaway-key")
         .send({
           cartonId: normalCartonA1Id,
           warehouseId: fgWarehouseAId,
@@ -600,11 +630,11 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
     });
   });
 
-  describe('3 & 4 & 5 & 6. Warehouse & Bin Classification Rules', () => {
-    it('should update warehouse type safely', async () => {
+  describe("3 & 4 & 5 & 6. Warehouse & Bin Classification Rules", () => {
+    it("should update warehouse type safely", async () => {
       const res = await request(app.getHttpServer())
         .patch(`/api/v1/packing/warehouse/warehouses/${fgWarehouseAId}/type`)
-        .set('Authorization', `Bearer ${adminTokenA}`)
+        .set("Authorization", `Bearer ${adminTokenA}`)
         .send({ warehouseType: WarehouseType.GENERAL })
         .expect(200);
 
@@ -613,16 +643,16 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
       // Restore back to FINISHED_GOODS
       await request(app.getHttpServer())
         .patch(`/api/v1/packing/warehouse/warehouses/${fgWarehouseAId}/type`)
-        .set('Authorization', `Bearer ${adminTokenA}`)
+        .set("Authorization", `Bearer ${adminTokenA}`)
         .send({ warehouseType: WarehouseType.FINISHED_GOODS })
         .expect(200);
     });
 
-    it('should reject putaway into RAW_MATERIAL warehouse with 400', async () => {
+    it("should reject putaway into RAW_MATERIAL warehouse with 400", async () => {
       const res = await request(app.getHttpServer())
-        .post('/api/v1/packing/warehouse/putaway')
-        .set('Authorization', `Bearer ${adminTokenA}`)
-        .set('x-idempotency-key', 'raw-wh-reject-key')
+        .post("/api/v1/packing/warehouse/putaway")
+        .set("Authorization", `Bearer ${adminTokenA}`)
+        .set("x-idempotency-key", "raw-wh-reject-key")
         .send({
           cartonId: normalCartonA1Id,
           warehouseId: rawWarehouseAId,
@@ -630,14 +660,14 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
         })
         .expect(400);
 
-      expect(res.body.message).toContain('RAW_MATERIAL');
+      expect(res.body.message).toContain("RAW_MATERIAL");
     });
 
-    it('should reject putaway when bin does not belong to target warehouse with 400', async () => {
+    it("should reject putaway when bin does not belong to target warehouse with 400", async () => {
       const res = await request(app.getHttpServer())
-        .post('/api/v1/packing/warehouse/putaway')
-        .set('Authorization', `Bearer ${adminTokenA}`)
-        .set('x-idempotency-key', 'mismatched-bin-wh-key')
+        .post("/api/v1/packing/warehouse/putaway")
+        .set("Authorization", `Bearer ${adminTokenA}`)
+        .set("x-idempotency-key", "mismatched-bin-wh-key")
         .send({
           cartonId: normalCartonA1Id,
           warehouseId: rawWarehouseAId,
@@ -648,11 +678,11 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
       expect(res.body.message).toBeDefined();
     });
 
-    it('should reject putaway directly into STAGING bin with 400', async () => {
+    it("should reject putaway directly into STAGING bin with 400", async () => {
       const res = await request(app.getHttpServer())
-        .post('/api/v1/packing/warehouse/putaway')
-        .set('Authorization', `Bearer ${adminTokenA}`)
-        .set('x-idempotency-key', 'putaway-to-staging-bin-reject')
+        .post("/api/v1/packing/warehouse/putaway")
+        .set("Authorization", `Bearer ${adminTokenA}`)
+        .set("x-idempotency-key", "putaway-to-staging-bin-reject")
         .send({
           cartonId: normalCartonA1Id,
           warehouseId: fgWarehouseAId,
@@ -660,21 +690,21 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
         })
         .expect(400);
 
-      expect(res.body.message).toContain('STAGING');
+      expect(res.body.message).toContain("STAGING");
     });
   });
 
-  describe('7 & 8. Finished Goods Carton Receipt / Putaway & Idempotency', () => {
-    it('should successfully putaway packed carton into STORAGE bin', async () => {
+  describe("7 & 8. Finished Goods Carton Receipt / Putaway & Idempotency", () => {
+    it("should successfully putaway packed carton into STORAGE bin", async () => {
       const res = await request(app.getHttpServer())
-        .post('/api/v1/packing/warehouse/putaway')
-        .set('Authorization', `Bearer ${adminTokenA}`)
-        .set('x-idempotency-key', 'putaway-ctn-a1-key')
+        .post("/api/v1/packing/warehouse/putaway")
+        .set("Authorization", `Bearer ${adminTokenA}`)
+        .set("x-idempotency-key", "putaway-ctn-a1-key")
         .send({
           cartonId: normalCartonA1Id,
           warehouseId: fgWarehouseAId,
           binId: storageBinA1Id,
-          notes: 'Initial FG storage putaway',
+          notes: "Initial FG storage putaway",
         })
         .expect(201);
 
@@ -687,15 +717,15 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
       expect(res.body.idempotentReplay).toBe(false);
     });
 
-    it('should idempotently return previous result without duplicating movement on replayed key', async () => {
+    it("should idempotently return previous result without duplicating movement on replayed key", async () => {
       const movementsBefore = await prisma.cartonMovement.count({
         where: { tenantId: tenantAId, cartonId: normalCartonA1Id },
       });
 
       const res = await request(app.getHttpServer())
-        .post('/api/v1/packing/warehouse/putaway')
-        .set('Authorization', `Bearer ${adminTokenA}`)
-        .set('x-idempotency-key', 'putaway-ctn-a1-key')
+        .post("/api/v1/packing/warehouse/putaway")
+        .set("Authorization", `Bearer ${adminTokenA}`)
+        .set("x-idempotency-key", "putaway-ctn-a1-key")
         .send({
           cartonId: normalCartonA1Id,
           warehouseId: fgWarehouseAId,
@@ -711,10 +741,10 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
       expect(movementsAfter).toBe(movementsBefore);
     });
 
-    it('should require x-idempotency-key header for putaway', async () => {
+    it("should require x-idempotency-key header for putaway", async () => {
       await request(app.getHttpServer())
-        .post('/api/v1/packing/warehouse/putaway')
-        .set('Authorization', `Bearer ${adminTokenA}`)
+        .post("/api/v1/packing/warehouse/putaway")
+        .set("Authorization", `Bearer ${adminTokenA}`)
         .send({
           cartonId: normalCartonA2Id,
           warehouseId: fgWarehouseAId,
@@ -724,92 +754,94 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
     });
   });
 
-  describe('9 & 10. Carton Relocation (Bin-to-Bin)', () => {
-    it('should successfully relocate carton from Bin 1 to Bin 2', async () => {
+  describe("9 & 10. Carton Relocation (Bin-to-Bin)", () => {
+    it("should successfully relocate carton from Bin 1 to Bin 2", async () => {
       const res = await request(app.getHttpServer())
-        .post('/api/v1/packing/warehouse/relocate')
-        .set('Authorization', `Bearer ${adminTokenA}`)
-        .set('x-idempotency-key', 'relocate-ctn-a1-to-bin2')
+        .post("/api/v1/packing/warehouse/relocate")
+        .set("Authorization", `Bearer ${adminTokenA}`)
+        .set("x-idempotency-key", "relocate-ctn-a1-to-bin2")
         .send({
           cartonId: normalCartonA1Id,
           toBinId: storageBinA2Id,
-          notes: 'Transfer to aisle 2',
+          notes: "Transfer to aisle 2",
         })
         .expect(201);
 
       expect(res.body.carton.binId).toBe(storageBinA2Id);
-      expect(res.body.movement.movementType).toBe(CartonMovementType.RELOCATION);
+      expect(res.body.movement.movementType).toBe(
+        CartonMovementType.RELOCATION,
+      );
       expect(res.body.movement.fromBinId).toBe(storageBinA1Id);
       expect(res.body.movement.toBinId).toBe(storageBinA2Id);
     });
 
-    it('should reject relocation when source and destination are identical with 400', async () => {
+    it("should reject relocation when source and destination are identical with 400", async () => {
       const res = await request(app.getHttpServer())
-        .post('/api/v1/packing/warehouse/relocate')
-        .set('Authorization', `Bearer ${adminTokenA}`)
-        .set('x-idempotency-key', 'relocate-same-bin-key')
+        .post("/api/v1/packing/warehouse/relocate")
+        .set("Authorization", `Bearer ${adminTokenA}`)
+        .set("x-idempotency-key", "relocate-same-bin-key")
         .send({
           cartonId: normalCartonA1Id,
           toBinId: storageBinA2Id, // Carton is already in Bin 2
         })
         .expect(400);
 
-      expect(res.body.message).toContain('identical');
+      expect(res.body.message).toContain("identical");
     });
 
-    it('should reject relocation directly into a STAGING bin via relocate endpoint with 400', async () => {
+    it("should reject relocation directly into a STAGING bin via relocate endpoint with 400", async () => {
       const res = await request(app.getHttpServer())
-        .post('/api/v1/packing/warehouse/relocate')
-        .set('Authorization', `Bearer ${adminTokenA}`)
-        .set('x-idempotency-key', 'relocate-to-staging-bin-key')
+        .post("/api/v1/packing/warehouse/relocate")
+        .set("Authorization", `Bearer ${adminTokenA}`)
+        .set("x-idempotency-key", "relocate-to-staging-bin-key")
         .send({
           cartonId: normalCartonA1Id,
           toBinId: stagingBinAId,
         })
         .expect(400);
 
-      expect(res.body.message).toContain('STAGING');
+      expect(res.body.message).toContain("STAGING");
     });
 
-    it('should reject relocation for a carton that has not been putaway yet', async () => {
+    it("should reject relocation for a carton that has not been putaway yet", async () => {
       const res = await request(app.getHttpServer())
-        .post('/api/v1/packing/warehouse/relocate')
-        .set('Authorization', `Bearer ${adminTokenA}`)
-        .set('x-idempotency-key', 'relocate-unplaced-ctn-key')
+        .post("/api/v1/packing/warehouse/relocate")
+        .set("Authorization", `Bearer ${adminTokenA}`)
+        .set("x-idempotency-key", "relocate-unplaced-ctn-key")
         .send({
           cartonId: normalCartonA2Id, // Has null warehouseId and binId
           toBinId: storageBinA1Id,
         })
         .expect(400);
 
-      expect(res.body.message).toContain('putaway');
+      expect(res.body.message).toContain("putaway");
     });
   });
 
-  describe('12 & 13. Staging & Unstaging Outbound Cartons', () => {
-    it('should reject staging into a non-STAGING bin with 400', async () => {
+  describe("12 & 13. Staging & Unstaging Outbound Cartons", () => {
+    it("should reject staging into a non-STAGING bin with 400", async () => {
       const res = await request(app.getHttpServer())
-        .post('/api/v1/packing/warehouse/stage')
-        .set('Authorization', `Bearer ${adminTokenA}`)
-        .set('x-idempotency-key', 'stage-invalid-bin-key')
+        .post("/api/v1/packing/warehouse/stage")
+        .set("Authorization", `Bearer ${adminTokenA}`)
+        .set("x-idempotency-key", "stage-invalid-bin-key")
         .send({
           cartonId: normalCartonA1Id,
           stagingBinId: storageBinA1Id, // Type is STORAGE, not STAGING
         })
         .expect(400);
 
-      expect(res.body.message).toContain('STAGING');
+      expect(res.body.message).toContain("STAGING");
     });
 
-    it('should successfully stage carton into designated STAGING bin', async () => {
+    it("should successfully stage carton into designated STAGING bin", async () => {
       const res = await request(app.getHttpServer())
-        .post('/api/v1/packing/warehouse/stage')
-        .set('Authorization', `Bearer ${adminTokenA}`)
-        .set('x-idempotency-key', 'stage-ctn-a1-key')
+        .post("/api/v1/packing/warehouse/stage")
+        .set("Authorization", `Bearer ${adminTokenA}`)
+        .set("x-idempotency-key", "stage-ctn-a1-key")
         .send({
           cartonId: normalCartonA1Id,
           stagingBinId: stagingBinAId,
-          notes: 'Dock 1 outbound stage',
+          notes: "Dock 1 outbound stage",
         })
         .expect(201);
 
@@ -819,11 +851,11 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
       expect(res.body.movement.movementType).toBe(CartonMovementType.STAGE);
     });
 
-    it('should reject putting away an already STAGED carton with 400', async () => {
+    it("should reject putting away an already STAGED carton with 400", async () => {
       const res = await request(app.getHttpServer())
-        .post('/api/v1/packing/warehouse/putaway')
-        .set('Authorization', `Bearer ${adminTokenA}`)
-        .set('x-idempotency-key', 'putaway-staged-ctn-reject')
+        .post("/api/v1/packing/warehouse/putaway")
+        .set("Authorization", `Bearer ${adminTokenA}`)
+        .set("x-idempotency-key", "putaway-staged-ctn-reject")
         .send({
           cartonId: normalCartonA1Id,
           warehouseId: fgWarehouseAId,
@@ -831,32 +863,32 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
         })
         .expect(400);
 
-      expect(res.body.message).toContain('STAGED');
+      expect(res.body.message).toContain("STAGED");
     });
 
-    it('should reject staging an already STAGED carton with 400', async () => {
+    it("should reject staging an already STAGED carton with 400", async () => {
       const res = await request(app.getHttpServer())
-        .post('/api/v1/packing/warehouse/stage')
-        .set('Authorization', `Bearer ${adminTokenA}`)
-        .set('x-idempotency-key', 'stage-already-staged-reject')
+        .post("/api/v1/packing/warehouse/stage")
+        .set("Authorization", `Bearer ${adminTokenA}`)
+        .set("x-idempotency-key", "stage-already-staged-reject")
         .send({
           cartonId: normalCartonA1Id,
           stagingBinId: stagingBinAId,
         })
         .expect(400);
 
-      expect(res.body.message).toContain('STAGED');
+      expect(res.body.message).toContain("STAGED");
     });
 
-    it('should successfully unstage carton back to STORAGE bin', async () => {
+    it("should successfully unstage carton back to STORAGE bin", async () => {
       const res = await request(app.getHttpServer())
-        .post('/api/v1/packing/warehouse/unstage')
-        .set('Authorization', `Bearer ${adminTokenA}`)
-        .set('x-idempotency-key', 'unstage-ctn-a1-key')
+        .post("/api/v1/packing/warehouse/unstage")
+        .set("Authorization", `Bearer ${adminTokenA}`)
+        .set("x-idempotency-key", "unstage-ctn-a1-key")
         .send({
           cartonId: normalCartonA1Id,
           storageBinId: storageBinA1Id,
-          notes: 'Returned to storage rack 1',
+          notes: "Returned to storage rack 1",
         })
         .expect(201);
 
@@ -866,27 +898,27 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
       expect(res.body.movement.movementType).toBe(CartonMovementType.UNSTAGE);
     });
 
-    it('should reject unstaging a non-STAGED carton with 400', async () => {
+    it("should reject unstaging a non-STAGED carton with 400", async () => {
       const res = await request(app.getHttpServer())
-        .post('/api/v1/packing/warehouse/unstage')
-        .set('Authorization', `Bearer ${adminTokenA}`)
-        .set('x-idempotency-key', 'unstage-packed-ctn-reject')
+        .post("/api/v1/packing/warehouse/unstage")
+        .set("Authorization", `Bearer ${adminTokenA}`)
+        .set("x-idempotency-key", "unstage-packed-ctn-reject")
         .send({
           cartonId: normalCartonA1Id, // Now PACKED, not STAGED
           storageBinId: storageBinA2Id,
         })
         .expect(400);
 
-      expect(res.body.message).toContain('STAGED');
+      expect(res.body.message).toContain("STAGED");
     });
   });
 
-  describe('14 & 18. Cross-Tenant Protection & Bin Ownership', () => {
-    it('should reject Tenant A trying to putaway Tenant B carton with 404', async () => {
+  describe("14 & 18. Cross-Tenant Protection & Bin Ownership", () => {
+    it("should reject Tenant A trying to putaway Tenant B carton with 404", async () => {
       await request(app.getHttpServer())
-        .post('/api/v1/packing/warehouse/putaway')
-        .set('Authorization', `Bearer ${adminTokenA}`)
-        .set('x-idempotency-key', 'cross-tenant-putaway-key')
+        .post("/api/v1/packing/warehouse/putaway")
+        .set("Authorization", `Bearer ${adminTokenA}`)
+        .set("x-idempotency-key", "cross-tenant-putaway-key")
         .send({
           cartonId: cartonBId,
           warehouseId: fgWarehouseAId,
@@ -895,11 +927,11 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
         .expect(404);
     });
 
-    it('should reject Tenant A trying to stage carton into Tenant B bin with 404', async () => {
+    it("should reject Tenant A trying to stage carton into Tenant B bin with 404", async () => {
       await request(app.getHttpServer())
-        .post('/api/v1/packing/warehouse/stage')
-        .set('Authorization', `Bearer ${adminTokenA}`)
-        .set('x-idempotency-key', 'cross-tenant-bin-stage-key')
+        .post("/api/v1/packing/warehouse/stage")
+        .set("Authorization", `Bearer ${adminTokenA}`)
+        .set("x-idempotency-key", "cross-tenant-bin-stage-key")
         .send({
           cartonId: normalCartonA1Id,
           stagingBinId: storageBinBId,
@@ -908,12 +940,12 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
     });
   });
 
-  describe('15. Quality Gate Enforcement (Active QualityHold)', () => {
-    it('should block putaway into normal STORAGE bin when carton order has active QualityHold (409 Conflict)', async () => {
+  describe("15. Quality Gate Enforcement (Active QualityHold)", () => {
+    it("should block putaway into normal STORAGE bin when carton order has active QualityHold (409 Conflict)", async () => {
       const res = await request(app.getHttpServer())
-        .post('/api/v1/packing/warehouse/putaway')
-        .set('Authorization', `Bearer ${adminTokenA}`)
-        .set('x-idempotency-key', 'putaway-held-carton-to-storage-key')
+        .post("/api/v1/packing/warehouse/putaway")
+        .set("Authorization", `Bearer ${adminTokenA}`)
+        .set("x-idempotency-key", "putaway-held-carton-to-storage-key")
         .send({
           cartonId: heldCartonAId,
           warehouseId: fgWarehouseAId,
@@ -921,19 +953,19 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
         })
         .expect(409);
 
-      expect(res.body.message).toContain('Quality Hold');
+      expect(res.body.message).toContain("Quality Hold");
     });
 
-    it('should permit physical putaway of held carton into a QUARANTINE bin', async () => {
+    it("should permit physical putaway of held carton into a QUARANTINE bin", async () => {
       const res = await request(app.getHttpServer())
-        .post('/api/v1/packing/warehouse/putaway')
-        .set('Authorization', `Bearer ${adminTokenA}`)
-        .set('x-idempotency-key', 'putaway-held-carton-to-quarantine-key')
+        .post("/api/v1/packing/warehouse/putaway")
+        .set("Authorization", `Bearer ${adminTokenA}`)
+        .set("x-idempotency-key", "putaway-held-carton-to-quarantine-key")
         .send({
           cartonId: heldCartonAId,
           warehouseId: fgWarehouseAId,
           binId: quarantineBinAId, // QUARANTINE bin
-          notes: 'Segregated into QA quarantine hold',
+          notes: "Segregated into QA quarantine hold",
         })
         .expect(201);
 
@@ -941,27 +973,27 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
       expect(res.body.movement.toBinId).toBe(quarantineBinAId);
     });
 
-    it('should strictly block staging of held carton even from quarantine (409 Conflict)', async () => {
+    it("should strictly block staging of held carton even from quarantine (409 Conflict)", async () => {
       const res = await request(app.getHttpServer())
-        .post('/api/v1/packing/warehouse/stage')
-        .set('Authorization', `Bearer ${adminTokenA}`)
-        .set('x-idempotency-key', 'stage-held-carton-reject-key')
+        .post("/api/v1/packing/warehouse/stage")
+        .set("Authorization", `Bearer ${adminTokenA}`)
+        .set("x-idempotency-key", "stage-held-carton-reject-key")
         .send({
           cartonId: heldCartonAId,
           stagingBinId: stagingBinAId,
         })
         .expect(409);
 
-      expect(res.body.message).toContain('Quality Hold');
+      expect(res.body.message).toContain("Quality Hold");
     });
   });
 
-  describe('16 & 17. Cancelled & Shipped Carton Blocking', () => {
-    it('should block putaway of CANCELLED carton with 400', async () => {
+  describe("16 & 17. Cancelled & Shipped Carton Blocking", () => {
+    it("should block putaway of CANCELLED carton with 400", async () => {
       const res = await request(app.getHttpServer())
-        .post('/api/v1/packing/warehouse/putaway')
-        .set('Authorization', `Bearer ${adminTokenA}`)
-        .set('x-idempotency-key', 'putaway-cancelled-key')
+        .post("/api/v1/packing/warehouse/putaway")
+        .set("Authorization", `Bearer ${adminTokenA}`)
+        .set("x-idempotency-key", "putaway-cancelled-key")
         .send({
           cartonId: cancelledCartonAId,
           warehouseId: fgWarehouseAId,
@@ -969,28 +1001,28 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
         })
         .expect(400);
 
-      expect(res.body.message).toContain('CANCELLED');
+      expect(res.body.message).toContain("CANCELLED");
     });
 
-    it('should block staging of CANCELLED carton with 400', async () => {
+    it("should block staging of CANCELLED carton with 400", async () => {
       const res = await request(app.getHttpServer())
-        .post('/api/v1/packing/warehouse/stage')
-        .set('Authorization', `Bearer ${adminTokenA}`)
-        .set('x-idempotency-key', 'stage-cancelled-key')
+        .post("/api/v1/packing/warehouse/stage")
+        .set("Authorization", `Bearer ${adminTokenA}`)
+        .set("x-idempotency-key", "stage-cancelled-key")
         .send({
           cartonId: cancelledCartonAId,
           stagingBinId: stagingBinAId,
         })
         .expect(400);
 
-      expect(res.body.message).toContain('CANCELLED');
+      expect(res.body.message).toContain("CANCELLED");
     });
 
-    it('should block putaway of SHIPPED carton with 400', async () => {
+    it("should block putaway of SHIPPED carton with 400", async () => {
       const res = await request(app.getHttpServer())
-        .post('/api/v1/packing/warehouse/putaway')
-        .set('Authorization', `Bearer ${adminTokenA}`)
-        .set('x-idempotency-key', 'putaway-shipped-key')
+        .post("/api/v1/packing/warehouse/putaway")
+        .set("Authorization", `Bearer ${adminTokenA}`)
+        .set("x-idempotency-key", "putaway-shipped-key")
         .send({
           cartonId: shippedCartonAId,
           warehouseId: fgWarehouseAId,
@@ -998,15 +1030,15 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
         })
         .expect(400);
 
-      expect(res.body.message).toContain('SHIPPED');
+      expect(res.body.message).toContain("SHIPPED");
     });
   });
 
-  describe('11. Chain of Custody (Movements Query)', () => {
-    it('should query carton movements list with filters', async () => {
+  describe("11. Chain of Custody (Movements Query)", () => {
+    it("should query carton movements list with filters", async () => {
       const res = await request(app.getHttpServer())
-        .get('/api/v1/packing/warehouse/movements')
-        .set('Authorization', `Bearer ${adminTokenA}`)
+        .get("/api/v1/packing/warehouse/movements")
+        .set("Authorization", `Bearer ${adminTokenA}`)
         .query({ cartonId: normalCartonA1Id })
         .expect(200);
 
@@ -1018,10 +1050,10 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
       expect(types).toContain(CartonMovementType.STAGE);
     });
 
-    it('should query specific carton complete history', async () => {
+    it("should query specific carton complete history", async () => {
       const res = await request(app.getHttpServer())
         .get(`/api/v1/packing/warehouse/cartons/${normalCartonA1Id}/movements`)
-        .set('Authorization', `Bearer ${adminTokenA}`)
+        .set("Authorization", `Bearer ${adminTokenA}`)
         .expect(200);
 
       expect(res.body.carton).toBeDefined();
@@ -1031,8 +1063,8 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
     });
   });
 
-  describe('19 & 20. Inventory Invariants & Quantity Reconciliation', () => {
-    it('CRITICAL LEDGER INVARIANT: Putaway must NOT create a second inventory receipt or alter ledger balance', async () => {
+  describe("19 & 20. Inventory Invariants & Quantity Reconciliation", () => {
+    it("CRITICAL LEDGER INVARIANT: Putaway must NOT create a second inventory receipt or alter ledger balance", async () => {
       // 1. Check ledger before putaway of Carton A2
       const invTxCountBefore = await prisma.inventoryTransaction.count({
         where: { tenantId: tenantAId },
@@ -1044,9 +1076,9 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
 
       // 2. Perform Putaway of Carton A2 (50 units)
       await request(app.getHttpServer())
-        .post('/api/v1/packing/warehouse/putaway')
-        .set('Authorization', `Bearer ${adminTokenA}`)
-        .set('x-idempotency-key', 'putaway-ctn-a2-sole-authority-test')
+        .post("/api/v1/packing/warehouse/putaway")
+        .set("Authorization", `Bearer ${adminTokenA}`)
+        .set("x-idempotency-key", "putaway-ctn-a2-sole-authority-test")
         .send({
           cartonId: normalCartonA2Id,
           warehouseId: fgWarehouseAId,
@@ -1068,10 +1100,10 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
       expect(balanceAfter).toBe(balanceBefore);
     });
 
-    it('should return accurate stock reconciliation comparing Ledger balance with physical carton stock', async () => {
+    it("should return accurate stock reconciliation comparing Ledger balance with physical carton stock", async () => {
       const res = await request(app.getHttpServer())
-        .get('/api/v1/packing/warehouse/reconciliation')
-        .set('Authorization', `Bearer ${adminTokenA}`)
+        .get("/api/v1/packing/warehouse/reconciliation")
+        .set("Authorization", `Bearer ${adminTokenA}`)
         .expect(200);
 
       expect(res.body.summary).toBeDefined();
@@ -1087,17 +1119,17 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
     });
   });
 
-  describe('21 & 22. Transactional Rollback & Unique Key Guarantees', () => {
-    it('should rollback cleanly on failed movement without persisting partial records', async () => {
+  describe("21 & 22. Transactional Rollback & Unique Key Guarantees", () => {
+    it("should rollback cleanly on failed movement without persisting partial records", async () => {
       const movementsBefore = await prisma.cartonMovement.count({
         where: { tenantId: tenantAId },
       });
 
       // Failed putaway (RAW_MATERIAL reject)
       await request(app.getHttpServer())
-        .post('/api/v1/packing/warehouse/putaway')
-        .set('Authorization', `Bearer ${adminTokenA}`)
-        .set('x-idempotency-key', 'fail-rollback-key-01')
+        .post("/api/v1/packing/warehouse/putaway")
+        .set("Authorization", `Bearer ${adminTokenA}`)
+        .set("x-idempotency-key", "fail-rollback-key-01")
         .send({
           cartonId: normalCartonA1Id,
           warehouseId: rawWarehouseAId,
@@ -1111,10 +1143,10 @@ describe('FgWarehouseModule (e2e Phase 8.2)', () => {
       expect(movementsAfter).toBe(movementsBefore);
     });
 
-    it('should query FG inventory with warehouse filter', async () => {
+    it("should query FG inventory with warehouse filter", async () => {
       const res = await request(app.getHttpServer())
-        .get('/api/v1/packing/warehouse/inventory')
-        .set('Authorization', `Bearer ${adminTokenA}`)
+        .get("/api/v1/packing/warehouse/inventory")
+        .set("Authorization", `Bearer ${adminTokenA}`)
         .query({ warehouseId: fgWarehouseAId })
         .expect(200);
 

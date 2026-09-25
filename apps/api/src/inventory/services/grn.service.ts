@@ -1,15 +1,31 @@
-import { Injectable, BadRequestException, NotFoundException, ConflictException } from '@nestjs/common';
-import { prisma, GrnStatus, VpoStatus, InventoryTxType, RollStatus } from '@textile-erp/database';
-import { LedgerService } from './ledger.service';
-import { CreateGrnDto, UpdateGrnStatusDto } from '../dto/grn.dto';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+  ConflictException,
+} from "@nestjs/common";
+import {
+  prisma,
+  GrnStatus,
+  VpoStatus,
+  InventoryTxType,
+  RollStatus,
+} from "@textile-erp/database";
+import { LedgerService } from "./ledger.service";
+import { CreateGrnDto, UpdateGrnStatusDto } from "../dto/grn.dto";
 
 @Injectable()
 export class GrnService {
   constructor(private readonly ledgerService: LedgerService) {}
 
-  async create(tenantId: string, actorId: string, idempotencyKey: string, dto: CreateGrnDto) {
+  async create(
+    tenantId: string,
+    actorId: string,
+    idempotencyKey: string,
+    dto: CreateGrnDto,
+  ) {
     if (!idempotencyKey) {
-      throw new BadRequestException('x-idempotency-key header is required');
+      throw new BadRequestException("x-idempotency-key header is required");
     }
 
     return prisma.$transaction(async (tx) => {
@@ -18,7 +34,9 @@ export class GrnService {
         where: { tenantId_idempotencyKey: { tenantId, idempotencyKey } },
       });
       if (existing) {
-        throw new ConflictException('Idempotency key already used for Goods Receipt Note');
+        throw new ConflictException(
+          "Idempotency key already used for Goods Receipt Note",
+        );
       }
 
       // 2. Validate VPO
@@ -30,20 +48,34 @@ export class GrnService {
         throw new NotFoundException(`VPO with ID ${dto.vpoId} not found`);
       }
 
-      if (!([VpoStatus.APPROVED, VpoStatus.ISSUED, VpoStatus.PARTIALLY_RECEIVED] as VpoStatus[]).includes(vpo.status)) {
-        throw new BadRequestException(`Cannot receive against VPO in ${vpo.status} state. Must be APPROVED, ISSUED, or PARTIALLY_RECEIVED.`);
+      if (
+        !(
+          [
+            VpoStatus.APPROVED,
+            VpoStatus.ISSUED,
+            VpoStatus.PARTIALLY_RECEIVED,
+          ] as VpoStatus[]
+        ).includes(vpo.status)
+      ) {
+        throw new BadRequestException(
+          `Cannot receive against VPO in ${vpo.status} state. Must be APPROVED, ISSUED, or PARTIALLY_RECEIVED.`,
+        );
       }
 
       // Validate Warehouse
-      const warehouse = await tx.warehouse.findUnique({ where: { id: dto.warehouseId } });
+      const warehouse = await tx.warehouse.findUnique({
+        where: { id: dto.warehouseId },
+      });
       if (!warehouse || warehouse.tenantId !== tenantId) {
-        throw new NotFoundException(`Warehouse with ID ${dto.warehouseId} not found`);
+        throw new NotFoundException(
+          `Warehouse with ID ${dto.warehouseId} not found`,
+        );
       }
 
       // Generate sequential GRN number
       const grnCount = await tx.goodsReceiptNote.count({ where: { tenantId } });
       const year = new Date().getFullYear();
-      const grnNumber = `GRN-${year}-${String(grnCount + 1).padStart(4, '0')}`;
+      const grnNumber = `GRN-${year}-${String(grnCount + 1).padStart(4, "0")}`;
 
       // 3. Process Lines & Validate Outstanding Balances
       let allVpoLinesFulfilled = true;
@@ -58,11 +90,15 @@ export class GrnService {
         if (lineDto.vpoLineId) {
           vpoLine = vpo.vpoLines.find((l) => l.id === lineDto.vpoLineId);
         } else {
-          vpoLine = vpo.vpoLines.find((l) => l.materialId === lineDto.materialId);
+          vpoLine = vpo.vpoLines.find(
+            (l) => l.materialId === lineDto.materialId,
+          );
         }
 
         if (!vpoLine) {
-          throw new BadRequestException(`Material ${lineDto.materialId} does not match any line on VPO ${vpo.vpoNumber}`);
+          throw new BadRequestException(
+            `Material ${lineDto.materialId} does not match any line on VPO ${vpo.vpoNumber}`,
+          );
         }
 
         // Calculate already received quantity against this VPO line across all historical GRNs
@@ -70,20 +106,27 @@ export class GrnService {
           where: { tenantId, vpoLineId: vpoLine.id },
           select: { receivedQuantity: true },
         });
-        const priorReceived = priorGrnLines.reduce((acc, l) => acc + Number(l.receivedQuantity), 0);
+        const priorReceived = priorGrnLines.reduce(
+          (acc, l) => acc + Number(l.receivedQuantity),
+          0,
+        );
         const outstanding = Number(vpoLine.quantity) - priorReceived;
 
         // Over-receipt check
         if (lineDto.receivedQuantity > outstanding) {
           throw new BadRequestException(
-            `Over-receipt rejected for Material ${lineDto.materialId}. Outstanding on VPO line: ${outstanding}, attempted to receive: ${lineDto.receivedQuantity}`
+            `Over-receipt rejected for Material ${lineDto.materialId}. Outstanding on VPO line: ${outstanding}, attempted to receive: ${lineDto.receivedQuantity}`,
           );
         }
 
         // Validate Material
-        const material = await tx.material.findUnique({ where: { id: lineDto.materialId } });
+        const material = await tx.material.findUnique({
+          where: { id: lineDto.materialId },
+        });
         if (!material || material.tenantId !== tenantId) {
-          throw new NotFoundException(`Material with ID ${lineDto.materialId} not found`);
+          throw new NotFoundException(
+            `Material with ID ${lineDto.materialId} not found`,
+          );
         }
 
         // Record stock in double-entry ledger via LedgerService
@@ -124,7 +167,9 @@ export class GrnService {
           deliveryChallanNumber: dto.deliveryChallanNumber,
           vehicleNumber: dto.vehicleNumber,
           gatePassNumber: dto.gatePassNumber,
-          receivedDate: dto.receivedDate ? new Date(dto.receivedDate) : new Date(),
+          receivedDate: dto.receivedDate
+            ? new Date(dto.receivedDate)
+            : new Date(),
           status: GrnStatus.RECEIVED,
           notes: dto.notes,
           idempotencyKey,
@@ -151,10 +196,14 @@ export class GrnService {
         for (const rollDto of lineData.rolls) {
           // Check uniqueness of rollNumber
           const existingRoll = await tx.fabricRoll.findUnique({
-            where: { tenantId_rollNumber: { tenantId, rollNumber: rollDto.rollNumber } },
+            where: {
+              tenantId_rollNumber: { tenantId, rollNumber: rollDto.rollNumber },
+            },
           });
           if (existingRoll) {
-            throw new ConflictException(`Fabric roll with number ${rollDto.rollNumber} already exists in this tenant`);
+            throw new ConflictException(
+              `Fabric roll with number ${rollDto.rollNumber} already exists in this tenant`,
+            );
           }
 
           const roll = await tx.fabricRoll.create({
@@ -170,10 +219,10 @@ export class GrnService {
               shade: rollDto.shade,
               grossLength: rollDto.grossLength,
               netLength: rollDto.netLength,
-              lengthUom: rollDto.lengthUom || 'YDS',
+              lengthUom: rollDto.lengthUom || "YDS",
               width: rollDto.width,
               cuttableWidth: rollDto.cuttableWidth || rollDto.width,
-              widthUom: rollDto.widthUom || 'INCH',
+              widthUom: rollDto.widthUom || "INCH",
               weightGsm: rollDto.weightGsm,
               shrinkagePercent: rollDto.shrinkagePercent,
               status: RollStatus.RECEIVED,
@@ -189,14 +238,19 @@ export class GrnService {
           where: { tenantId, vpoLineId: vLine.id },
           select: { receivedQuantity: true },
         });
-        const totalLineReceived = lineReceipts.reduce((acc, l) => acc + Number(l.receivedQuantity), 0);
+        const totalLineReceived = lineReceipts.reduce(
+          (acc, l) => acc + Number(l.receivedQuantity),
+          0,
+        );
         if (totalLineReceived < Number(vLine.quantity)) {
           allVpoLinesFulfilled = false;
           break;
         }
       }
 
-      const targetVpoStatus = allVpoLinesFulfilled ? VpoStatus.RECEIVED : VpoStatus.PARTIALLY_RECEIVED;
+      const targetVpoStatus = allVpoLinesFulfilled
+        ? VpoStatus.RECEIVED
+        : VpoStatus.PARTIALLY_RECEIVED;
       if (vpo.status !== targetVpoStatus) {
         await tx.vpo.update({
           where: { id: vpo.id },
@@ -218,7 +272,10 @@ export class GrnService {
     });
   }
 
-  async findAll(tenantId: string, filters?: { status?: GrnStatus; vpoId?: string }) {
+  async findAll(
+    tenantId: string,
+    filters?: { status?: GrnStatus; vpoId?: string },
+  ) {
     const where: any = { tenantId };
     if (filters?.status) where.status = filters.status;
     if (filters?.vpoId) where.vpoId = filters.vpoId;
@@ -231,7 +288,7 @@ export class GrnService {
         supplier: { select: { id: true, code: true, name: true } },
         warehouse: { select: { id: true, code: true, name: true } },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
   }
 
@@ -269,7 +326,9 @@ export class GrnService {
       where: { id: grn.id },
       data: {
         status: dto.status,
-        notes: dto.rejectionReason ? `${grn.notes ? grn.notes + ' | ' : ''}Reason: ${dto.rejectionReason}` : grn.notes,
+        notes: dto.rejectionReason
+          ? `${grn.notes ? grn.notes + " | " : ""}Reason: ${dto.rejectionReason}`
+          : grn.notes,
       },
       include: {
         grnLines: true,

@@ -1,5 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { prisma, CommercialInvoiceStatus, ShipmentStatus, GatePassStatus } from '@textile-erp/database';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import {
+  prisma,
+  CommercialInvoiceStatus,
+  ShipmentStatus,
+  GatePassStatus,
+} from "@textile-erp/database";
 
 @Injectable()
 export class OrderPipelineService {
@@ -64,7 +69,9 @@ export class OrderPipelineService {
     });
 
     if (!order) {
-      throw new NotFoundException(`Production order with ID ${productionOrderId} not found`);
+      throw new NotFoundException(
+        `Production order with ID ${productionOrderId} not found`,
+      );
     }
 
     const buyerPo = order.buyerPoLine?.buyerPo;
@@ -81,11 +88,21 @@ export class OrderPipelineService {
       smv: order.smv ? Number(order.smv) : null,
       plannedStartDate: order.plannedStartDate,
       plannedEndDate: order.plannedEndDate,
-      buyer: buyer ? { id: buyer.id, name: buyer.name, code: buyer.code } : null,
-      buyerPo: buyerPo ? { id: buyerPo.id, poNumber: buyerPo.poNumber, status: buyerPo.status } : null,
-      style: style ? { id: style.id, code: style.code, name: style.name } : null,
-      contractPrice: order.buyerPoLine?.unitPrice ? Number(order.buyerPoLine.unitPrice) : 0,
-      totalContractValue: order.buyerPoLine?.totalPrice ? Number(order.buyerPoLine.totalPrice) : 0,
+      buyer: buyer
+        ? { id: buyer.id, name: buyer.name, code: buyer.code }
+        : null,
+      buyerPo: buyerPo
+        ? { id: buyerPo.id, poNumber: buyerPo.poNumber, status: buyerPo.status }
+        : null,
+      style: style
+        ? { id: style.id, code: style.code, name: style.name }
+        : null,
+      contractPrice: order.buyerPoLine?.unitPrice
+        ? Number(order.buyerPoLine.unitPrice)
+        : 0,
+      totalContractValue: order.buyerPoLine?.totalPrice
+        ? Number(order.buyerPoLine.totalPrice)
+        : 0,
     };
 
     // 2. Materials & Procurement
@@ -100,11 +117,15 @@ export class OrderPipelineService {
     }));
 
     const totalIssuedTrims = order.materialIssueNotes.reduce((sum, n) => {
-      return sum + n.lines.reduce((lSum, l) => lSum + Number(l.quantity || 0), 0);
+      return (
+        sum + n.lines.reduce((lSum, l) => lSum + Number(l.quantity || 0), 0)
+      );
     }, 0);
 
     const totalReturnedTrims = order.materialReturnNotes.reduce((sum, n) => {
-      return sum + n.lines.reduce((lSum, l) => lSum + Number(l.quantity || 0), 0);
+      return (
+        sum + n.lines.reduce((lSum, l) => lSum + Number(l.quantity || 0), 0)
+      );
     }, 0);
 
     const materials = {
@@ -133,10 +154,16 @@ export class OrderPipelineService {
       reconciliation: order.materialReconciliation
         ? {
             id: order.materialReconciliation.id,
-            totalPlannedMeters: Number(order.materialReconciliation.totalPlannedMeters),
-            totalActualCutMeters: Number(order.materialReconciliation.totalActualCutMeters),
+            totalPlannedMeters: Number(
+              order.materialReconciliation.totalPlannedMeters,
+            ),
+            totalActualCutMeters: Number(
+              order.materialReconciliation.totalActualCutMeters,
+            ),
             metersVariance: Number(order.materialReconciliation.metersVariance),
-            cuttingYieldPercentage: Number(order.materialReconciliation.cuttingYieldPercentage),
+            cuttingYieldPercentage: Number(
+              order.materialReconciliation.cuttingYieldPercentage,
+            ),
             status: order.materialReconciliation.status,
             reconciledAt: order.materialReconciliation.reconciledAt,
           }
@@ -172,8 +199,9 @@ export class OrderPipelineService {
         aqlMajor: Number(aql.aqlMajor),
       })),
       ncrsCount: order.nonConformanceReports.length,
-      activeHoldsCount: order.qualityHolds.filter((h) => h.status === 'ACTIVE').length,
-      passedAql: order.aqlAudits.some((a) => a.status === 'PASSED'),
+      activeHoldsCount: order.qualityHolds.filter((h) => h.status === "ACTIVE")
+        .length,
+      passedAql: order.aqlAudits.some((a) => a.status === "PASSED"),
     };
 
     // 6. Cartonization & Warehouse Custody
@@ -189,7 +217,9 @@ export class OrderPipelineService {
       cartonsCount: order.cartons.length,
       totalPackedUnits,
       warehouses: uniqueWarehouses,
-      allCartonsPacked: order.cartons.length > 0 && totalPackedUnits >= Number(order.targetQuantity),
+      allCartonsPacked:
+        order.cartons.length > 0 &&
+        totalPackedUnits >= Number(order.targetQuantity),
     };
 
     // 7. Shipping & Outbound Dispatch
@@ -258,7 +288,9 @@ export class OrderPipelineService {
       }
     }
 
-    const isSettled = invoiceList.some((inv) => inv.status === CommercialInvoiceStatus.PAID);
+    const isSettled = invoiceList.some(
+      (inv) => inv.status === CommercialInvoiceStatus.PAID,
+    );
 
     const costing = {
       invoices: invoiceList,
@@ -276,7 +308,9 @@ export class OrderPipelineService {
             costVariance: Number(order.jobCostSummary.costVariance),
             invoicedRevenue: Number(order.jobCostSummary.invoicedRevenue),
             realizedProfit: Number(order.jobCostSummary.realizedProfit),
-            realizedMarginPercent: Number(order.jobCostSummary.realizedMarginPercent),
+            realizedMarginPercent: Number(
+              order.jobCostSummary.realizedMarginPercent,
+            ),
             calculatedAt: order.jobCostSummary.calculatedAt,
           }
         : null,
@@ -285,97 +319,104 @@ export class OrderPipelineService {
     // 9. Operational Lifecycle Milestones (Ordered Workflow Stages)
     const milestones = [
       {
-        stage: 'COMMERCIAL_ORDER',
-        name: 'Buyer Order Confirmed',
-        status: 'COMPLETED',
+        stage: "COMMERCIAL_ORDER",
+        name: "Buyer Order Confirmed",
+        status: "COMPLETED",
         details: buyerPo
-          ? `PO #${buyerPo.poNumber} confirmed for ${order.targetQuantity} pcs of style ${style?.code || 'STYLE'}`
+          ? `PO #${buyerPo.poNumber} confirmed for ${order.targetQuantity} pcs of style ${style?.code || "STYLE"}`
           : `Order #${order.orderNumber} created for ${order.targetQuantity} units`,
       },
       {
-        stage: 'MATERIALS_ALLOCATION',
-        name: 'Material Sourcing & Allocation',
+        stage: "MATERIALS_ALLOCATION",
+        name: "Material Sourcing & Allocation",
         status:
           order.materialIssueNotes.length > 0 || order.bomLines.length > 0
-            ? 'COMPLETED'
-            : 'IN_PROGRESS',
+            ? "COMPLETED"
+            : "IN_PROGRESS",
         details: `${order.bomLines.length} BOM lines specified; ${order.materialIssueNotes.length} material issue notes posted.`,
       },
       {
-        stage: 'CUTTING_RECONCILIATION',
-        name: 'Cutting & Material Reconciliation',
+        stage: "CUTTING_RECONCILIATION",
+        name: "Cutting & Material Reconciliation",
         status: order.materialReconciliation
-          ? 'COMPLETED'
+          ? "COMPLETED"
           : order.cuttingRecords.length > 0
-          ? 'IN_PROGRESS'
-          : 'PENDING',
+            ? "IN_PROGRESS"
+            : "PENDING",
         details: order.materialReconciliation
           ? `Reconciliation ${order.materialReconciliation.status} (${order.materialReconciliation.cuttingYieldPercentage}% yield, ${totalCutUnits} pcs cut)`
           : `${order.cuttingRecords.length} cutting records logged (${totalCutUnits} units cut)`,
       },
       {
-        stage: 'MES_SEWING_ASSEMBLY',
-        name: 'MES Bundle Assembly & Finishing',
+        stage: "MES_SEWING_ASSEMBLY",
+        name: "MES Bundle Assembly & Finishing",
         status:
           Number(order.completedQty) >= Number(order.targetQuantity)
-            ? 'COMPLETED'
+            ? "COMPLETED"
             : order.bundles.length > 0
-            ? 'IN_PROGRESS'
-            : 'PENDING',
+              ? "IN_PROGRESS"
+              : "PENDING",
         details: `${order.completedQty} / ${order.targetQuantity} units completed across ${order.bundles.length} bundles.`,
       },
       {
-        stage: 'QUALITY_GATES',
-        name: 'Quality Gate & AQL Inspection',
+        stage: "QUALITY_GATES",
+        name: "Quality Gate & AQL Inspection",
         status: quality.passedAql
-          ? 'COMPLETED'
+          ? "COMPLETED"
           : order.aqlAudits.length > 0
-          ? 'IN_PROGRESS'
-          : 'PENDING',
+            ? "IN_PROGRESS"
+            : "PENDING",
         details: quality.passedAql
-          ? 'Passed final AQL audit release gate'
+          ? "Passed final AQL audit release gate"
           : `${order.aqlAudits.length} audits logged, ${quality.activeHoldsCount} active holds.`,
       },
       {
-        stage: 'CARTONIZATION_STAGING',
-        name: 'Cartonization & Finished Goods Staging',
-        status:
-          packing.allCartonsPacked
-            ? 'COMPLETED'
-            : order.cartons.length > 0
-            ? 'IN_PROGRESS'
-            : 'PENDING',
+        stage: "CARTONIZATION_STAGING",
+        name: "Cartonization & Finished Goods Staging",
+        status: packing.allCartonsPacked
+          ? "COMPLETED"
+          : order.cartons.length > 0
+            ? "IN_PROGRESS"
+            : "PENDING",
         details: `${order.cartons.length} cartons staged (${totalPackedUnits} units packed into warehouse custody).`,
       },
       {
-        stage: 'OUTBOUND_DISPATCH',
-        name: 'Outbound Gate Pass & Inventory Issue',
-        status: isDispatched ? 'COMPLETED' : shipmentsList.length > 0 ? 'IN_PROGRESS' : 'PENDING',
+        stage: "OUTBOUND_DISPATCH",
+        name: "Outbound Gate Pass & Inventory Issue",
+        status: isDispatched
+          ? "COMPLETED"
+          : shipmentsList.length > 0
+            ? "IN_PROGRESS"
+            : "PENDING",
         details: isDispatched
           ? `Dispatched via shipment #${shipmentsList[0]?.shipmentNumber} with atomic ledger deduction`
           : `${shipmentsList.length} shipment plans registered.`,
       },
       {
-        stage: 'FINANCIAL_SETTLEMENT',
-        name: 'Invoice Settlement & Actual Job Costing',
+        stage: "FINANCIAL_SETTLEMENT",
+        name: "Invoice Settlement & Actual Job Costing",
         status:
           isSettled && order.jobCostSummary
-            ? 'COMPLETED'
+            ? "COMPLETED"
             : invoiceList.length > 0
-            ? 'IN_PROGRESS'
-            : 'PENDING',
+              ? "IN_PROGRESS"
+              : "PENDING",
         details:
           isSettled && order.jobCostSummary
             ? `Invoice settled ($${invoiceList[0]?.paidAmount || invoiceList[0]?.totalAmount}), margin: ${order.jobCostSummary.realizedMarginPercent}%`
             : invoiceList.length > 0
-            ? `Commercial invoice ${invoiceList[0]?.invoiceNumber} issued ($${invoiceList[0]?.totalAmount})`
-            : 'Awaiting shipping billing and actual cost audit.',
+              ? `Commercial invoice ${invoiceList[0]?.invoiceNumber} issued ($${invoiceList[0]?.totalAmount})`
+              : "Awaiting shipping billing and actual cost audit.",
       },
     ];
 
     // Compute Overall Health / Completion Percentage
-    const completedMilestones = milestones.filter((m) => m.status === 'COMPLETED').length;
-    const progressPercentage = Math.round((completedMilestones / milestones.length) * 100);
+    const completedMilestones = milestones.filter(
+      (m) => m.status === "COMPLETED",
+    ).length;
+    const progressPercentage = Math.round(
+      (completedMilestones / milestones.length) * 100,
+    );
 
     return {
       productionOrderId: order.id,

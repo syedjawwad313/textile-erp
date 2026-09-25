@@ -1,4 +1,11 @@
-import { IsString, IsNumber, IsNotEmpty, IsPositive, Min, IsOptional } from 'class-validator';
+import {
+  IsString,
+  IsNumber,
+  IsNotEmpty,
+  IsPositive,
+  Min,
+  IsOptional,
+} from "class-validator";
 
 export class InventoryReceiptDto {
   @IsString()

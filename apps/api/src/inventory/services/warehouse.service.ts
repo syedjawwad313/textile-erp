@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaClient } from '@textile-erp/database';
-import { CreateWarehouseDto, CreateBinDto } from '../dto/warehouse.dto';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { PrismaClient } from "@textile-erp/database";
+import { CreateWarehouseDto, CreateBinDto } from "../dto/warehouse.dto";
 
 const prisma = new PrismaClient();
 

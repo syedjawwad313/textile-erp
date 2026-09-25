@@ -3,14 +3,14 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
-} from '@nestjs/common';
-import { prisma, VpoStatus, Prisma } from '@textile-erp/database';
+} from "@nestjs/common";
+import { prisma, VpoStatus, Prisma } from "@textile-erp/database";
 import {
   CreateVpoDto,
   CreateVpoLineDto,
   UpdateVpoLineDto,
   QueryVposDto,
-} from '../dto/procurement.dto';
+} from "../dto/procurement.dto";
 
 @Injectable()
 export class VpoService {
@@ -20,14 +20,17 @@ export class VpoService {
       where: { id: dto.supplierId },
     });
     if (!supplier || supplier.tenantId !== tenantId) {
-      throw new NotFoundException(`Supplier with ID ${dto.supplierId} not found`);
+      throw new NotFoundException(
+        `Supplier with ID ${dto.supplierId} not found`,
+      );
     }
 
     // 2. Generate VPO Number if not specified
     const vpoCount = await prisma.vpo.count({ where: { tenantId } });
     const year = new Date().getFullYear();
     const vpoNumber =
-      dto.vpoNumber?.trim() || `VPO-${year}-${String(vpoCount + 1).padStart(4, '0')}`;
+      dto.vpoNumber?.trim() ||
+      `VPO-${year}-${String(vpoCount + 1).padStart(4, "0")}`;
 
     // 3. Create VPO with Lines atomically
     return prisma.$transaction(async (tx) => {
@@ -35,11 +38,17 @@ export class VpoService {
       const lineCreates: Prisma.VpoLineCreateWithoutVpoInput[] = [];
       if (dto.lines && dto.lines.length > 0) {
         for (const line of dto.lines) {
-          const material = await tx.material.findUnique({ where: { id: line.materialId } });
+          const material = await tx.material.findUnique({
+            where: { id: line.materialId },
+          });
           if (!material || material.tenantId !== tenantId) {
-            throw new NotFoundException(`Material with ID ${line.materialId} not found`);
+            throw new NotFoundException(
+              `Material with ID ${line.materialId} not found`,
+            );
           }
-          const totalCost = Math.round(Number(line.quantity) * Number(line.unitCost) * 10000) / 10000;
+          const totalCost =
+            Math.round(Number(line.quantity) * Number(line.unitCost) * 10000) /
+            10000;
           lineCreates.push({
             material: { connect: { id: line.materialId } },
             quantity: new Prisma.Decimal(line.quantity),
@@ -56,7 +65,8 @@ export class VpoService {
           vpoNumber,
           orderDate: new Date(dto.orderDate),
           status: VpoStatus.DRAFT,
-          vpoLines: lineCreates.length > 0 ? { create: lineCreates } : undefined,
+          vpoLines:
+            lineCreates.length > 0 ? { create: lineCreates } : undefined,
         },
         include: {
           supplier: true,
@@ -67,12 +77,16 @@ export class VpoService {
       await tx.auditEvent.create({
         data: {
           tenantId,
-          actorId: actorId || 'SYSTEM',
-          action: 'VPO_CREATED',
-          entity: 'Vpo',
+          actorId: actorId || "SYSTEM",
+          action: "VPO_CREATED",
+          entity: "Vpo",
           entityId: vpo.id,
-          newValues: { vpoNumber, supplierId: dto.supplierId, linesCount: lineCreates.length },
-          reason: 'Vendor Purchase Order created',
+          newValues: {
+            vpoNumber,
+            supplierId: dto.supplierId,
+            linesCount: lineCreates.length,
+          },
+          reason: "Vendor Purchase Order created",
         },
       });
 
@@ -87,8 +101,8 @@ export class VpoService {
     if (query?.status) where.status = query.status;
     if (query?.search) {
       where.OR = [
-        { vpoNumber: { contains: query.search, mode: 'insensitive' } },
-        { supplier: { name: { contains: query.search, mode: 'insensitive' } } },
+        { vpoNumber: { contains: query.search, mode: "insensitive" } },
+        { supplier: { name: { contains: query.search, mode: "insensitive" } } },
       ];
     }
 
@@ -97,9 +111,16 @@ export class VpoService {
       include: {
         supplier: true,
         vpoLines: { include: { material: true } },
-        goodsReceiptNotes: { select: { id: true, grnNumber: true, status: true, receivedDate: true } },
+        goodsReceiptNotes: {
+          select: {
+            id: true,
+            grnNumber: true,
+            status: true,
+            receivedDate: true,
+          },
+        },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
   }
 
@@ -111,7 +132,14 @@ export class VpoService {
         vpoLines: {
           include: {
             material: true,
-            grnLines: { select: { id: true, receivedQuantity: true, acceptedQuantity: true, rejectedQuantity: true } },
+            grnLines: {
+              select: {
+                id: true,
+                receivedQuantity: true,
+                acceptedQuantity: true,
+                rejectedQuantity: true,
+              },
+            },
           },
         },
         goodsReceiptNotes: {
@@ -136,16 +164,26 @@ export class VpoService {
         throw new NotFoundException(`VPO with ID ${vpoId} not found`);
       }
 
-      if (vpo.status !== VpoStatus.DRAFT && vpo.status !== VpoStatus.PENDING_APPROVAL) {
-        throw new ConflictException(`Cannot add lines to VPO in ${vpo.status} status. Only DRAFT or PENDING_APPROVAL allowed.`);
+      if (
+        vpo.status !== VpoStatus.DRAFT &&
+        vpo.status !== VpoStatus.PENDING_APPROVAL
+      ) {
+        throw new ConflictException(
+          `Cannot add lines to VPO in ${vpo.status} status. Only DRAFT or PENDING_APPROVAL allowed.`,
+        );
       }
 
-      const material = await tx.material.findUnique({ where: { id: dto.materialId } });
+      const material = await tx.material.findUnique({
+        where: { id: dto.materialId },
+      });
       if (!material || material.tenantId !== tenantId) {
-        throw new NotFoundException(`Material with ID ${dto.materialId} not found`);
+        throw new NotFoundException(
+          `Material with ID ${dto.materialId} not found`,
+        );
       }
 
-      const totalCost = Math.round(Number(dto.quantity) * Number(dto.unitCost) * 10000) / 10000;
+      const totalCost =
+        Math.round(Number(dto.quantity) * Number(dto.unitCost) * 10000) / 10000;
 
       return tx.vpoLine.create({
         data: {
@@ -160,24 +198,38 @@ export class VpoService {
     });
   }
 
-  async updateLine(tenantId: string, vpoId: string, lineId: string, dto: UpdateVpoLineDto) {
+  async updateLine(
+    tenantId: string,
+    vpoId: string,
+    lineId: string,
+    dto: UpdateVpoLineDto,
+  ) {
     return prisma.$transaction(async (tx) => {
       const vpo = await tx.vpo.findUnique({ where: { id: vpoId } });
       if (!vpo || vpo.tenantId !== tenantId) {
         throw new NotFoundException(`VPO with ID ${vpoId} not found`);
       }
 
-      if (vpo.status !== VpoStatus.DRAFT && vpo.status !== VpoStatus.PENDING_APPROVAL) {
-        throw new ConflictException(`Cannot update lines of VPO in ${vpo.status} status`);
+      if (
+        vpo.status !== VpoStatus.DRAFT &&
+        vpo.status !== VpoStatus.PENDING_APPROVAL
+      ) {
+        throw new ConflictException(
+          `Cannot update lines of VPO in ${vpo.status} status`,
+        );
       }
 
       const line = await tx.vpoLine.findUnique({ where: { id: lineId } });
       if (!line || line.vpoId !== vpoId) {
-        throw new NotFoundException(`VpoLine with ID ${lineId} not found on this VPO`);
+        throw new NotFoundException(
+          `VpoLine with ID ${lineId} not found on this VPO`,
+        );
       }
 
-      const quantity = dto.quantity !== undefined ? dto.quantity : Number(line.quantity);
-      const unitCost = dto.unitCost !== undefined ? dto.unitCost : Number(line.unitCost);
+      const quantity =
+        dto.quantity !== undefined ? dto.quantity : Number(line.quantity);
+      const unitCost =
+        dto.unitCost !== undefined ? dto.unitCost : Number(line.unitCost);
       const totalCost = Math.round(quantity * unitCost * 10000) / 10000;
 
       return tx.vpoLine.update({
@@ -200,12 +252,16 @@ export class VpoService {
       }
 
       if (vpo.status !== VpoStatus.DRAFT) {
-        throw new ConflictException(`Cannot delete lines from VPO in ${vpo.status} status`);
+        throw new ConflictException(
+          `Cannot delete lines from VPO in ${vpo.status} status`,
+        );
       }
 
       const line = await tx.vpoLine.findUnique({ where: { id: lineId } });
       if (!line || line.vpoId !== vpoId) {
-        throw new NotFoundException(`VpoLine with ID ${lineId} not found on this VPO`);
+        throw new NotFoundException(
+          `VpoLine with ID ${lineId} not found on this VPO`,
+        );
       }
 
       return tx.vpoLine.delete({ where: { id: lineId } });
@@ -224,11 +280,13 @@ export class VpoService {
       }
 
       if (vpo.status !== VpoStatus.DRAFT) {
-        throw new ConflictException(`Only DRAFT VPOs can be submitted for approval (Current: ${vpo.status})`);
+        throw new ConflictException(
+          `Only DRAFT VPOs can be submitted for approval (Current: ${vpo.status})`,
+        );
       }
 
       if (vpo.vpoLines.length === 0) {
-        throw new BadRequestException('Cannot submit VPO with zero line items');
+        throw new BadRequestException("Cannot submit VPO with zero line items");
       }
 
       const updated = await tx.vpo.update({
@@ -240,11 +298,11 @@ export class VpoService {
       await tx.auditEvent.create({
         data: {
           tenantId,
-          actorId: actorId || 'SYSTEM',
-          action: 'VPO_SUBMITTED',
-          entity: 'Vpo',
+          actorId: actorId || "SYSTEM",
+          action: "VPO_SUBMITTED",
+          entity: "Vpo",
           entityId: id,
-          reason: 'VPO submitted for approval',
+          reason: "VPO submitted for approval",
         },
       });
 
@@ -263,16 +321,26 @@ export class VpoService {
         throw new NotFoundException(`VPO with ID ${id} not found`);
       }
 
-      if (vpo.status === VpoStatus.APPROVED || vpo.status === VpoStatus.ISSUED) {
+      if (
+        vpo.status === VpoStatus.APPROVED ||
+        vpo.status === VpoStatus.ISSUED
+      ) {
         return vpo;
       }
 
-      if (vpo.status !== VpoStatus.PENDING_APPROVAL && vpo.status !== VpoStatus.DRAFT) {
-        throw new ConflictException(`Cannot approve VPO in ${vpo.status} status`);
+      if (
+        vpo.status !== VpoStatus.PENDING_APPROVAL &&
+        vpo.status !== VpoStatus.DRAFT
+      ) {
+        throw new ConflictException(
+          `Cannot approve VPO in ${vpo.status} status`,
+        );
       }
 
       if (vpo.vpoLines.length === 0) {
-        throw new BadRequestException('Cannot approve VPO with zero line items');
+        throw new BadRequestException(
+          "Cannot approve VPO with zero line items",
+        );
       }
 
       const updated = await tx.vpo.update({
@@ -284,11 +352,11 @@ export class VpoService {
       await tx.auditEvent.create({
         data: {
           tenantId,
-          actorId: actorId || 'SYSTEM',
-          action: 'VPO_APPROVED',
-          entity: 'Vpo',
+          actorId: actorId || "SYSTEM",
+          action: "VPO_APPROVED",
+          entity: "Vpo",
           entityId: id,
-          reason: 'VPO approved by supervisor',
+          reason: "VPO approved by supervisor",
         },
       });
 
@@ -309,7 +377,9 @@ export class VpoService {
       }
 
       if (vpo.status !== VpoStatus.APPROVED) {
-        throw new ConflictException(`VPO must be APPROVED before issuing to supplier (Current: ${vpo.status})`);
+        throw new ConflictException(
+          `VPO must be APPROVED before issuing to supplier (Current: ${vpo.status})`,
+        );
       }
 
       const updated = await tx.vpo.update({
@@ -321,11 +391,11 @@ export class VpoService {
       await tx.auditEvent.create({
         data: {
           tenantId,
-          actorId: actorId || 'SYSTEM',
-          action: 'VPO_ISSUED',
-          entity: 'Vpo',
+          actorId: actorId || "SYSTEM",
+          action: "VPO_ISSUED",
+          entity: "Vpo",
           entityId: id,
-          reason: 'VPO issued to supplier',
+          reason: "VPO issued to supplier",
         },
       });
 
@@ -333,7 +403,12 @@ export class VpoService {
     });
   }
 
-  async cancelVpo(tenantId: string, actorId: string, id: string, reason?: string) {
+  async cancelVpo(
+    tenantId: string,
+    actorId: string,
+    id: string,
+    reason?: string,
+  ) {
     return prisma.$transaction(async (tx) => {
       const vpo = await tx.vpo.findUnique({
         where: { id },
@@ -349,7 +424,9 @@ export class VpoService {
       }
 
       if (vpo.goodsReceiptNotes.length > 0) {
-        throw new ConflictException('Cannot cancel VPO with associated Goods Receipt Notes');
+        throw new ConflictException(
+          "Cannot cancel VPO with associated Goods Receipt Notes",
+        );
       }
 
       const updated = await tx.vpo.update({
@@ -361,11 +438,11 @@ export class VpoService {
       await tx.auditEvent.create({
         data: {
           tenantId,
-          actorId: actorId || 'SYSTEM',
-          action: 'VPO_CANCELLED',
-          entity: 'Vpo',
+          actorId: actorId || "SYSTEM",
+          action: "VPO_CANCELLED",
+          entity: "Vpo",
           entityId: id,
-          reason: reason || 'VPO cancelled by operator',
+          reason: reason || "VPO cancelled by operator",
         },
       });
 

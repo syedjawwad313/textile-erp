@@ -8,9 +8,13 @@ import {
   ValidateNested,
   Min,
   IsObject,
-} from 'class-validator';
-import { Type } from 'class-transformer';
-import { CartonPackingMode, CartonStatus, PackingListStatus } from '@textile-erp/database';
+} from "class-validator";
+import { Type } from "class-transformer";
+import {
+  CartonPackingMode,
+  CartonStatus,
+  PackingListStatus,
+} from "@textile-erp/database";
 
 export class PackCartonItemDto {
   @IsString()

@@ -1,12 +1,22 @@
-import { Injectable, BadRequestException, NotFoundException, ConflictException } from '@nestjs/common';
-import { prisma, ReservationStatus, RollStatus } from '@textile-erp/database';
-import { CreateReservationDto } from '../dto/reservation.dto';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+  ConflictException,
+} from "@nestjs/common";
+import { prisma, ReservationStatus, RollStatus } from "@textile-erp/database";
+import { CreateReservationDto } from "../dto/reservation.dto";
 
 @Injectable()
 export class ReservationService {
-  async create(tenantId: string, actorId: string, idempotencyKey: string, dto: CreateReservationDto) {
+  async create(
+    tenantId: string,
+    actorId: string,
+    idempotencyKey: string,
+    dto: CreateReservationDto,
+  ) {
     if (!idempotencyKey) {
-      throw new BadRequestException('x-idempotency-key header is required');
+      throw new BadRequestException("x-idempotency-key header is required");
     }
 
     return prisma.$transaction(async (tx) => {
@@ -15,7 +25,9 @@ export class ReservationService {
         where: { tenantId_idempotencyKey: { tenantId, idempotencyKey } },
       });
       if (existing) {
-        throw new ConflictException('Idempotency key already used for Material Reservation');
+        throw new ConflictException(
+          "Idempotency key already used for Material Reservation",
+        );
       }
 
       // 2. Validate Production Order
@@ -23,19 +35,27 @@ export class ReservationService {
         where: { id: dto.productionOrderId },
       });
       if (!order || order.tenantId !== tenantId) {
-        throw new NotFoundException(`Production Order with ID ${dto.productionOrderId} not found`);
+        throw new NotFoundException(
+          `Production Order with ID ${dto.productionOrderId} not found`,
+        );
       }
 
       // Generate reservation number
-      const resCount = await tx.materialReservation.count({ where: { tenantId } });
+      const resCount = await tx.materialReservation.count({
+        where: { tenantId },
+      });
       const year = new Date().getFullYear();
-      const reservationNumber = `RES-${year}-${String(resCount + 1).padStart(4, '0')}`;
+      const reservationNumber = `RES-${year}-${String(resCount + 1).padStart(4, "0")}`;
 
       // 3. Check availability for each line
       for (const line of dto.lines) {
-        const material = await tx.material.findUnique({ where: { id: line.materialId } });
+        const material = await tx.material.findUnique({
+          where: { id: line.materialId },
+        });
         if (!material || material.tenantId !== tenantId) {
-          throw new NotFoundException(`Material with ID ${line.materialId} not found`);
+          throw new NotFoundException(
+            `Material with ID ${line.materialId} not found`,
+          );
         }
 
         // On-hand balance from InventoryItem
@@ -53,23 +73,34 @@ export class ReservationService {
           },
           _sum: { quantity: true },
         });
-        const alreadyReserved = activeRes._sum.quantity ? Number(activeRes._sum.quantity) : 0;
+        const alreadyReserved = activeRes._sum.quantity
+          ? Number(activeRes._sum.quantity)
+          : 0;
         const available = onHand - alreadyReserved;
 
         if (line.quantity > available) {
           throw new BadRequestException(
-            `Insufficient unreserved stock for Material ${material.name} (${material.code}). Requested: ${line.quantity}, Available: ${available}, On-Hand: ${onHand}, Reserved: ${alreadyReserved}`
+            `Insufficient unreserved stock for Material ${material.name} (${material.code}). Requested: ${line.quantity}, Available: ${available}, On-Hand: ${onHand}, Reserved: ${alreadyReserved}`,
           );
         }
 
         // If specific Fabric Roll requested, check availability and allocate
         if (line.fabricRollId) {
-          const roll = await tx.fabricRoll.findUnique({ where: { id: line.fabricRollId } });
+          const roll = await tx.fabricRoll.findUnique({
+            where: { id: line.fabricRollId },
+          });
           if (!roll || roll.tenantId !== tenantId) {
-            throw new NotFoundException(`Fabric Roll ${line.fabricRollId} not found`);
+            throw new NotFoundException(
+              `Fabric Roll ${line.fabricRollId} not found`,
+            );
           }
-          if (roll.status !== RollStatus.AVAILABLE && roll.status !== RollStatus.RECEIVED) {
-            throw new BadRequestException(`Cannot reserve Fabric Roll ${roll.rollNumber} in ${roll.status} status. Must be AVAILABLE.`);
+          if (
+            roll.status !== RollStatus.AVAILABLE &&
+            roll.status !== RollStatus.RECEIVED
+          ) {
+            throw new BadRequestException(
+              `Cannot reserve Fabric Roll ${roll.rollNumber} in ${roll.status} status. Must be AVAILABLE.`,
+            );
           }
 
           // Mark roll as ALLOCATED
@@ -109,9 +140,13 @@ export class ReservationService {
     });
   }
 
-  async findAll(tenantId: string, filters?: { productionOrderId?: string; status?: ReservationStatus }) {
+  async findAll(
+    tenantId: string,
+    filters?: { productionOrderId?: string; status?: ReservationStatus },
+  ) {
     const where: any = { tenantId };
-    if (filters?.productionOrderId) where.productionOrderId = filters.productionOrderId;
+    if (filters?.productionOrderId)
+      where.productionOrderId = filters.productionOrderId;
     if (filters?.status) where.status = filters.status;
 
     return prisma.materialReservation.findMany({
@@ -119,13 +154,25 @@ export class ReservationService {
       include: {
         lines: {
           include: {
-            material: { select: { id: true, code: true, name: true, uom: true } },
-            fabricRoll: { select: { id: true, rollNumber: true, lotNumber: true, shade: true, status: true } },
+            material: {
+              select: { id: true, code: true, name: true, uom: true },
+            },
+            fabricRoll: {
+              select: {
+                id: true,
+                rollNumber: true,
+                lotNumber: true,
+                shade: true,
+                status: true,
+              },
+            },
           },
         },
-        productionOrder: { select: { id: true, orderNumber: true, status: true } },
+        productionOrder: {
+          select: { id: true, orderNumber: true, status: true },
+        },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
   }
 
@@ -141,7 +188,9 @@ export class ReservationService {
     });
 
     if (!res || res.tenantId !== tenantId) {
-      throw new NotFoundException(`Material Reservation with ID ${id} not found`);
+      throw new NotFoundException(
+        `Material Reservation with ID ${id} not found`,
+      );
     }
 
     return res;
@@ -151,7 +200,9 @@ export class ReservationService {
     const res = await this.findOne(tenantId, id);
 
     if (res.status !== ReservationStatus.ACTIVE) {
-      throw new BadRequestException(`Cannot release reservation in ${res.status} status. Only ACTIVE reservations can be released.`);
+      throw new BadRequestException(
+        `Cannot release reservation in ${res.status} status. Only ACTIVE reservations can be released.`,
+      );
     }
 
     return prisma.$transaction(async (tx) => {

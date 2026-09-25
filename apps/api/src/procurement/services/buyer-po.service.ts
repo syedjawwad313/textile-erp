@@ -1,31 +1,37 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { prisma, CostingStatus } from '@textile-erp/database';
-import { CreateBuyerPoDto } from '../dto/procurement.dto';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from "@nestjs/common";
+import { prisma, CostingStatus } from "@textile-erp/database";
+import { CreateBuyerPoDto } from "../dto/procurement.dto";
 
 @Injectable()
 export class BuyerPoService {
   async create(tenantId: string, dto: CreateBuyerPoDto) {
-    let linesData: any[] = [];
+    const linesData: any[] = [];
 
     if (dto.costingVersionId) {
       const version = await prisma.costingVersion.findUnique({
         where: { id: dto.costingVersionId },
-        include: { costingSheet: true }
+        include: { costingSheet: true },
       });
 
       if (!version || version.tenantId !== tenantId) {
-        throw new NotFoundException('CostingVersion not found');
+        throw new NotFoundException("CostingVersion not found");
       }
 
       if (version.status !== CostingStatus.APPROVED) {
-        throw new BadRequestException('Procurement must only allow PO creation from an APPROVED costing version');
+        throw new BadRequestException(
+          "Procurement must only allow PO creation from an APPROVED costing version",
+        );
       }
 
       linesData.push({
         styleId: version.costingSheet.styleId,
         quantity: 1, // Default for Phase 2 legacy tests
         unitPrice: version.sellingPrice,
-        totalPrice: version.sellingPrice
+        totalPrice: version.sellingPrice,
       });
     }
 
@@ -36,25 +42,29 @@ export class BuyerPoService {
           where: {
             tenantId,
             status: CostingStatus.APPROVED,
-            costingSheet: { styleId: line.styleId }
-          }
+            costingSheet: { styleId: line.styleId },
+          },
         });
 
         if (!version) {
-          throw new BadRequestException(`No APPROVED CostingVersion found for Style ${line.styleId}`);
+          throw new BadRequestException(
+            `No APPROVED CostingVersion found for Style ${line.styleId}`,
+          );
         }
 
         linesData.push({
           styleId: line.styleId,
           quantity: line.quantity,
           unitPrice: line.unitPrice,
-          totalPrice: Number(line.quantity) * Number(line.unitPrice)
+          totalPrice: Number(line.quantity) * Number(line.unitPrice),
         });
       }
     }
 
     if (linesData.length === 0) {
-      throw new BadRequestException('PO requires either a costingVersionId or lines');
+      throw new BadRequestException(
+        "PO requires either a costingVersionId or lines",
+      );
     }
 
     // Creating Buyer PO with verified APPROVED costing version(s)
@@ -65,12 +75,12 @@ export class BuyerPoService {
         poNumber: dto.poNumber,
         orderDate: new Date(dto.orderDate),
         buyerPoLines: {
-          create: linesData
-        }
+          create: linesData,
+        },
       },
       include: {
-        buyerPoLines: true
-      }
+        buyerPoLines: true,
+      },
     });
   }
 

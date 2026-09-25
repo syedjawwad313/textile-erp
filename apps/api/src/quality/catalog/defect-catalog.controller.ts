@@ -11,76 +11,77 @@ import {
   UseGuards,
   SetMetadata,
   BadRequestException,
-} from '@nestjs/common';
-import { Request } from 'express';
-import { DefectCatalogService } from './defect-catalog.service';
-import { CreateDefectCatalogDto, UpdateDefectCatalogDto, QueryDefectCatalogDto } from './defect-catalog.dto';
-import { AuthGuard } from '../../iam/auth.guard';
-import { RbacGuard } from '../../iam/rbac.guard';
+} from "@nestjs/common";
+import { Request } from "express";
+import { DefectCatalogService } from "./defect-catalog.service";
+import {
+  CreateDefectCatalogDto,
+  UpdateDefectCatalogDto,
+  QueryDefectCatalogDto,
+} from "./defect-catalog.dto";
+import { AuthGuard } from "../../iam/auth.guard";
+import { RbacGuard } from "../../iam/rbac.guard";
 
-function extractTenantAndActor(req: Request): { tenantId: string; actorId: string } {
+function extractTenantAndActor(req: Request): {
+  tenantId: string;
+  actorId: string;
+} {
   const user = (req as any).user;
-  const headerTenant = req.headers['x-tenant-id'] as string;
+  const headerTenant = req.headers["x-tenant-id"] as string;
   const tenantId = user?.tenantId || headerTenant;
   if (!tenantId) {
-    throw new BadRequestException('Tenant ID is required (via token or x-tenant-id header)');
+    throw new BadRequestException(
+      "Tenant ID is required (via token or x-tenant-id header)",
+    );
   }
-  const actorId = user?.sub || (req.headers['x-actor-id'] as string) || 'system';
+  const actorId =
+    user?.sub || (req.headers["x-actor-id"] as string) || "system";
   return { tenantId, actorId };
 }
 
-@Controller('quality/catalog')
+@Controller("quality/catalog")
 @UseGuards(AuthGuard, RbacGuard)
 export class DefectCatalogController {
   constructor(private readonly defectCatalogService: DefectCatalogService) {}
 
   @Post()
-  @SetMetadata('permission', 'QUALITY:WRITE')
-  async create(
-    @Req() req: Request,
-    @Body() dto: CreateDefectCatalogDto
-  ) {
+  @SetMetadata("permission", "QUALITY:WRITE")
+  async create(@Req() req: Request, @Body() dto: CreateDefectCatalogDto) {
     const { tenantId, actorId } = extractTenantAndActor(req);
     return this.defectCatalogService.create(tenantId, actorId, dto);
   }
 
   @Get()
-  @SetMetadata('permission', 'QUALITY:READ')
-  async findAll(
-    @Req() req: Request,
-    @Query() query: QueryDefectCatalogDto
-  ) {
+  @SetMetadata("permission", "QUALITY:READ")
+  async findAll(@Req() req: Request, @Query() query: QueryDefectCatalogDto) {
     const { tenantId } = extractTenantAndActor(req);
     return this.defectCatalogService.findAll(tenantId, query);
   }
 
-  @Get(':id')
-  @SetMetadata('permission', 'QUALITY:READ')
-  async findById(
-    @Req() req: Request,
-    @Param('id') id: string
-  ) {
+  @Get(":id")
+  @SetMetadata("permission", "QUALITY:READ")
+  async findById(@Req() req: Request, @Param("id") id: string) {
     const { tenantId } = extractTenantAndActor(req);
     return this.defectCatalogService.findById(tenantId, id);
   }
 
-  @Put(':id')
-  @SetMetadata('permission', 'QUALITY:WRITE')
+  @Put(":id")
+  @SetMetadata("permission", "QUALITY:WRITE")
   async updatePut(
     @Req() req: Request,
-    @Param('id') id: string,
-    @Body() dto: UpdateDefectCatalogDto
+    @Param("id") id: string,
+    @Body() dto: UpdateDefectCatalogDto,
   ) {
     const { tenantId, actorId } = extractTenantAndActor(req);
     return this.defectCatalogService.update(tenantId, actorId, id, dto);
   }
 
-  @Patch(':id')
-  @SetMetadata('permission', 'QUALITY:WRITE')
+  @Patch(":id")
+  @SetMetadata("permission", "QUALITY:WRITE")
   async updatePatch(
     @Req() req: Request,
-    @Param('id') id: string,
-    @Body() dto: UpdateDefectCatalogDto
+    @Param("id") id: string,
+    @Body() dto: UpdateDefectCatalogDto,
   ) {
     const { tenantId, actorId } = extractTenantAndActor(req);
     return this.defectCatalogService.update(tenantId, actorId, id, dto);

@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { prisma } from '@textile-erp/database';
-import { CreateBuyerDto, UpdateBuyerDto } from '../dto/master-data.dto';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { prisma } from "@textile-erp/database";
+import { CreateBuyerDto, UpdateBuyerDto } from "../dto/master-data.dto";
 
 @Injectable()
 export class BuyerService {

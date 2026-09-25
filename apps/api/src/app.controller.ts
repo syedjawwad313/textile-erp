@@ -1,7 +1,11 @@
-import { Controller, Get } from '@nestjs/common';
-import { AppService } from './app.service';
-import { HealthCheckService, PrismaHealthIndicator, HealthCheck } from '@nestjs/terminus';
-import { prisma } from '@textile-erp/database';
+import { Controller, Get } from "@nestjs/common";
+import { AppService } from "./app.service";
+import {
+  HealthCheckService,
+  PrismaHealthIndicator,
+  HealthCheck,
+} from "@nestjs/terminus";
+import { prisma } from "@textile-erp/database";
 
 @Controller()
 export class AppController {
@@ -11,16 +15,19 @@ export class AppController {
     private db: PrismaHealthIndicator,
   ) {}
 
-  @Get('health')
+  @Get("health")
   getHealth(): { status: string; timestamp: string } {
     return this.appService.getHealth();
   }
 
-  @Get('health/readiness')
+  @Get("ready")
+  getReady(): { status: string; timestamp: string } {
+    return { status: "READY", timestamp: new Date().toISOString() };
+  }
+
+  @Get("health/readiness")
   @HealthCheck()
   getReadiness() {
-    return this.health.check([
-      () => this.db.pingCheck('database', prisma),
-    ]);
+    return this.health.check([() => this.db.pingCheck("database", prisma)]);
   }
 }

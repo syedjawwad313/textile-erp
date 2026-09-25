@@ -1,10 +1,24 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
-import { prisma, EmployeeType } from '@textile-erp/database';
-import { CreateShiftDto, UpdateShiftDto, CreateShiftAssignmentDto, ShiftFilterDto, AssignmentFilterDto } from './shifts.dto';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  BadRequestException,
+} from "@nestjs/common";
+import { prisma, EmployeeType } from "@textile-erp/database";
+import {
+  CreateShiftDto,
+  UpdateShiftDto,
+  CreateShiftAssignmentDto,
+  ShiftFilterDto,
+  AssignmentFilterDto,
+} from "./shifts.dto";
 
-export function calculateShiftDurationMinutes(startTime: string, endTime: string): number {
-  const [sH, sM] = startTime.split(':').map(Number);
-  const [eH, eM] = endTime.split(':').map(Number);
+export function calculateShiftDurationMinutes(
+  startTime: string,
+  endTime: string,
+): number {
+  const [sH, sM] = startTime.split(":").map(Number);
+  const [eH, eM] = endTime.split(":").map(Number);
   const startTotal = sH * 60 + sM;
   const endTotal = eH * 60 + eM;
   if (endTotal > startTotal) {
@@ -17,14 +31,16 @@ export function calculateShiftDurationMinutes(startTime: string, endTime: string
 @Injectable()
 export class ShiftsService {
   async createShift(tenantId: string, actorId: string, dto: CreateShiftDto) {
-    if (!tenantId) throw new BadRequestException('Tenant ID is required');
+    if (!tenantId) throw new BadRequestException("Tenant ID is required");
 
     // 1. Validate Factory Unit ownership
     const factory = await prisma.factoryUnit.findFirst({
       where: { id: dto.factoryUnitId, tenantId },
     });
     if (!factory) {
-      throw new NotFoundException('Factory unit not found or does not belong to tenant');
+      throw new NotFoundException(
+        "Factory unit not found or does not belong to tenant",
+      );
     }
 
     // 2. Validate Code Uniqueness per Factory
@@ -38,10 +54,15 @@ export class ShiftsService {
       },
     });
     if (existing) {
-      throw new ConflictException(`Shift with code '${dto.code}' already exists for this factory unit`);
+      throw new ConflictException(
+        `Shift with code '${dto.code}' already exists for this factory unit`,
+      );
     }
 
-    const durationMinutes = calculateShiftDurationMinutes(dto.startTime, dto.endTime);
+    const durationMinutes = calculateShiftDurationMinutes(
+      dto.startTime,
+      dto.endTime,
+    );
 
     // 3. Persist Shift
     const shift = await prisma.shift.create({
@@ -65,9 +86,9 @@ export class ShiftsService {
     await prisma.auditEvent.create({
       data: {
         tenantId,
-        actorId: actorId || 'system',
-        action: 'CREATE',
-        entity: 'Shift',
+        actorId: actorId || "system",
+        action: "CREATE",
+        entity: "Shift",
         entityId: shift.id,
         newValues: {
           code: shift.code,
@@ -87,14 +108,14 @@ export class ShiftsService {
   }
 
   async getShifts(tenantId: string, filter?: ShiftFilterDto) {
-    if (!tenantId) throw new BadRequestException('Tenant ID is required');
+    if (!tenantId) throw new BadRequestException("Tenant ID is required");
 
     const where: any = { tenantId };
     if (filter?.factoryUnitId) {
       where.factoryUnitId = filter.factoryUnitId;
     }
     if (filter?.active !== undefined) {
-      where.active = filter.active === true || filter.active === 'true';
+      where.active = filter.active === true || filter.active === "true";
     }
 
     const shifts = await prisma.shift.findMany({
@@ -110,11 +131,14 @@ export class ShiftsService {
           },
         },
       },
-      orderBy: { startTime: 'asc' },
+      orderBy: { startTime: "asc" },
     });
 
     return shifts.map((shift) => {
-      const durationMinutes = calculateShiftDurationMinutes(shift.startTime, shift.endTime);
+      const durationMinutes = calculateShiftDurationMinutes(
+        shift.startTime,
+        shift.endTime,
+      );
       return {
         ...shift,
         durationMinutes,
@@ -125,7 +149,7 @@ export class ShiftsService {
   }
 
   async getShiftById(tenantId: string, id: string) {
-    if (!tenantId) throw new BadRequestException('Tenant ID is required');
+    if (!tenantId) throw new BadRequestException("Tenant ID is required");
 
     const shift = await prisma.shift.findFirst({
       where: { id, tenantId },
@@ -135,7 +159,9 @@ export class ShiftsService {
         },
         assignments: {
           include: {
-            employee: { select: { id: true, code: true, name: true, type: true } },
+            employee: {
+              select: { id: true, code: true, name: true, type: true },
+            },
             productionLine: { select: { id: true, code: true, name: true } },
           },
         },
@@ -152,7 +178,10 @@ export class ShiftsService {
       throw new NotFoundException(`Shift with ID '${id}' not found`);
     }
 
-    const durationMinutes = calculateShiftDurationMinutes(shift.startTime, shift.endTime);
+    const durationMinutes = calculateShiftDurationMinutes(
+      shift.startTime,
+      shift.endTime,
+    );
 
     return {
       ...shift,
@@ -162,8 +191,13 @@ export class ShiftsService {
     };
   }
 
-  async updateShift(tenantId: string, actorId: string, id: string, dto: UpdateShiftDto) {
-    if (!tenantId) throw new BadRequestException('Tenant ID is required');
+  async updateShift(
+    tenantId: string,
+    actorId: string,
+    id: string,
+    dto: UpdateShiftDto,
+  ) {
+    if (!tenantId) throw new BadRequestException("Tenant ID is required");
 
     const existing = await prisma.shift.findFirst({
       where: { id, tenantId },
@@ -192,9 +226,9 @@ export class ShiftsService {
     await prisma.auditEvent.create({
       data: {
         tenantId,
-        actorId: actorId || 'system',
-        action: 'UPDATE',
-        entity: 'Shift',
+        actorId: actorId || "system",
+        action: "UPDATE",
+        entity: "Shift",
         entityId: id,
         oldValues: {
           name: existing.name,
@@ -219,8 +253,13 @@ export class ShiftsService {
     };
   }
 
-  async createAssignment(tenantId: string, actorId: string, shiftId: string, dto: CreateShiftAssignmentDto) {
-    if (!tenantId) throw new BadRequestException('Tenant ID is required');
+  async createAssignment(
+    tenantId: string,
+    actorId: string,
+    shiftId: string,
+    dto: CreateShiftAssignmentDto,
+  ) {
+    if (!tenantId) throw new BadRequestException("Tenant ID is required");
 
     // 1. Verify shift exists
     const shift = await prisma.shift.findFirst({
@@ -235,13 +274,15 @@ export class ShiftsService {
       where: { id: dto.employeeId, tenantId },
     });
     if (!employee) {
-      throw new NotFoundException('Employee not found or does not belong to tenant');
+      throw new NotFoundException(
+        "Employee not found or does not belong to tenant",
+      );
     }
 
     // 3. Check factory alignment
     if (employee.factoryUnitId !== shift.factoryUnitId) {
       throw new BadRequestException(
-        `Employee '${employee.name}' (${employee.code}) belongs to a different factory unit than this shift`
+        `Employee '${employee.name}' (${employee.code}) belongs to a different factory unit than this shift`,
       );
     }
 
@@ -251,11 +292,13 @@ export class ShiftsService {
         where: { id: dto.productionLineId, tenantId },
       });
       if (!line) {
-        throw new NotFoundException('Production line not found or does not belong to tenant');
+        throw new NotFoundException(
+          "Production line not found or does not belong to tenant",
+        );
       }
       if (line.factoryUnitId !== shift.factoryUnitId) {
         throw new BadRequestException(
-          `Production line '${line.code}' belongs to a different factory unit than this shift`
+          `Production line '${line.code}' belongs to a different factory unit than this shift`,
         );
       }
     }
@@ -277,7 +320,7 @@ export class ShiftsService {
     });
     if (existingSameShift) {
       throw new ConflictException(
-        `Employee '${employee.name}' is already assigned to this shift on ${dateStr}`
+        `Employee '${employee.name}' is already assigned to this shift on ${dateStr}`,
       );
     }
 
@@ -293,7 +336,7 @@ export class ShiftsService {
     });
     if (existingOtherShift) {
       throw new ConflictException(
-        `Employee '${employee.name}' is already assigned to shift '${existingOtherShift.shift.name}' on ${dateStr}`
+        `Employee '${employee.name}' is already assigned to shift '${existingOtherShift.shift.name}' on ${dateStr}`,
       );
     }
 
@@ -310,7 +353,15 @@ export class ShiftsService {
       include: {
         employee: { select: { id: true, code: true, name: true, type: true } },
         productionLine: { select: { id: true, code: true, name: true } },
-        shift: { select: { id: true, code: true, name: true, startTime: true, endTime: true } },
+        shift: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+            startTime: true,
+            endTime: true,
+          },
+        },
       },
     });
 
@@ -318,9 +369,9 @@ export class ShiftsService {
     await prisma.auditEvent.create({
       data: {
         tenantId,
-        actorId: actorId || 'system',
-        action: 'CREATE',
-        entity: 'ShiftAssignment',
+        actorId: actorId || "system",
+        action: "CREATE",
+        entity: "ShiftAssignment",
         entityId: assignment.id,
         newValues: {
           shiftId,
@@ -335,8 +386,12 @@ export class ShiftsService {
     return assignment;
   }
 
-  async getAssignments(tenantId: string, shiftId: string, filter?: AssignmentFilterDto) {
-    if (!tenantId) throw new BadRequestException('Tenant ID is required');
+  async getAssignments(
+    tenantId: string,
+    shiftId: string,
+    filter?: AssignmentFilterDto,
+  ) {
+    if (!tenantId) throw new BadRequestException("Tenant ID is required");
 
     const shift = await prisma.shift.findFirst({
       where: { id: shiftId, tenantId },
@@ -363,19 +418,26 @@ export class ShiftsService {
         employee: { select: { id: true, code: true, name: true, type: true } },
         productionLine: { select: { id: true, code: true, name: true } },
       },
-      orderBy: [{ workDate: 'desc' }, { createdAt: 'desc' }],
+      orderBy: [{ workDate: "desc" }, { createdAt: "desc" }],
     });
   }
 
-  async deleteAssignment(tenantId: string, actorId: string, shiftId: string, assignmentId: string) {
-    if (!tenantId) throw new BadRequestException('Tenant ID is required');
+  async deleteAssignment(
+    tenantId: string,
+    actorId: string,
+    shiftId: string,
+    assignmentId: string,
+  ) {
+    if (!tenantId) throw new BadRequestException("Tenant ID is required");
 
     const assignment = await prisma.shiftAssignment.findFirst({
       where: { id: assignmentId, shiftId, tenantId },
       include: { employee: true },
     });
     if (!assignment) {
-      throw new NotFoundException(`Shift assignment with ID '${assignmentId}' not found`);
+      throw new NotFoundException(
+        `Shift assignment with ID '${assignmentId}' not found`,
+      );
     }
 
     await prisma.shiftAssignment.delete({
@@ -385,9 +447,9 @@ export class ShiftsService {
     await prisma.auditEvent.create({
       data: {
         tenantId,
-        actorId: actorId || 'system',
-        action: 'DELETE',
-        entity: 'ShiftAssignment',
+        actorId: actorId || "system",
+        action: "DELETE",
+        entity: "ShiftAssignment",
         entityId: assignmentId,
         oldValues: {
           shiftId,

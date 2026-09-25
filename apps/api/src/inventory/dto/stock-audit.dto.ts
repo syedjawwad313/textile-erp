@@ -6,9 +6,9 @@ import {
   ValidateNested,
   IsNumber,
   IsEnum,
-} from 'class-validator';
-import { Type } from 'class-transformer';
-import { StockAuditStatus } from '@textile-erp/database';
+} from "class-validator";
+import { Type } from "class-transformer";
+import { StockAuditStatus } from "@textile-erp/database";
 
 export class AuditCountItemDto {
   @IsString()

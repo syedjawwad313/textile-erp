@@ -108,8 +108,38 @@ interface RequestOptions extends RequestInit {
   skipAuth?: boolean;
 }
 
-const rawBase = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api/v1").replace(/\/+$/, "");
-const BASE_URL = rawBase.endsWith("/api/v1") ? rawBase : `${rawBase}/api/v1`;
+/**
+ * Resolves the API base URL dynamically.
+ * In the browser:
+ * - If NEXT_PUBLIC_API_URL is set and points to an external/non-localhost domain, use it.
+ * - If running on a remote/cloud domain (e.g., onrender.com) and NEXT_PUBLIC_API_URL is unset
+ *   or was baked in with 'localhost' / '127.0.0.1', safely fall back to '/api/v1' (same-origin Next.js rewrite proxy).
+ * - If running locally on localhost, use NEXT_PUBLIC_API_URL or default to 'http://localhost:3001/api/v1'.
+ * On the server (SSR):
+ * - Use API_URL or NEXT_PUBLIC_API_URL or 'http://localhost:3001/api/v1'.
+ */
+export function getApiBaseUrl(): string {
+  const envUrl = (process.env.NEXT_PUBLIC_API_URL || "").trim().replace(/\/+$/, "");
+
+  if (typeof window !== "undefined") {
+    const isLocalhost =
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1" ||
+      window.location.hostname.endsWith(".local");
+
+    // In remote/cloud browser environment
+    if (!isLocalhost) {
+      if (!envUrl || envUrl.includes("localhost") || envUrl.includes("127.0.0.1")) {
+        return "/api/v1";
+      }
+    }
+  }
+
+  const base = envUrl || (process.env.API_URL ? process.env.API_URL.replace(/\/+$/, "") : "http://localhost:3001/api/v1");
+  return base.endsWith("/api/v1") ? base : `${base}/api/v1`;
+}
+
+export const BASE_URL = getApiBaseUrl();
 
 let isRefreshing = false;
 let failedQueue: Array<{
@@ -133,7 +163,8 @@ async function refreshToken(): Promise<string | null> {
   if (!refresh) return null;
 
   try {
-    const res = await fetch(`${BASE_URL}/auth/refresh`, {
+    const baseUrl = getApiBaseUrl();
+    const res = await fetch(`${baseUrl}/auth/refresh`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -172,9 +203,10 @@ async function request<T>(
     normalizedEndpoint = normalizedEndpoint.replace(/^\/api\/v1/, "");
   }
 
+  const baseUrl = getApiBaseUrl();
   let url = endpoint.startsWith("http")
     ? endpoint
-    : `${BASE_URL}${normalizedEndpoint}`;
+    : `${baseUrl}${normalizedEndpoint}`;
 
   if (params) {
     const query = new URLSearchParams();
@@ -1002,7 +1034,8 @@ export const dataManagementClient = {
     const qStr = query.toString();
     const token = tokenStorage.getAccessToken();
     const tenantId = tokenStorage.getTenantId();
-    const res = await fetch(`${BASE_URL}/data-export/${entity}${qStr ? `?${qStr}` : ''}`, {
+    const baseUrl = getApiBaseUrl();
+    const res = await fetch(`${baseUrl}/data-export/${entity}${qStr ? `?${qStr}` : ''}`, {
       headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(tenantId ? { 'x-tenant-id': tenantId } : {}),
@@ -1031,7 +1064,8 @@ export const dataManagementClient = {
   downloadTemplate: async (entity: string, format: 'csv' | 'xlsx') => {
     const token = tokenStorage.getAccessToken();
     const tenantId = tokenStorage.getTenantId();
-    const res = await fetch(`${BASE_URL}/data-import/templates/${entity}?format=${format}`, {
+    const baseUrl = getApiBaseUrl();
+    const res = await fetch(`${baseUrl}/data-import/templates/${entity}?format=${format}`, {
       headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(tenantId ? { 'x-tenant-id': tenantId } : {}),
@@ -1053,7 +1087,8 @@ export const dataManagementClient = {
   downloadErrorReport: async (importId: string) => {
     const token = tokenStorage.getAccessToken();
     const tenantId = tokenStorage.getTenantId();
-    const res = await fetch(`${BASE_URL}/data-import/audit/${importId}/error-report`, {
+    const baseUrl = getApiBaseUrl();
+    const res = await fetch(`${baseUrl}/data-import/audit/${importId}/error-report`, {
       headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(tenantId ? { 'x-tenant-id': tenantId } : {}),

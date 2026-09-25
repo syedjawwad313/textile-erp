@@ -6,9 +6,14 @@ import {
   IsUUID,
   IsInt,
   Min,
-} from 'class-validator';
-import { Type } from 'class-transformer';
-import { WarehouseType, BinType, CartonStatus, CartonMovementType } from '@textile-erp/database';
+} from "class-validator";
+import { Type } from "class-transformer";
+import {
+  WarehouseType,
+  BinType,
+  CartonStatus,
+  CartonMovementType,
+} from "@textile-erp/database";
 
 export class PutawayCartonDto {
   @IsUUID()

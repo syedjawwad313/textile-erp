@@ -1,11 +1,20 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
-import { prisma, InspectionResult, DefectSeverity, BundleStatus } from '@textile-erp/database';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from "@nestjs/common";
+import {
+  prisma,
+  InspectionResult,
+  DefectSeverity,
+  BundleStatus,
+} from "@textile-erp/database";
 import {
   CreateQualityInspectionDto,
   ApplyQualityHoldDto,
   ReleaseQualityHoldDto,
   QueryInspectionsDto,
-} from './quality.dto';
+} from "./quality.dto";
 
 @Injectable()
 export class QualityService {
@@ -13,10 +22,10 @@ export class QualityService {
     tenantId: string,
     actorId: string,
     idempotencyKey: string,
-    dto: CreateQualityInspectionDto
+    dto: CreateQualityInspectionDto,
   ) {
     if (!idempotencyKey) {
-      throw new BadRequestException('X-Idempotency-Key is required');
+      throw new BadRequestException("X-Idempotency-Key is required");
     }
 
     return prisma.$transaction(async (tx) => {
@@ -47,11 +56,13 @@ export class QualityService {
       });
 
       if (!bundle || bundle.tenantId !== tenantId) {
-        throw new NotFoundException('Bundle not found');
+        throw new NotFoundException("Bundle not found");
       }
 
       // Concurrency lock on Bundle
-      await tx.$queryRaw<any[]>`SELECT id, quantity, status, "isQualityHold" FROM "Bundle" WHERE id = ${bundle.id} FOR UPDATE`;
+      await tx.$queryRaw<
+        any[]
+      >`SELECT id, quantity, status, "isQualityHold" FROM "Bundle" WHERE id = ${bundle.id} FOR UPDATE`;
 
       // 3. Validate Operation
       const operation = await tx.productionOperation.findUnique({
@@ -59,11 +70,13 @@ export class QualityService {
       });
 
       if (!operation) {
-        throw new NotFoundException('Operation not found');
+        throw new NotFoundException("Operation not found");
       }
 
       if (operation.productionOrderId !== bundle.productionOrderId) {
-        throw new BadRequestException('Operation does not belong to bundle production order');
+        throw new BadRequestException(
+          "Operation does not belong to bundle production order",
+        );
       }
 
       // Validate Order Tenant
@@ -72,7 +85,7 @@ export class QualityService {
       });
 
       if (!order || order.tenantId !== tenantId) {
-        throw new NotFoundException('Production order not found');
+        throw new NotFoundException("Production order not found");
       }
 
       // 4. Validate Inspector (Employee)
@@ -81,7 +94,7 @@ export class QualityService {
       });
 
       if (!inspector || inspector.tenantId !== tenantId) {
-        throw new NotFoundException('Inspector not found or unauthorized');
+        throw new NotFoundException("Inspector not found or unauthorized");
       }
 
       // 5. Validate Machine if provided
@@ -92,7 +105,7 @@ export class QualityService {
         });
 
         if (!machine || machine.tenantId !== tenantId) {
-          throw new NotFoundException('Machine not found or unauthorized');
+          throw new NotFoundException("Machine not found or unauthorized");
         }
       }
 
@@ -103,35 +116,44 @@ export class QualityService {
       const currentBundleQty = Number(bundle.quantity);
 
       if (inspected <= 0) {
-        throw new BadRequestException('Inspected quantity must be greater than 0');
+        throw new BadRequestException(
+          "Inspected quantity must be greater than 0",
+        );
       }
 
       if (inspected > currentBundleQty) {
         throw new BadRequestException(
-          `Inspected quantity (${inspected}) cannot exceed bundle quantity (${currentBundleQty})`
+          `Inspected quantity (${inspected}) cannot exceed bundle quantity (${currentBundleQty})`,
         );
       }
 
       if (passed + rejected !== inspected) {
         throw new BadRequestException(
-          `Inspected quantity (${inspected}) must equal sum of passed (${passed}) and rejected (${rejected}) quantities`
+          `Inspected quantity (${inspected}) must equal sum of passed (${passed}) and rejected (${rejected}) quantities`,
         );
       }
 
       if (dto.result === InspectionResult.PASS && rejected > 0) {
-        throw new BadRequestException('Inspection marked as PASS cannot have rejected quantity');
+        throw new BadRequestException(
+          "Inspection marked as PASS cannot have rejected quantity",
+        );
       }
 
       if (dto.result === InspectionResult.FAIL && rejected === 0) {
-        throw new BadRequestException('Inspection marked as FAIL must have rejected quantity greater than 0');
+        throw new BadRequestException(
+          "Inspection marked as FAIL must have rejected quantity greater than 0",
+        );
       }
 
       // Validate defect quantities if defects provided
       if (dto.defects && dto.defects.length > 0) {
-        const totalDefectQty = dto.defects.reduce((sum, d) => sum + Number(d.quantity), 0);
+        const totalDefectQty = dto.defects.reduce(
+          (sum, d) => sum + Number(d.quantity),
+          0,
+        );
         if (totalDefectQty > rejected) {
           throw new BadRequestException(
-            `Total defect quantity (${totalDefectQty}) cannot exceed rejected quantity (${rejected})`
+            `Total defect quantity (${totalDefectQty}) cannot exceed rejected quantity (${rejected})`,
           );
         }
       }
@@ -196,7 +218,7 @@ export class QualityService {
             fromOperationId: dto.operationId,
             toOperationId: null,
             quantity: dto.rejectedQty,
-            type: 'REJECT',
+            type: "REJECT",
             actorId: actorId || dto.inspectorId,
             idempotencyKey: `wip-reject-${idempotencyKey}`,
             timestamp: new Date(),
@@ -205,7 +227,8 @@ export class QualityService {
 
         // Decrement bundle piece count
         const newBundleQty = Math.max(0, currentBundleQty - rejected);
-        const newStatus = newBundleQty === 0 ? BundleStatus.DEFECTIVE : bundle.status;
+        const newStatus =
+          newBundleQty === 0 ? BundleStatus.DEFECTIVE : bundle.status;
 
         await tx.bundle.update({
           where: { id: bundle.id },
@@ -217,9 +240,10 @@ export class QualityService {
       }
 
       // 9. Auto-Hold on Failure if enabled (defaults to true on FAIL)
-      const shouldAutoHold = dto.autoHoldOnFail !== false && dto.result === InspectionResult.FAIL;
+      const shouldAutoHold =
+        dto.autoHoldOnFail !== false && dto.result === InspectionResult.FAIL;
       if (shouldAutoHold) {
-        const holdReason = `FAILED_INSPECTION: ${dto.notes || dto.defects?.[0]?.defectCode || 'Quality Failure'}`;
+        const holdReason = `FAILED_INSPECTION: ${dto.notes || dto.defects?.[0]?.defectCode || "Quality Failure"}`;
         await tx.bundle.update({
           where: { id: bundle.id },
           data: {
@@ -233,15 +257,16 @@ export class QualityService {
           data: {
             tenantId,
             actorId: actorId || dto.inspectorId,
-            action: 'BUNDLE_HOLD_APPLIED',
-            entity: 'Bundle',
+            action: "BUNDLE_HOLD_APPLIED",
+            entity: "Bundle",
             entityId: bundle.id,
             newValues: {
               isQualityHold: true,
               qualityHoldReason: holdReason,
               inspectionId: inspection.id,
             },
-            reason: 'Automatic quality hold applied on failed inline inspection',
+            reason:
+              "Automatic quality hold applied on failed inline inspection",
           },
         });
       }
@@ -251,8 +276,8 @@ export class QualityService {
         data: {
           tenantId,
           actorId: actorId || dto.inspectorId,
-          action: 'QUALITY_INSPECTION_RECORDED',
-          entity: 'QualityInspection',
+          action: "QUALITY_INSPECTION_RECORDED",
+          entity: "QualityInspection",
           entityId: inspection.id,
           newValues: {
             bundleId: bundle.id,
@@ -276,10 +301,10 @@ export class QualityService {
     actorId: string,
     idempotencyKey: string,
     bundleId: string,
-    dto: ApplyQualityHoldDto
+    dto: ApplyQualityHoldDto,
   ) {
     if (!idempotencyKey) {
-      throw new BadRequestException('X-Idempotency-Key is required');
+      throw new BadRequestException("X-Idempotency-Key is required");
     }
 
     return prisma.$transaction(async (tx) => {
@@ -289,7 +314,7 @@ export class QualityService {
       });
 
       if (!bundle || bundle.tenantId !== tenantId) {
-        throw new NotFoundException('Bundle not found');
+        throw new NotFoundException("Bundle not found");
       }
 
       if (bundle.isQualityHold) {
@@ -308,9 +333,9 @@ export class QualityService {
       await tx.auditEvent.create({
         data: {
           tenantId,
-          actorId: actorId || 'SYSTEM',
-          action: 'BUNDLE_HOLD_APPLIED',
-          entity: 'Bundle',
+          actorId: actorId || "SYSTEM",
+          action: "BUNDLE_HOLD_APPLIED",
+          entity: "Bundle",
           entityId: bundle.id,
           newValues: {
             isQualityHold: true,
@@ -329,10 +354,10 @@ export class QualityService {
     actorId: string,
     idempotencyKey: string,
     bundleId: string,
-    dto: ReleaseQualityHoldDto
+    dto: ReleaseQualityHoldDto,
   ) {
     if (!idempotencyKey) {
-      throw new BadRequestException('X-Idempotency-Key is required');
+      throw new BadRequestException("X-Idempotency-Key is required");
     }
 
     return prisma.$transaction(async (tx) => {
@@ -342,7 +367,7 @@ export class QualityService {
       });
 
       if (!bundle || bundle.tenantId !== tenantId) {
-        throw new NotFoundException('Bundle not found');
+        throw new NotFoundException("Bundle not found");
       }
 
       if (!bundle.isQualityHold) {
@@ -361,9 +386,9 @@ export class QualityService {
       await tx.auditEvent.create({
         data: {
           tenantId,
-          actorId: actorId || 'SYSTEM',
-          action: 'BUNDLE_HOLD_RELEASED',
-          entity: 'Bundle',
+          actorId: actorId || "SYSTEM",
+          action: "BUNDLE_HOLD_RELEASED",
+          entity: "Bundle",
           entityId: bundle.id,
           newValues: {
             isQualityHold: false,
@@ -381,7 +406,8 @@ export class QualityService {
     const where: any = { tenantId };
 
     if (query.bundleId) where.bundleId = query.bundleId;
-    if (query.productionOrderId) where.productionOrderId = query.productionOrderId;
+    if (query.productionOrderId)
+      where.productionOrderId = query.productionOrderId;
     if (query.operationId) where.operationId = query.operationId;
     if (query.inspectorId) where.inspectorId = query.inspectorId;
     if (query.result) where.result = query.result;
@@ -406,7 +432,7 @@ export class QualityService {
         inspector: true,
         machine: true,
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       take: query.limit ? Number(query.limit) : 50,
     });
   }
@@ -429,7 +455,7 @@ export class QualityService {
     });
 
     if (!inspection || inspection.tenantId !== tenantId) {
-      throw new NotFoundException('Quality inspection not found');
+      throw new NotFoundException("Quality inspection not found");
     }
 
     return inspection;
@@ -446,7 +472,7 @@ export class QualityService {
     });
 
     if (!bundle || bundle.tenantId !== tenantId) {
-      throw new NotFoundException('Bundle not found');
+      throw new NotFoundException("Bundle not found");
     }
 
     const inspections = await prisma.qualityInspection.findMany({
@@ -457,17 +483,17 @@ export class QualityService {
         inspector: true,
         machine: true,
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
 
     const holdAudits = await prisma.auditEvent.findMany({
       where: {
         tenantId,
-        entity: 'Bundle',
+        entity: "Bundle",
         entityId: bundleId,
-        action: { in: ['BUNDLE_HOLD_APPLIED', 'BUNDLE_HOLD_RELEASED'] },
+        action: { in: ["BUNDLE_HOLD_APPLIED", "BUNDLE_HOLD_RELEASED"] },
       },
-      orderBy: { timestamp: 'desc' },
+      orderBy: { timestamp: "desc" },
     });
 
     return {
@@ -489,7 +515,10 @@ export class QualityService {
     let totalInspected = 0;
     let totalPassed = 0;
     let totalRejected = 0;
-    const defectCounts: Record<string, { code: string; count: number; totalQty: number; severity: string }> = {};
+    const defectCounts: Record<
+      string,
+      { code: string; count: number; totalQty: number; severity: string }
+    > = {};
 
     for (const insp of inspections) {
       totalInspected += Number(insp.inspectedQty);
@@ -510,9 +539,13 @@ export class QualityService {
       }
     }
 
-    const pareto = Object.values(defectCounts).sort((a, b) => b.totalQty - a.totalQty);
-    const passRate = totalInspected > 0 ? (totalPassed / totalInspected) * 100 : 100;
-    const rejectionRate = totalInspected > 0 ? (totalRejected / totalInspected) * 100 : 0;
+    const pareto = Object.values(defectCounts).sort(
+      (a, b) => b.totalQty - a.totalQty,
+    );
+    const passRate =
+      totalInspected > 0 ? (totalPassed / totalInspected) * 100 : 100;
+    const rejectionRate =
+      totalInspected > 0 ? (totalRejected / totalInspected) * 100 : 0;
 
     return {
       totalInspections: inspections.length,

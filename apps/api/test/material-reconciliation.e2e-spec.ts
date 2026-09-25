@@ -1,17 +1,17 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
-import * as request from 'supertest';
-import { AppModule } from './../src/app.module';
+import { Test, TestingModule } from "@nestjs/testing";
+import { INestApplication } from "@nestjs/common";
+import * as request from "supertest";
+import { AppModule } from "./../src/app.module";
 import {
   prisma,
   WarehouseType,
   ProductionStatus,
   StockAuditStatus,
   InventoryTxType,
-} from '@textile-erp/database';
-import * as argon2 from 'argon2';
+} from "@textile-erp/database";
+import * as argon2 from "argon2";
 
-describe('Material Consumption & Stock Audit Reconciliation (Phase 9.2 e2e)', () => {
+describe("Material Consumption & Stock Audit Reconciliation (Phase 9.2 e2e)", () => {
   let app: INestApplication;
   let tenantId: string;
   let otherTenantId: string;
@@ -32,52 +32,52 @@ describe('Material Consumption & Stock Audit Reconciliation (Phase 9.2 e2e)', ()
 
     // 1. Primary Tenant
     const tenant = await prisma.tenant.create({
-      data: { name: 'Reconciliation 9.2 Tenant' },
+      data: { name: "Reconciliation 9.2 Tenant" },
     });
     tenantId = tenant.id;
 
     // 2. Secondary Tenant
     const otherTenant = await prisma.tenant.create({
-      data: { name: 'Cross Reconciliation Corp' },
+      data: { name: "Cross Reconciliation Corp" },
     });
     otherTenantId = otherTenant.id;
 
-    const pwd = await argon2.hash('Password123!');
+    const pwd = await argon2.hash("Password123!");
     const user = await prisma.user.create({
       data: {
         tenantId,
-        email: 'recon92@test.com',
+        email: "recon92@test.com",
         passwordHash: pwd,
-        firstName: 'Recon',
-        lastName: 'Admin',
+        firstName: "Recon",
+        lastName: "Admin",
       },
     });
 
     const otherUser = await prisma.user.create({
       data: {
         tenantId: otherTenantId,
-        email: 'other92@test.com',
+        email: "other92@test.com",
         passwordHash: pwd,
-        firstName: 'Other',
-        lastName: 'Admin',
+        firstName: "Other",
+        lastName: "Admin",
       },
     });
 
     const role = await prisma.role.create({
-      data: { tenantId, name: 'RECON_ADMIN' },
+      data: { tenantId, name: "RECON_ADMIN" },
     });
     const otherRole = await prisma.role.create({
-      data: { tenantId: otherTenantId, name: 'OTHER_ADMIN' },
+      data: { tenantId: otherTenantId, name: "OTHER_ADMIN" },
     });
 
     const perms = [
-      { resource: 'PRODUCTION', action: 'WRITE' },
-      { resource: 'PRODUCTION', action: 'READ' },
-      { resource: 'INVENTORY', action: 'WRITE' },
-      { resource: 'INVENTORY', action: 'READ' },
-      { resource: 'INVENTORY', action: 'ADJUST' },
-      { resource: 'WAREHOUSE', action: 'WRITE' },
-      { resource: 'WAREHOUSE', action: 'READ' },
+      { resource: "PRODUCTION", action: "WRITE" },
+      { resource: "PRODUCTION", action: "READ" },
+      { resource: "INVENTORY", action: "WRITE" },
+      { resource: "INVENTORY", action: "READ" },
+      { resource: "INVENTORY", action: "ADJUST" },
+      { resource: "WAREHOUSE", action: "WRITE" },
+      { resource: "WAREHOUSE", action: "READ" },
     ];
 
     for (const p of perms) {
@@ -103,20 +103,20 @@ describe('Material Consumption & Stock Audit Reconciliation (Phase 9.2 e2e)', ()
 
     // 3. Base Entities
     const buyer = await prisma.buyer.create({
-      data: { tenantId, code: 'BUY-92', name: 'Recon Buyer' },
+      data: { tenantId, code: "BUY-92", name: "Recon Buyer" },
     });
 
     const style = await prisma.style.create({
-      data: { tenantId, code: 'STY-CHINO-92', name: 'Cotton Chino Pant' },
+      data: { tenantId, code: "STY-CHINO-92", name: "Cotton Chino Pant" },
     });
 
     const material = await prisma.material.create({
       data: {
         tenantId,
-        code: 'FAB-TWILL-92',
-        name: 'Cotton Twill 240gsm',
-        category: 'FABRIC',
-        uom: 'MTR',
+        code: "FAB-TWILL-92",
+        name: "Cotton Twill 240gsm",
+        category: "FABRIC",
+        uom: "MTR",
       },
     });
     materialId = material.id;
@@ -124,8 +124,8 @@ describe('Material Consumption & Stock Audit Reconciliation (Phase 9.2 e2e)', ()
     const warehouse = await prisma.warehouse.create({
       data: {
         tenantId,
-        code: 'WH-CENTRAL-92',
-        name: 'Central Mill Warehouse',
+        code: "WH-CENTRAL-92",
+        name: "Central Mill Warehouse",
         warehouseType: WarehouseType.RAW_MATERIAL,
       },
     });
@@ -135,7 +135,7 @@ describe('Material Consumption & Stock Audit Reconciliation (Phase 9.2 e2e)', ()
       data: {
         tenantId,
         buyerId: buyer.id,
-        poNumber: 'PO-REC-92',
+        poNumber: "PO-REC-92",
         orderDate: new Date(),
       },
     });
@@ -154,7 +154,7 @@ describe('Material Consumption & Stock Audit Reconciliation (Phase 9.2 e2e)', ()
       data: {
         tenantId,
         buyerPoLineId: poLine.id,
-        orderNumber: 'PRD-REC-92',
+        orderNumber: "PRD-REC-92",
         status: ProductionStatus.IN_PROGRESS,
         targetQuantity: 250,
       },
@@ -187,8 +187,8 @@ describe('Material Consumption & Stock Audit Reconciliation (Phase 9.2 e2e)', ()
         materialId,
         type: InventoryTxType.RECEIPT,
         quantity: 100,
-        uom: 'MTR',
-        actorId: 'SETUP',
+        uom: "MTR",
+        actorId: "SETUP",
         idempotencyKey: `init-tx-${Date.now()}`,
       },
     });
@@ -209,16 +209,16 @@ describe('Material Consumption & Stock Audit Reconciliation (Phase 9.2 e2e)', ()
 
     // Tokens
     const loginRes = await request(app.getHttpServer())
-      .post('/auth/login')
-      .send({ tenantId, email: 'recon92@test.com', password: 'Password123!' });
+      .post("/auth/login")
+      .send({ tenantId, email: "recon92@test.com", password: "Password123!" });
     accessToken = loginRes.body.accessToken;
 
     const otherLoginRes = await request(app.getHttpServer())
-      .post('/auth/login')
+      .post("/auth/login")
       .send({
         tenantId: otherTenantId,
-        email: 'other92@test.com',
-        password: 'Password123!',
+        email: "other92@test.com",
+        password: "Password123!",
       });
     otherAccessToken = otherLoginRes.body.accessToken;
   });
@@ -265,12 +265,14 @@ describe('Material Consumption & Stock Audit Reconciliation (Phase 9.2 e2e)', ()
     await app.close();
   });
 
-  describe('Part A: Material Consumption & Yield Reconciliation', () => {
-    it('1. should reconcile production order consumption and detect BALANCED variance', async () => {
+  describe("Part A: Material Consumption & Yield Reconciliation", () => {
+    it("1. should reconcile production order consumption and detect BALANCED variance", async () => {
       const res = await request(app.getHttpServer())
         .post(`/material-reconciliations/orders/${orderId}/reconcile`)
-        .set('Authorization', `Bearer ${accessToken}`)
-        .send({ notes: 'First production run fabric consumption reconciliation' });
+        .set("Authorization", `Bearer ${accessToken}`)
+        .send({
+          notes: "First production run fabric consumption reconciliation",
+        });
 
       expect(res.status).toBe(201);
       expect(Number(res.body.totalPlannedMeters)).toBe(500);
@@ -278,39 +280,39 @@ describe('Material Consumption & Stock Audit Reconciliation (Phase 9.2 e2e)', ()
       expect(Number(res.body.metersVariance)).toBe(20);
       // Planned 500 / Actual 520 = 96.15%
       expect(Number(res.body.cuttingYieldPercentage)).toBeCloseTo(96.15, 1);
-      expect(res.body.status).toBe('BALANCED');
+      expect(res.body.status).toBe("BALANCED");
     });
 
-    it('2. should retrieve all reconciliations for tenant', async () => {
+    it("2. should retrieve all reconciliations for tenant", async () => {
       const res = await request(app.getHttpServer())
-        .get('/material-reconciliations')
-        .set('Authorization', `Bearer ${accessToken}`);
+        .get("/material-reconciliations")
+        .set("Authorization", `Bearer ${accessToken}`);
 
       expect(res.status).toBe(200);
       expect(res.body.length).toBeGreaterThanOrEqual(1);
-      expect(res.body[0].status).toBe('BALANCED');
+      expect(res.body[0].status).toBe("BALANCED");
     });
 
-    it('3. should isolate cross-tenant material reconciliations', async () => {
+    it("3. should isolate cross-tenant material reconciliations", async () => {
       const res = await request(app.getHttpServer())
-        .get('/material-reconciliations')
-        .set('Authorization', `Bearer ${otherAccessToken}`);
+        .get("/material-reconciliations")
+        .set("Authorization", `Bearer ${otherAccessToken}`);
 
       expect(res.status).toBe(200);
       expect(res.body).toHaveLength(0);
     });
   });
 
-  describe('Part B: Stock Audit & Authoritative Ledger Reconciliation', () => {
-    it('4. should initiate physical stock audit capturing current ledger balance', async () => {
+  describe("Part B: Stock Audit & Authoritative Ledger Reconciliation", () => {
+    it("4. should initiate physical stock audit capturing current ledger balance", async () => {
       const idempotencyKey = `audit-init-${Date.now()}`;
       const res = await request(app.getHttpServer())
-        .post('/api/v1/inventory/stock-audits')
-        .set('Authorization', `Bearer ${accessToken}`)
-        .set('x-idempotency-key', idempotencyKey)
+        .post("/api/v1/inventory/stock-audits")
+        .set("Authorization", `Bearer ${accessToken}`)
+        .set("x-idempotency-key", idempotencyKey)
         .send({
           warehouseId,
-          notes: 'Quarterly Physical Count',
+          notes: "Quarterly Physical Count",
         });
 
       expect(res.status).toBe(201);
@@ -323,11 +325,11 @@ describe('Material Consumption & Stock Audit Reconciliation (Phase 9.2 e2e)', ()
       auditId = res.body.id;
     });
 
-    it('5. should record floor counts and calculate discrepancy quantity', async () => {
+    it("5. should record floor counts and calculate discrepancy quantity", async () => {
       // Floor counted 95 meters (5 meters missing/shrinkage)
       const res = await request(app.getHttpServer())
         .post(`/api/v1/inventory/stock-audits/${auditId}/counts`)
-        .set('Authorization', `Bearer ${accessToken}`)
+        .set("Authorization", `Bearer ${accessToken}`)
         .send({
           items: [
             {
@@ -347,13 +349,13 @@ describe('Material Consumption & Stock Audit Reconciliation (Phase 9.2 e2e)', ()
       expect(item.isAdjusted).toBe(false);
     });
 
-    it('6. should reconcile audit with LedgerService via atomic ADJUSTMENT transaction', async () => {
+    it("6. should reconcile audit with LedgerService via atomic ADJUSTMENT transaction", async () => {
       const reconcileKey = `audit-rec-${Date.now()}`;
       const res = await request(app.getHttpServer())
         .post(`/api/v1/inventory/stock-audits/${auditId}/reconcile`)
-        .set('Authorization', `Bearer ${accessToken}`)
-        .set('x-idempotency-key', reconcileKey)
-        .send({ notes: 'Floor count discrepancy adjusted to ledger' });
+        .set("Authorization", `Bearer ${accessToken}`)
+        .set("x-idempotency-key", reconcileKey)
+        .send({ notes: "Floor count discrepancy adjusted to ledger" });
 
       expect(res.status).toBe(201);
       expect(res.body.status).toBe(StockAuditStatus.COMPLETED);
@@ -379,8 +381,8 @@ describe('Material Consumption & Stock Audit Reconciliation (Phase 9.2 e2e)', ()
       // Verify idempotency: calling reconcile again returns COMPLETED without double adjustment
       const retryRes = await request(app.getHttpServer())
         .post(`/api/v1/inventory/stock-audits/${auditId}/reconcile`)
-        .set('Authorization', `Bearer ${accessToken}`)
-        .set('x-idempotency-key', reconcileKey)
+        .set("Authorization", `Bearer ${accessToken}`)
+        .set("x-idempotency-key", reconcileKey)
         .send({});
 
       expect(retryRes.status).toBe(201);
@@ -392,10 +394,10 @@ describe('Material Consumption & Stock Audit Reconciliation (Phase 9.2 e2e)', ()
       expect(Number(balanceAfterRetry.quantity)).toBe(95);
     });
 
-    it('7. should enforce tenant isolation on stock audits', async () => {
+    it("7. should enforce tenant isolation on stock audits", async () => {
       const res = await request(app.getHttpServer())
-        .get('/api/v1/inventory/stock-audits')
-        .set('Authorization', `Bearer ${otherAccessToken}`);
+        .get("/api/v1/inventory/stock-audits")
+        .set("Authorization", `Bearer ${otherAccessToken}`);
 
       expect(res.status).toBe(200);
       expect(res.body).toHaveLength(0);

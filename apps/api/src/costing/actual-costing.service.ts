@@ -1,9 +1,9 @@
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { prisma, Prisma } from "@textile-erp/database";
 import {
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
-import { prisma, Prisma } from '@textile-erp/database';
-import { CalculateJobCostDto, QueryJobCostsDto } from './dto/actual-costing.dto';
+  CalculateJobCostDto,
+  QueryJobCostsDto,
+} from "./dto/actual-costing.dto";
 
 @Injectable()
 export class ActualCostingService {
@@ -72,9 +72,9 @@ export class ActualCostingService {
           where: {
             tenantId,
             costingSheet: { styleId },
-            status: 'APPROVED',
+            status: "APPROVED",
           },
-          orderBy: { versionNumber: 'desc' },
+          orderBy: { versionNumber: "desc" },
         });
 
         if (approvedVersion && Number(approvedVersion.totalCost) > 0) {
@@ -93,7 +93,8 @@ export class ActualCostingService {
         if (unitStandardCost === 0) unitStandardCost = 15.0; // Benchmark standard
       }
 
-      const totalStandardCost = Math.round(unitStandardCost * targetQty * 100) / 100;
+      const totalStandardCost =
+        Math.round(unitStandardCost * targetQty * 100) / 100;
 
       // 3. Compute Actual Material Cost
       let fabricCost = 0;
@@ -118,8 +119,9 @@ export class ActualCostingService {
       }, 0);
 
       const actualMaterialCost =
-        Math.round((fabricCost + Math.max(0, issuedTrims - returnedTrims)) * 100) /
-        100;
+        Math.round(
+          (fabricCost + Math.max(0, issuedTrims - returnedTrims)) * 100,
+        ) / 100;
 
       // 4. Compute Actual Labor Cost
       const minuteRate = dto.minuteLaborRate || 0.1; // $0.10/min standard rate
@@ -130,7 +132,9 @@ export class ActualCostingService {
           order.operations.map((o) => [o.id, Number(o.smv || 1.5)]),
         );
         for (const wip of order.wipTransactions) {
-          const smv = wip.toOperationId ? opMap.get(wip.toOperationId) || 1.5 : 1.5;
+          const smv = wip.toOperationId
+            ? opMap.get(wip.toOperationId) || 1.5
+            : 1.5;
           actualLaborCost += Number(wip.quantity) * smv * minuteRate;
         }
       } else {
@@ -147,8 +151,9 @@ export class ActualCostingService {
 
       // 6. Total Actual Cost & Variance
       const totalActualCost =
-        Math.round((actualMaterialCost + actualLaborCost + actualOverheadCost) * 100) /
-        100;
+        Math.round(
+          (actualMaterialCost + actualLaborCost + actualOverheadCost) * 100,
+        ) / 100;
       const costVariance =
         Math.round((totalActualCost - totalStandardCost) * 100) / 100;
 
@@ -159,7 +164,10 @@ export class ActualCostingService {
       for (const carton of order.cartons) {
         if (carton.shipment?.invoices) {
           for (const inv of carton.shipment.invoices) {
-            invoicedRevenue = Math.max(invoicedRevenue, Number(inv.totalAmount));
+            invoicedRevenue = Math.max(
+              invoicedRevenue,
+              Number(inv.totalAmount),
+            );
           }
         }
       }
@@ -169,7 +177,10 @@ export class ActualCostingService {
         for (const shp of order.buyerPoLine.buyerPo.shipments) {
           if (shp.invoices) {
             for (const inv of shp.invoices) {
-              invoicedRevenue = Math.max(invoicedRevenue, Number(inv.totalAmount));
+              invoicedRevenue = Math.max(
+                invoicedRevenue,
+                Number(inv.totalAmount),
+              );
             }
           }
         }
@@ -187,7 +198,7 @@ export class ActualCostingService {
 
       const realizedMarginPercent =
         invoicedRevenue > 0
-          ? Math.round(((realizedProfit / invoicedRevenue) * 100) * 100) / 100
+          ? Math.round((realizedProfit / invoicedRevenue) * 100 * 100) / 100
           : 0;
 
       // 8. Persist JobCostSummary
@@ -234,9 +245,9 @@ export class ActualCostingService {
       await tx.auditEvent.create({
         data: {
           tenantId,
-          actorId: actorId || 'SYSTEM',
-          action: 'JOB_COST_CALCULATED',
-          entity: 'JobCostSummary',
+          actorId: actorId || "SYSTEM",
+          action: "JOB_COST_CALCULATED",
+          entity: "JobCostSummary",
           entityId: summary.id,
           newValues: {
             productionOrderId,
@@ -247,7 +258,8 @@ export class ActualCostingService {
             realizedProfit,
             realizedMarginPercent,
           },
-          reason: dto.notes || 'Actual job costing and realized margin calculated',
+          reason:
+            dto.notes || "Actual job costing and realized margin calculated",
         },
       });
 
@@ -257,7 +269,8 @@ export class ActualCostingService {
 
   async findAll(tenantId: string, query?: QueryJobCostsDto) {
     const where: Prisma.JobCostSummaryWhereInput = { tenantId };
-    if (query?.productionOrderId) where.productionOrderId = query.productionOrderId;
+    if (query?.productionOrderId)
+      where.productionOrderId = query.productionOrderId;
 
     return prisma.jobCostSummary.findMany({
       where,
@@ -268,7 +281,7 @@ export class ActualCostingService {
           },
         },
       },
-      orderBy: { calculatedAt: 'desc' },
+      orderBy: { calculatedAt: "desc" },
     });
   }
 

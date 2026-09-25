@@ -1,7 +1,7 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
-import * as request from 'supertest';
-import { AppModule } from './../src/app.module';
+import { Test, TestingModule } from "@nestjs/testing";
+import { INestApplication } from "@nestjs/common";
+import * as request from "supertest";
+import { AppModule } from "./../src/app.module";
 import {
   prisma,
   WarehouseType,
@@ -11,10 +11,10 @@ import {
   GatePassStatus,
   InventoryTxType,
   CostingStatus,
-} from '@textile-erp/database';
-import * as argon2 from 'argon2';
+} from "@textile-erp/database";
+import * as argon2 from "argon2";
 
-describe('End-to-End Operational Lifecycle & Pipeline Intelligence (Phase 9.4 e2e)', () => {
+describe("End-to-End Operational Lifecycle & Pipeline Intelligence (Phase 9.4 e2e)", () => {
   let app: INestApplication;
   let tenantId: string;
   let otherTenantId: string;
@@ -33,25 +33,25 @@ describe('End-to-End Operational Lifecycle & Pipeline Intelligence (Phase 9.4 e2
 
     // 1. Primary Tenant
     const tenant = await prisma.tenant.create({
-      data: { name: 'E2E Lifecycle 9.4 Tenant' },
+      data: { name: "E2E Lifecycle 9.4 Tenant" },
     });
     tenantId = tenant.id;
 
     // 2. Secondary Tenant
     const otherTenant = await prisma.tenant.create({
-      data: { name: 'Other E2E Tenant' },
+      data: { name: "Other E2E Tenant" },
     });
     otherTenantId = otherTenant.id;
 
     // 3. Admin Users & RBAC
-    const pwd = await argon2.hash('LifecycleAdminPass123!');
+    const pwd = await argon2.hash("LifecycleAdminPass123!");
     const user = await prisma.user.create({
       data: {
         tenantId,
         email: `lifecycle-admin-${Date.now()}@apparel.com`,
         passwordHash: pwd,
-        firstName: 'Lifecycle',
-        lastName: 'Admin',
+        firstName: "Lifecycle",
+        lastName: "Admin",
       },
     });
 
@@ -60,25 +60,25 @@ describe('End-to-End Operational Lifecycle & Pipeline Intelligence (Phase 9.4 e2
         tenantId: otherTenantId,
         email: `other-lifecycle-${Date.now()}@apparel.com`,
         passwordHash: pwd,
-        firstName: 'Other',
-        lastName: 'Admin',
+        firstName: "Other",
+        lastName: "Admin",
       },
     });
 
     const role = await prisma.role.create({
-      data: { tenantId, name: 'LIFECYCLE_ADMIN' },
+      data: { tenantId, name: "LIFECYCLE_ADMIN" },
     });
     const otherRole = await prisma.role.create({
-      data: { tenantId: otherTenantId, name: 'OTHER_LIFECYCLE_ADMIN' },
+      data: { tenantId: otherTenantId, name: "OTHER_LIFECYCLE_ADMIN" },
     });
 
     const perms = [
-      { resource: 'PRODUCTION', action: 'READ' },
-      { resource: 'PRODUCTION', action: 'WRITE' },
-      { resource: 'SHIPPING', action: 'READ' },
-      { resource: 'SHIPPING', action: 'WRITE' },
-      { resource: 'COSTING', action: 'READ' },
-      { resource: 'COSTING', action: 'WRITE' },
+      { resource: "PRODUCTION", action: "READ" },
+      { resource: "PRODUCTION", action: "WRITE" },
+      { resource: "SHIPPING", action: "READ" },
+      { resource: "SHIPPING", action: "WRITE" },
+      { resource: "COSTING", action: "READ" },
+      { resource: "COSTING", action: "WRITE" },
     ];
 
     for (const p of perms) {
@@ -104,20 +104,20 @@ describe('End-to-End Operational Lifecycle & Pipeline Intelligence (Phase 9.4 e2
 
     // 4. Authenticate
     const loginRes = await request(app.getHttpServer())
-      .post('/auth/login')
+      .post("/auth/login")
       .send({
         tenantId,
         email: user.email,
-        password: 'LifecycleAdminPass123!',
+        password: "LifecycleAdminPass123!",
       });
     accessToken = loginRes.body.accessToken;
 
     const otherLoginRes = await request(app.getHttpServer())
-      .post('/auth/login')
+      .post("/auth/login")
       .send({
         tenantId: otherTenantId,
         email: otherUser.email,
-        password: 'LifecycleAdminPass123!',
+        password: "LifecycleAdminPass123!",
       });
     otherAccessToken = otherLoginRes.body.accessToken;
 
@@ -126,7 +126,7 @@ describe('End-to-End Operational Lifecycle & Pipeline Intelligence (Phase 9.4 e2
     const company = await prisma.company.create({
       data: {
         tenantId,
-        name: 'Main Textile Corp',
+        name: "Main Textile Corp",
       },
     });
 
@@ -134,7 +134,7 @@ describe('End-to-End Operational Lifecycle & Pipeline Intelligence (Phase 9.4 e2
       data: {
         tenantId,
         companyId: company.id,
-        name: 'Unit 1 Apparel Hub',
+        name: "Unit 1 Apparel Hub",
         code: `UNIT-94-${Date.now()}`,
       },
     });
@@ -144,8 +144,8 @@ describe('End-to-End Operational Lifecycle & Pipeline Intelligence (Phase 9.4 e2
         tenantId,
         factoryUnitId: factoryUnit.id,
         code: `EMP-QC-94-${Date.now()}`,
-        name: 'Hans QC Auditor',
-        type: 'QC',
+        name: "Hans QC Auditor",
+        type: "QC",
       },
     });
 
@@ -153,7 +153,7 @@ describe('End-to-End Operational Lifecycle & Pipeline Intelligence (Phase 9.4 e2
     const buyer = await prisma.buyer.create({
       data: {
         tenantId,
-        name: 'Zara International',
+        name: "Zara International",
         code: `ZARA-${Date.now()}`,
       },
     });
@@ -162,7 +162,7 @@ describe('End-to-End Operational Lifecycle & Pipeline Intelligence (Phase 9.4 e2
       data: {
         tenantId,
         code: `STY-JKT-${Date.now()}`,
-        name: 'Linen Safari Jacket',
+        name: "Linen Safari Jacket",
       },
     });
 
@@ -172,7 +172,7 @@ describe('End-to-End Operational Lifecycle & Pipeline Intelligence (Phase 9.4 e2
         tenantId,
         buyerId: buyer.id,
         poNumber: `PO-ZARA-94-${Date.now()}`,
-        status: 'CONFIRMED',
+        status: "CONFIRMED",
         orderDate: new Date(),
       },
     });
@@ -213,9 +213,9 @@ describe('End-to-End Operational Lifecycle & Pipeline Intelligence (Phase 9.4 e2
       data: {
         tenantId,
         code: `MAT-LINEN-${Date.now()}`,
-        name: '100% Belgian Linen Fabric',
-        category: 'FABRIC',
-        uom: 'MTR',
+        name: "100% Belgian Linen Fabric",
+        category: "FABRIC",
+        uom: "MTR",
       },
     });
 
@@ -225,7 +225,7 @@ describe('End-to-End Operational Lifecycle & Pipeline Intelligence (Phase 9.4 e2
         materialId: material.id,
         type: InventoryTxType.RECEIPT,
         quantity: 1200,
-        uom: 'MTR',
+        uom: "MTR",
         actorId: user.id,
         idempotencyKey: `init-mat-tx-${Date.now()}`,
       },
@@ -267,8 +267,8 @@ describe('End-to-End Operational Lifecycle & Pipeline Intelligence (Phase 9.4 e2
         totalActualCutMeters: 950.0,
         metersVariance: 50.0,
         cuttingYieldPercentage: 94.74,
-        status: 'OPTIMAL',
-        notes: 'Material cut within 5.5% standard tolerance',
+        status: "OPTIMAL",
+        notes: "Material cut within 5.5% standard tolerance",
       },
     });
 
@@ -281,7 +281,7 @@ describe('End-to-End Operational Lifecycle & Pipeline Intelligence (Phase 9.4 e2
           cuttingRecordId: cutRec.id,
           barcode: `BAR-BND-94-${b}-${Date.now()}`,
           quantity: 100,
-          status: 'FINISHED',
+          status: "FINISHED",
         },
       });
     }
@@ -292,13 +292,13 @@ describe('End-to-End Operational Lifecycle & Pipeline Intelligence (Phase 9.4 e2
         tenantId,
         productionOrderId: order.id,
         auditNumber: `AUD-94-001`,
-        inspectionLevel: 'LEVEL_II',
+        inspectionLevel: "LEVEL_II",
         lotSize: 500,
         sampleSize: 80,
         maxAllowedMajor: 3,
         maxAllowedMinor: 5,
         majorDefects: 1,
-        status: 'PASSED',
+        status: "PASSED",
         auditorId: employee.id,
         idempotencyKey: `aql-e2e-94-${Date.now()}`,
       },
@@ -309,7 +309,7 @@ describe('End-to-End Operational Lifecycle & Pipeline Intelligence (Phase 9.4 e2
       data: {
         tenantId,
         code: `WH-FG-94`,
-        name: 'Main FG Logistics Hub',
+        name: "Main FG Logistics Hub",
         warehouseType: WarehouseType.FINISHED_GOODS,
       },
     });
@@ -323,7 +323,7 @@ describe('End-to-End Operational Lifecycle & Pipeline Intelligence (Phase 9.4 e2
           cartonNumber: `CTN-94-${c}`,
           barcode: `BAR9400${c}`,
           totalUnits: 100,
-          status: 'STAGED',
+          status: "STAGED",
           idempotencyKey: `ctn-94-${c}-${Date.now()}`,
         },
       });
@@ -337,10 +337,10 @@ describe('End-to-End Operational Lifecycle & Pipeline Intelligence (Phase 9.4 e2
         buyerPoId: buyerPo.id,
         shipmentNumber: `SHP-94-001`,
         status: ShipmentStatus.DISPATCHED,
-        carrier: 'Maersk Ocean Express',
-        trackingNumber: 'MSK-7749210-BL',
-        destinationPort: 'Hamburg Gateway',
-        destinationCountry: 'Germany',
+        carrier: "Maersk Ocean Express",
+        trackingNumber: "MSK-7749210-BL",
+        destinationPort: "Hamburg Gateway",
+        destinationCountry: "Germany",
         totalCartons: 5,
         totalUnits: 500,
         actualShipDate: new Date(),
@@ -353,9 +353,9 @@ describe('End-to-End Operational Lifecycle & Pipeline Intelligence (Phase 9.4 e2
         tenantId,
         shipmentId: shipment.id,
         gatePassNumber: `GP-94-001`,
-        transporter: 'Swift Cargo Logistics',
-        vehicleNumber: 'TRK-9944-EU',
-        driverName: 'Hans Gruber',
+        transporter: "Swift Cargo Logistics",
+        vehicleNumber: "TRK-9944-EU",
+        driverName: "Hans Gruber",
         totalCartons: 5,
         totalUnits: 500,
         status: GatePassStatus.DISPATCHED,
@@ -374,9 +374,9 @@ describe('End-to-End Operational Lifecycle & Pipeline Intelligence (Phase 9.4 e2
         invoiceNumber: `INV-ZARA-9401`,
         subtotal: 32500.0,
         totalAmount: 32500.0,
-        currency: 'USD',
+        currency: "USD",
         status: CommercialInvoiceStatus.PAID,
-        paymentReference: 'SWIFT-WIRE-889921',
+        paymentReference: "SWIFT-WIRE-889921",
         paymentDate: new Date(),
         paidAmount: 32500.0,
         idempotencyKey: `inv-e2e-94-${Date.now()}`,
@@ -405,11 +405,11 @@ describe('End-to-End Operational Lifecycle & Pipeline Intelligence (Phase 9.4 e2
     await app.close();
   });
 
-  describe('360° Order Operational Pipeline Intelligence', () => {
-    it('1. should retrieve complete end-to-end operational pipeline for production order', async () => {
+  describe("360° Order Operational Pipeline Intelligence", () => {
+    it("1. should retrieve complete end-to-end operational pipeline for production order", async () => {
       const res = await request(app.getHttpServer())
         .get(`/production/pipeline/orders/${orderId}`)
-        .set('Authorization', `Bearer ${accessToken}`)
+        .set("Authorization", `Bearer ${accessToken}`)
         .expect(200);
 
       expect(res.body.productionOrderId).toBe(orderId);
@@ -422,43 +422,51 @@ describe('End-to-End Operational Lifecycle & Pipeline Intelligence (Phase 9.4 e2
       const milestoneMap = new Map(
         res.body.milestones.map((m: any) => [m.stage, m.status]),
       );
-      expect(milestoneMap.get('COMMERCIAL_ORDER')).toBe('COMPLETED');
-      expect(milestoneMap.get('CUTTING_RECONCILIATION')).toBe('COMPLETED');
-      expect(milestoneMap.get('QUALITY_GATES')).toBe('COMPLETED');
-      expect(milestoneMap.get('OUTBOUND_DISPATCH')).toBe('COMPLETED');
-      expect(milestoneMap.get('FINANCIAL_SETTLEMENT')).toBe('COMPLETED');
+      expect(milestoneMap.get("COMMERCIAL_ORDER")).toBe("COMPLETED");
+      expect(milestoneMap.get("CUTTING_RECONCILIATION")).toBe("COMPLETED");
+      expect(milestoneMap.get("QUALITY_GATES")).toBe("COMPLETED");
+      expect(milestoneMap.get("OUTBOUND_DISPATCH")).toBe("COMPLETED");
+      expect(milestoneMap.get("FINANCIAL_SETTLEMENT")).toBe("COMPLETED");
 
       // Verify Commercial Telemetry
       expect(res.body.commercial.targetQuantity).toBe(500);
       expect(res.body.commercial.completedQuantity).toBe(500);
-      expect(res.body.commercial.buyer.name).toBe('Zara International');
+      expect(res.body.commercial.buyer.name).toBe("Zara International");
 
       // Verify Cutting & Reconciliation
       expect(res.body.cutting.recordsCount).toBe(1);
       expect(res.body.cutting.totalFabricCutMeters).toBe(950);
-      expect(res.body.cutting.reconciliation.status).toBe('OPTIMAL');
-      expect(res.body.cutting.reconciliation.cuttingYieldPercentage).toBe(94.74);
+      expect(res.body.cutting.reconciliation.status).toBe("OPTIMAL");
+      expect(res.body.cutting.reconciliation.cuttingYieldPercentage).toBe(
+        94.74,
+      );
 
       // Verify Quality Telemetry
       expect(res.body.quality.passedAql).toBe(true);
-      expect(res.body.quality.aqlAudits[0].status).toBe('PASSED');
+      expect(res.body.quality.aqlAudits[0].status).toBe("PASSED");
 
       // Verify Logistics & Dispatch
       expect(res.body.logistics.isDispatched).toBe(true);
-      expect(res.body.logistics.shipments[0].carrier).toBe('Maersk Ocean Express');
-      expect(res.body.logistics.shipments[0].gatePasses[0].status).toBe(GatePassStatus.DISPATCHED);
+      expect(res.body.logistics.shipments[0].carrier).toBe(
+        "Maersk Ocean Express",
+      );
+      expect(res.body.logistics.shipments[0].gatePasses[0].status).toBe(
+        GatePassStatus.DISPATCHED,
+      );
 
       // Verify Financial Settlement & Actual Costing
       expect(res.body.costing.isSettled).toBe(true);
-      expect(res.body.costing.invoices[0].status).toBe(CommercialInvoiceStatus.PAID);
+      expect(res.body.costing.invoices[0].status).toBe(
+        CommercialInvoiceStatus.PAID,
+      );
       expect(res.body.costing.jobCostSummary.realizedMarginPercent).toBe(44.62);
       expect(res.body.costing.jobCostSummary.realizedProfit).toBe(14500);
     });
 
-    it('2. should retrieve consolidated pipeline aggregated by Buyer PO', async () => {
+    it("2. should retrieve consolidated pipeline aggregated by Buyer PO", async () => {
       const res = await request(app.getHttpServer())
         .get(`/production/pipeline/buyer-po/${buyerPoId}`)
-        .set('Authorization', `Bearer ${accessToken}`)
+        .set("Authorization", `Bearer ${accessToken}`)
         .expect(200);
 
       expect(res.body.buyerPoId).toBe(buyerPoId);
@@ -467,17 +475,17 @@ describe('End-to-End Operational Lifecycle & Pipeline Intelligence (Phase 9.4 e2
       expect(res.body.pipelines[0].productionOrderId).toBe(orderId);
     });
 
-    it('3. should enforce strict tenant isolation on pipeline queries', async () => {
+    it("3. should enforce strict tenant isolation on pipeline queries", async () => {
       // User from other tenant cannot view order from primary tenant
       await request(app.getHttpServer())
         .get(`/production/pipeline/orders/${orderId}`)
-        .set('Authorization', `Bearer ${otherAccessToken}`)
+        .set("Authorization", `Bearer ${otherAccessToken}`)
         .expect(404);
 
       // User from other tenant query by buyerPo returns 0 orders
       const res = await request(app.getHttpServer())
         .get(`/production/pipeline/buyer-po/${buyerPoId}`)
-        .set('Authorization', `Bearer ${otherAccessToken}`)
+        .set("Authorization", `Bearer ${otherAccessToken}`)
         .expect(200);
 
       expect(res.body.ordersCount).toBe(0);

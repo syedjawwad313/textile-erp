@@ -3,20 +3,20 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
-} from '@nestjs/common';
+} from "@nestjs/common";
 import {
   prisma,
   StockAuditStatus,
   InventoryTxType,
   Prisma,
-} from '@textile-erp/database';
-import { LedgerService } from './ledger.service';
+} from "@textile-erp/database";
+import { LedgerService } from "./ledger.service";
 import {
   CreateStockAuditDto,
   RecordAuditCountsDto,
   ReconcileAuditDto,
   QueryStockAuditsDto,
-} from '../dto/stock-audit.dto';
+} from "../dto/stock-audit.dto";
 
 @Injectable()
 export class StockAuditService {
@@ -29,7 +29,7 @@ export class StockAuditService {
     dto: CreateStockAuditDto,
   ) {
     if (!idempotencyKey) {
-      throw new BadRequestException('x-idempotency-key header is required');
+      throw new BadRequestException("x-idempotency-key header is required");
     }
 
     return prisma.$transaction(async (tx) => {
@@ -45,7 +45,9 @@ export class StockAuditService {
         where: { id: dto.warehouseId },
       });
       if (!warehouse || warehouse.tenantId !== tenantId) {
-        throw new NotFoundException(`Warehouse with ID ${dto.warehouseId} not found`);
+        throw new NotFoundException(
+          `Warehouse with ID ${dto.warehouseId} not found`,
+        );
       }
 
       // 3. Generate sequential audit number
@@ -53,7 +55,7 @@ export class StockAuditService {
       const year = new Date().getFullYear();
       const auditNumber =
         dto.auditNumber?.trim() ||
-        `AUD-${year}-${String(auditCount + 1).padStart(4, '0')}`;
+        `AUD-${year}-${String(auditCount + 1).padStart(4, "0")}`;
 
       // 4. Snapshot current inventory for warehouse / tenant
       const inventoryItems = await tx.inventoryItem.findMany({
@@ -61,7 +63,8 @@ export class StockAuditService {
         include: { material: true },
       });
 
-      const auditItemsCreate: Prisma.StockAuditItemCreateWithoutStockAuditInput[] = [];
+      const auditItemsCreate: Prisma.StockAuditItemCreateWithoutStockAuditInput[] =
+        [];
 
       for (const inv of inventoryItems) {
         if (!inv.materialId) continue;
@@ -85,7 +88,10 @@ export class StockAuditService {
           status: StockAuditStatus.DRAFT,
           notes: dto.notes || null,
           idempotencyKey,
-          items: auditItemsCreate.length > 0 ? { create: auditItemsCreate } : undefined,
+          items:
+            auditItemsCreate.length > 0
+              ? { create: auditItemsCreate }
+              : undefined,
         },
         include: {
           warehouse: true,
@@ -97,16 +103,16 @@ export class StockAuditService {
       await tx.auditEvent.create({
         data: {
           tenantId,
-          actorId: actorId || 'SYSTEM',
-          action: 'STOCK_AUDIT_INITIATED',
-          entity: 'StockAudit',
+          actorId: actorId || "SYSTEM",
+          action: "STOCK_AUDIT_INITIATED",
+          entity: "StockAudit",
           entityId: audit.id,
           newValues: {
             auditNumber,
             warehouseId: dto.warehouseId,
             itemsCount: auditItemsCreate.length,
           },
-          reason: dto.notes || 'Physical inventory audit sheet generated',
+          reason: dto.notes || "Physical inventory audit sheet generated",
         },
       });
 
@@ -131,20 +137,26 @@ export class StockAuditService {
       }
 
       if (audit.status === StockAuditStatus.COMPLETED) {
-        throw new ConflictException('Cannot modify a completed stock audit');
+        throw new ConflictException("Cannot modify a completed stock audit");
       }
 
       let totalVariance = 0;
       let totalCounted = 0;
 
       for (const countItem of dto.items) {
-        const material = await tx.material.findUnique({ where: { id: countItem.materialId } });
+        const material = await tx.material.findUnique({
+          where: { id: countItem.materialId },
+        });
         if (!material || material.tenantId !== tenantId) {
-          throw new NotFoundException(`Material with ID ${countItem.materialId} not found`);
+          throw new NotFoundException(
+            `Material with ID ${countItem.materialId} not found`,
+          );
         }
 
         // Find existing audit item or determine ledger quantity
-        let existingItem = audit.items.find((i) => i.materialId === countItem.materialId);
+        const existingItem = audit.items.find(
+          (i) => i.materialId === countItem.materialId,
+        );
 
         let ledgerQty = 0;
         if (existingItem) {
@@ -157,7 +169,8 @@ export class StockAuditService {
         }
 
         const countedQty = Number(countItem.countedQuantity);
-        const discrepancy = Math.round((countedQty - ledgerQty) * 10000) / 10000;
+        const discrepancy =
+          Math.round((countedQty - ledgerQty) * 10000) / 10000;
         totalVariance += Math.abs(discrepancy);
         totalCounted += 1;
 
@@ -177,8 +190,12 @@ export class StockAuditService {
               tenant: { connect: { id: tenantId } },
               stockAudit: { connect: { id: audit.id } },
               material: { connect: { id: countItem.materialId } },
-              bin: countItem.binId ? { connect: { id: countItem.binId } } : undefined,
-              fabricRoll: countItem.fabricRollId ? { connect: { id: countItem.fabricRollId } } : undefined,
+              bin: countItem.binId
+                ? { connect: { id: countItem.binId } }
+                : undefined,
+              fabricRoll: countItem.fabricRollId
+                ? { connect: { id: countItem.fabricRollId } }
+                : undefined,
               ledgerQuantity: new Prisma.Decimal(ledgerQty),
               countedQuantity: new Prisma.Decimal(countedQty),
               discrepancyQuantity: new Prisma.Decimal(discrepancy),
@@ -214,7 +231,7 @@ export class StockAuditService {
     dto: ReconcileAuditDto,
   ) {
     if (!idempotencyKey) {
-      throw new BadRequestException('x-idempotency-key header is required');
+      throw new BadRequestException("x-idempotency-key header is required");
     }
 
     return prisma.$transaction(async (tx) => {
@@ -248,8 +265,8 @@ export class StockAuditService {
             quantity: discrepancy,
             uom: item.material.uom,
             referenceId: audit.auditNumber,
-            actorId: actorId || 'SYSTEM',
-            reason: `Stock Audit ${audit.auditNumber} adjustment: variance ${discrepancy > 0 ? '+' : ''}${discrepancy} ${item.material.uom}`,
+            actorId: actorId || "SYSTEM",
+            reason: `Stock Audit ${audit.auditNumber} adjustment: variance ${discrepancy > 0 ? "+" : ""}${discrepancy} ${item.material.uom}`,
             idempotencyKey: `${idempotencyKey}-adj-${i}`,
           });
 
@@ -276,16 +293,18 @@ export class StockAuditService {
       await tx.auditEvent.create({
         data: {
           tenantId,
-          actorId: actorId || 'SYSTEM',
-          action: 'STOCK_AUDIT_RECONCILED',
-          entity: 'StockAudit',
+          actorId: actorId || "SYSTEM",
+          action: "STOCK_AUDIT_RECONCILED",
+          entity: "StockAudit",
           entityId: completed.id,
           newValues: {
             auditNumber: completed.auditNumber,
             totalVariance: completed.totalVariance,
             status: completed.status,
           },
-          reason: dto.notes || 'Stock audit completed and inventory ledger reconciled',
+          reason:
+            dto.notes ||
+            "Stock audit completed and inventory ledger reconciled",
         },
       });
 
@@ -304,7 +323,7 @@ export class StockAuditService {
         warehouse: true,
         items: { include: { material: true } },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
   }
 

@@ -3,16 +3,16 @@ import {
   NotFoundException,
   ConflictException,
   BadRequestException,
-} from '@nestjs/common';
-import { prisma, ScheduleStatus, DowntimeStatus } from '@textile-erp/database';
+} from "@nestjs/common";
+import { prisma, ScheduleStatus, DowntimeStatus } from "@textile-erp/database";
 import {
   CreateProductionScheduleDto,
   UpdateProductionScheduleDto,
   QueryScheduleDto,
   QueryCapacityDto,
   QueryConflictDto,
-} from './scheduling.dto';
-import { calculateShiftDurationMinutes } from '../shifts/shifts.service';
+} from "./scheduling.dto";
+import { calculateShiftDurationMinutes } from "../shifts/shifts.service";
 
 @Injectable()
 export class SchedulingService {
@@ -20,9 +20,9 @@ export class SchedulingService {
     tenantId: string,
     actorId: string,
     idempotencyKey: string | undefined,
-    dto: CreateProductionScheduleDto
+    dto: CreateProductionScheduleDto,
   ) {
-    if (!tenantId) throw new BadRequestException('Tenant ID is required');
+    if (!tenantId) throw new BadRequestException("Tenant ID is required");
 
     // 1. Idempotency check
     if (idempotencyKey) {
@@ -32,10 +32,25 @@ export class SchedulingService {
         },
         include: {
           productionOrder: {
-            select: { id: true, orderNumber: true, status: true, targetQuantity: true },
+            select: {
+              id: true,
+              orderNumber: true,
+              status: true,
+              targetQuantity: true,
+            },
           },
-          productionLine: { select: { id: true, code: true, name: true, capacity: true } },
-          shift: { select: { id: true, code: true, name: true, startTime: true, endTime: true } },
+          productionLine: {
+            select: { id: true, code: true, name: true, capacity: true },
+          },
+          shift: {
+            select: {
+              id: true,
+              code: true,
+              name: true,
+              startTime: true,
+              endTime: true,
+            },
+          },
         },
       });
       if (existing) {
@@ -47,7 +62,9 @@ export class SchedulingService {
     const start = new Date(dto.scheduledStart);
     const end = new Date(dto.scheduledEnd);
     if (isNaN(start.getTime()) || isNaN(end.getTime()) || end <= start) {
-      throw new BadRequestException('scheduledEnd must be strictly after scheduledStart');
+      throw new BadRequestException(
+        "scheduledEnd must be strictly after scheduledStart",
+      );
     }
 
     // 3. Validate Production Order belongs to tenant
@@ -55,7 +72,9 @@ export class SchedulingService {
       where: { id: dto.productionOrderId, tenantId },
     });
     if (!order) {
-      throw new NotFoundException('Production order not found or does not belong to tenant');
+      throw new NotFoundException(
+        "Production order not found or does not belong to tenant",
+      );
     }
 
     // 4. Validate Production Line belongs to tenant
@@ -63,7 +82,9 @@ export class SchedulingService {
       where: { id: dto.productionLineId, tenantId },
     });
     if (!line) {
-      throw new NotFoundException('Production line not found or does not belong to tenant');
+      throw new NotFoundException(
+        "Production line not found or does not belong to tenant",
+      );
     }
 
     // 5. Validate optional Shift belongs to tenant & factory
@@ -72,11 +93,13 @@ export class SchedulingService {
         where: { id: dto.shiftId, tenantId },
       });
       if (!shift) {
-        throw new NotFoundException('Shift not found or does not belong to tenant');
+        throw new NotFoundException(
+          "Shift not found or does not belong to tenant",
+        );
       }
       if (shift.factoryUnitId !== line.factoryUnitId) {
         throw new BadRequestException(
-          'Shift belongs to a different factory unit than this production line'
+          "Shift belongs to a different factory unit than this production line",
         );
       }
     }
@@ -97,7 +120,7 @@ export class SchedulingService {
 
     if (overlapping) {
       throw new ConflictException(
-        `Schedule overlap detected on line '${line.code}': already scheduled for order '${overlapping.productionOrder.orderNumber}' between ${overlapping.scheduledStart.toISOString()} and ${overlapping.scheduledEnd.toISOString()}`
+        `Schedule overlap detected on line '${line.code}': already scheduled for order '${overlapping.productionOrder.orderNumber}' between ${overlapping.scheduledStart.toISOString()} and ${overlapping.scheduledEnd.toISOString()}`,
       );
     }
 
@@ -122,10 +145,25 @@ export class SchedulingService {
       },
       include: {
         productionOrder: {
-          select: { id: true, orderNumber: true, status: true, targetQuantity: true },
+          select: {
+            id: true,
+            orderNumber: true,
+            status: true,
+            targetQuantity: true,
+          },
         },
-        productionLine: { select: { id: true, code: true, name: true, capacity: true } },
-        shift: { select: { id: true, code: true, name: true, startTime: true, endTime: true } },
+        productionLine: {
+          select: { id: true, code: true, name: true, capacity: true },
+        },
+        shift: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+            startTime: true,
+            endTime: true,
+          },
+        },
       },
     });
 
@@ -133,9 +171,9 @@ export class SchedulingService {
     await prisma.auditEvent.create({
       data: {
         tenantId,
-        actorId: actorId || 'system',
-        action: 'CREATE',
-        entity: 'ProductionSchedule',
+        actorId: actorId || "system",
+        action: "CREATE",
+        entity: "ProductionSchedule",
         entityId: schedule.id,
         newValues: {
           productionOrderId: schedule.productionOrderId,
@@ -152,11 +190,13 @@ export class SchedulingService {
   }
 
   async getSchedules(tenantId: string, query?: QueryScheduleDto) {
-    if (!tenantId) throw new BadRequestException('Tenant ID is required');
+    if (!tenantId) throw new BadRequestException("Tenant ID is required");
 
     const where: any = { tenantId };
-    if (query?.productionOrderId) where.productionOrderId = query.productionOrderId;
-    if (query?.productionLineId) where.productionLineId = query.productionLineId;
+    if (query?.productionOrderId)
+      where.productionOrderId = query.productionOrderId;
+    if (query?.productionLineId)
+      where.productionLineId = query.productionLineId;
     if (query?.shiftId) where.shiftId = query.shiftId;
     if (query?.status) where.status = query.status;
     if (query?.from || query?.to) {
@@ -200,12 +240,12 @@ export class SchedulingService {
           },
         },
       },
-      orderBy: { scheduledStart: 'asc' },
+      orderBy: { scheduledStart: "asc" },
     });
   }
 
   async getScheduleById(tenantId: string, id: string) {
-    if (!tenantId) throw new BadRequestException('Tenant ID is required');
+    if (!tenantId) throw new BadRequestException("Tenant ID is required");
 
     const schedule = await prisma.productionSchedule.findFirst({
       where: { id, tenantId },
@@ -250,9 +290,9 @@ export class SchedulingService {
     tenantId: string,
     actorId: string,
     id: string,
-    dto: UpdateProductionScheduleDto
+    dto: UpdateProductionScheduleDto,
   ) {
-    if (!tenantId) throw new BadRequestException('Tenant ID is required');
+    if (!tenantId) throw new BadRequestException("Tenant ID is required");
 
     const existing = await prisma.productionSchedule.findFirst({
       where: { id, tenantId },
@@ -262,16 +302,23 @@ export class SchedulingService {
       throw new NotFoundException(`Schedule with ID '${id}' not found`);
     }
 
-    const start = dto.scheduledStart ? new Date(dto.scheduledStart) : existing.scheduledStart;
-    const end = dto.scheduledEnd ? new Date(dto.scheduledEnd) : existing.scheduledEnd;
+    const start = dto.scheduledStart
+      ? new Date(dto.scheduledStart)
+      : existing.scheduledStart;
+    const end = dto.scheduledEnd
+      ? new Date(dto.scheduledEnd)
+      : existing.scheduledEnd;
 
     if (end <= start) {
-      throw new BadRequestException('scheduledEnd must be strictly after scheduledStart');
+      throw new BadRequestException(
+        "scheduledEnd must be strictly after scheduledStart",
+      );
     }
 
     // If times are changing, re-check overlaps
     if (
-      (dto.scheduledStart && start.getTime() !== existing.scheduledStart.getTime()) ||
+      (dto.scheduledStart &&
+        start.getTime() !== existing.scheduledStart.getTime()) ||
       (dto.scheduledEnd && end.getTime() !== existing.scheduledEnd.getTime())
     ) {
       const overlapping = await prisma.productionSchedule.findFirst({
@@ -279,7 +326,9 @@ export class SchedulingService {
           tenantId,
           productionLineId: existing.productionLineId,
           id: { not: id },
-          status: { in: [ScheduleStatus.SCHEDULED, ScheduleStatus.IN_PROGRESS] },
+          status: {
+            in: [ScheduleStatus.SCHEDULED, ScheduleStatus.IN_PROGRESS],
+          },
           scheduledStart: { lt: end },
           scheduledEnd: { gt: start },
         },
@@ -288,7 +337,7 @@ export class SchedulingService {
 
       if (overlapping) {
         throw new ConflictException(
-          `Schedule overlap detected on line '${existing.productionLine.code}': already scheduled for order '${overlapping.productionOrder.orderNumber}'`
+          `Schedule overlap detected on line '${existing.productionLine.code}': already scheduled for order '${overlapping.productionOrder.orderNumber}'`,
         );
       }
     }
@@ -298,26 +347,41 @@ export class SchedulingService {
       data: {
         scheduledStart: dto.scheduledStart ? start : undefined,
         scheduledEnd: dto.scheduledEnd ? end : undefined,
-        plannedQuantity: dto.plannedQuantity !== undefined ? dto.plannedQuantity : undefined,
-        actualQuantity: dto.actualQuantity !== undefined ? dto.actualQuantity : undefined,
+        plannedQuantity:
+          dto.plannedQuantity !== undefined ? dto.plannedQuantity : undefined,
+        actualQuantity:
+          dto.actualQuantity !== undefined ? dto.actualQuantity : undefined,
         status: dto.status ?? undefined,
         notes: dto.notes ?? undefined,
       },
       include: {
         productionOrder: {
-          select: { id: true, orderNumber: true, status: true, targetQuantity: true },
+          select: {
+            id: true,
+            orderNumber: true,
+            status: true,
+            targetQuantity: true,
+          },
         },
         productionLine: { select: { id: true, code: true, name: true } },
-        shift: { select: { id: true, code: true, name: true, startTime: true, endTime: true } },
+        shift: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+            startTime: true,
+            endTime: true,
+          },
+        },
       },
     });
 
     await prisma.auditEvent.create({
       data: {
         tenantId,
-        actorId: actorId || 'system',
-        action: 'UPDATE',
-        entity: 'ProductionSchedule',
+        actorId: actorId || "system",
+        action: "UPDATE",
+        entity: "ProductionSchedule",
         entityId: id,
         oldValues: {
           status: existing.status,
@@ -338,9 +402,11 @@ export class SchedulingService {
   }
 
   async calculateCapacity(tenantId: string, query?: QueryCapacityDto) {
-    if (!tenantId) throw new BadRequestException('Tenant ID is required');
+    if (!tenantId) throw new BadRequestException("Tenant ID is required");
 
-    const targetDateStr = query?.date ? query.date.slice(0, 10) : new Date().toISOString().slice(0, 10);
+    const targetDateStr = query?.date
+      ? query.date.slice(0, 10)
+      : new Date().toISOString().slice(0, 10);
     const dayStart = new Date(`${targetDateStr}T00:00:00.000Z`);
     const dayEnd = new Date(`${targetDateStr}T23:59:59.999Z`);
 
@@ -354,7 +420,7 @@ export class SchedulingService {
       include: {
         factoryUnit: { select: { id: true, code: true, name: true } },
       },
-      orderBy: { code: 'asc' },
+      orderBy: { code: "asc" },
     });
 
     const results: any[] = [];
@@ -370,20 +436,20 @@ export class SchedulingService {
 
       let shifts = await prisma.shift.findMany({
         where: shiftWhere,
-        orderBy: { startTime: 'asc' },
+        orderBy: { startTime: "asc" },
       });
 
       // Default fallback shift if no shifts created yet for factory
       if (shifts.length === 0) {
         shifts = [
           {
-            id: 'default-day-shift',
+            id: "default-day-shift",
             tenantId,
             factoryUnitId: line.factoryUnitId,
-            code: 'STD-DAY',
-            name: 'Standard Operating Day',
-            startTime: '08:00',
-            endTime: '16:00',
+            code: "STD-DAY",
+            name: "Standard Operating Day",
+            startTime: "08:00",
+            endTime: "16:00",
             active: true,
             createdAt: new Date(),
             updatedAt: new Date(),
@@ -392,17 +458,22 @@ export class SchedulingService {
       }
 
       for (const shift of shifts) {
-        const shiftMinutes = calculateShiftDurationMinutes(shift.startTime, shift.endTime);
+        const shiftMinutes = calculateShiftDurationMinutes(
+          shift.startTime,
+          shift.endTime,
+        );
         const shiftHours = shiftMinutes / 60;
 
         // Base capacity from database scalar
-        const baseDailyCapacity = Number(line.capacity) > 0 ? Number(line.capacity) : 2500;
+        const baseDailyCapacity =
+          Number(line.capacity) > 0 ? Number(line.capacity) : 2500;
         // Standard 16-hour plant operating day formula: (Base / 16) * shiftHours
-        const nominalShiftCapacity = Math.round(((baseDailyCapacity / 16) * shiftHours) * 100) / 100;
+        const nominalShiftCapacity =
+          Math.round((baseDailyCapacity / 16) * shiftHours * 100) / 100;
 
         // Construct shift window timestamps on targetDate
-        const [sH, sM] = shift.startTime.split(':').map(Number);
-        const [eH, eM] = shift.endTime.split(':').map(Number);
+        const [sH, sM] = shift.startTime.split(":").map(Number);
+        const [eH, eM] = shift.endTime.split(":").map(Number);
         const shiftStart = new Date(dayStart);
         shiftStart.setUTCHours(sH, sM, 0, 0);
 
@@ -418,17 +489,20 @@ export class SchedulingService {
             tenantId,
             productionLineId: line.id,
             startTime: { lt: shiftEnd },
-            OR: [
-              { endTime: null },
-              { endTime: { gt: shiftStart } },
-            ],
+            OR: [{ endTime: null }, { endTime: { gt: shiftStart } }],
           },
         });
 
         let downtimeMs = 0;
         for (const dt of downtimes) {
-          const dtStart = Math.max(dt.startTime.getTime(), shiftStart.getTime());
-          const dtEnd = Math.min((dt.endTime || new Date()).getTime(), shiftEnd.getTime());
+          const dtStart = Math.max(
+            dt.startTime.getTime(),
+            shiftStart.getTime(),
+          );
+          const dtEnd = Math.min(
+            (dt.endTime || new Date()).getTime(),
+            shiftEnd.getTime(),
+          );
           if (dtEnd > dtStart) {
             downtimeMs += dtEnd - dtStart;
           }
@@ -438,7 +512,9 @@ export class SchedulingService {
           shiftMinutes > 0 ? Math.min(1, downtimeMinutes / shiftMinutes) : 0;
         const availableCapacity = Math.max(
           0,
-          Math.round(nominalShiftCapacity * (1 - downtimeImpactFraction) * 100) / 100
+          Math.round(
+            nominalShiftCapacity * (1 - downtimeImpactFraction) * 100,
+          ) / 100,
         );
 
         // Schedules active in this window
@@ -446,7 +522,9 @@ export class SchedulingService {
           where: {
             tenantId,
             productionLineId: line.id,
-            status: { in: [ScheduleStatus.SCHEDULED, ScheduleStatus.IN_PROGRESS] },
+            status: {
+              in: [ScheduleStatus.SCHEDULED, ScheduleStatus.IN_PROGRESS],
+            },
             scheduledStart: { lt: shiftEnd },
             scheduledEnd: { gt: shiftStart },
           },
@@ -459,19 +537,22 @@ export class SchedulingService {
 
         const scheduledLoad = schedules.reduce(
           (acc, s) => acc + Number(s.plannedQuantity),
-          0
+          0,
         );
 
         const utilizationPercentage =
           availableCapacity > 0
-            ? Math.min(100, Math.round((scheduledLoad / availableCapacity) * 10000) / 100)
+            ? Math.min(
+                100,
+                Math.round((scheduledLoad / availableCapacity) * 10000) / 100,
+              )
             : scheduledLoad > 0
-            ? 100
-            : 0;
+              ? 100
+              : 0;
 
         const isOverloaded = scheduledLoad > availableCapacity;
         const hasActiveDowntime = downtimes.some(
-          (d) => d.status === DowntimeStatus.ACTIVE || !d.endTime
+          (d) => d.status === DowntimeStatus.ACTIVE || !d.endTime,
         );
 
         results.push({
@@ -491,7 +572,10 @@ export class SchedulingService {
           downtimeMinutes,
           availableCapacity,
           scheduledLoad,
-          remainingCapacity: Math.max(0, Math.round((availableCapacity - scheduledLoad) * 100) / 100),
+          remainingCapacity: Math.max(
+            0,
+            Math.round((availableCapacity - scheduledLoad) * 100) / 100,
+          ),
           utilizationPercentage,
           isOverloaded,
           hasActiveDowntime,
@@ -512,13 +596,14 @@ export class SchedulingService {
   }
 
   async detectConflicts(tenantId: string, query?: QueryConflictDto) {
-    if (!tenantId) throw new BadRequestException('Tenant ID is required');
+    if (!tenantId) throw new BadRequestException("Tenant ID is required");
 
     const where: any = {
       tenantId,
       status: { in: [ScheduleStatus.SCHEDULED, ScheduleStatus.IN_PROGRESS] },
     };
-    if (query?.productionLineId) where.productionLineId = query.productionLineId;
+    if (query?.productionLineId)
+      where.productionLineId = query.productionLineId;
     if (query?.from) where.scheduledEnd = { gte: new Date(query.from) };
     if (query?.to) where.scheduledStart = { lte: new Date(query.to) };
 
@@ -526,10 +611,20 @@ export class SchedulingService {
       where,
       include: {
         productionOrder: { select: { id: true, orderNumber: true } },
-        productionLine: { select: { id: true, code: true, name: true, capacity: true } },
-        shift: { select: { id: true, code: true, name: true, startTime: true, endTime: true } },
+        productionLine: {
+          select: { id: true, code: true, name: true, capacity: true },
+        },
+        shift: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+            startTime: true,
+            endTime: true,
+          },
+        },
       },
-      orderBy: { scheduledStart: 'asc' },
+      orderBy: { scheduledStart: "asc" },
     });
 
     const conflicts: any[] = [];
@@ -540,18 +635,28 @@ export class SchedulingService {
         const a = schedules[i];
         const b = schedules[j];
         if (a.productionLineId === b.productionLineId) {
-          if (a.scheduledStart < b.scheduledEnd && a.scheduledEnd > b.scheduledStart) {
+          if (
+            a.scheduledStart < b.scheduledEnd &&
+            a.scheduledEnd > b.scheduledStart
+          ) {
             conflicts.push({
-              type: 'LINE_OVERLAP',
-              severity: 'CRITICAL',
+              type: "LINE_OVERLAP",
+              severity: "CRITICAL",
               productionLineId: a.productionLineId,
               productionLineCode: a.productionLine.code,
               scheduleIdA: a.id,
               orderNumberA: a.productionOrder.orderNumber,
               scheduleIdB: b.id,
               orderNumberB: b.productionOrder.orderNumber,
-              overlapStart: new Date(Math.max(a.scheduledStart.getTime(), b.scheduledStart.getTime())),
-              overlapEnd: new Date(Math.min(a.scheduledEnd.getTime(), b.scheduledEnd.getTime())),
+              overlapStart: new Date(
+                Math.max(
+                  a.scheduledStart.getTime(),
+                  b.scheduledStart.getTime(),
+                ),
+              ),
+              overlapEnd: new Date(
+                Math.min(a.scheduledEnd.getTime(), b.scheduledEnd.getTime()),
+              ),
               message: `Line '${a.productionLine.code}' has overlapping schedules between orders '${a.productionOrder.orderNumber}' and '${b.productionOrder.orderNumber}'`,
             });
           }
@@ -572,8 +677,8 @@ export class SchedulingService {
 
       if (activeDowntimes.length > 0) {
         conflicts.push({
-          type: 'LINE_DOWNTIME_STOPPAGE',
-          severity: 'HIGH',
+          type: "LINE_DOWNTIME_STOPPAGE",
+          severity: "HIGH",
           productionLineId: schedule.productionLineId,
           productionLineCode: schedule.productionLine.code,
           scheduleId: schedule.id,

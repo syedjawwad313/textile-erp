@@ -1,5 +1,8 @@
-import { IsString, IsNotEmpty, IsOptional, IsArray } from 'class-validator';
-import { SupportedImportEntity, SupportedExportEntity } from '../interfaces/entity-schema.interface';
+import { IsString, IsNotEmpty, IsOptional, IsArray } from "class-validator";
+import {
+  SupportedImportEntity,
+  SupportedExportEntity,
+} from "../interfaces/entity-schema.interface";
 
 export class InspectSheetsDto {
   @IsOptional()
@@ -160,5 +163,5 @@ export class ExportQueryDto {
 
   @IsOptional()
   @IsString()
-  format?: 'csv' | 'json';
+  format?: "csv" | "json";
 }

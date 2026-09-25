@@ -11,8 +11,10 @@
     "test": "turbo run test",
     "typecheck": "turbo run typecheck",
     "db:push": "pnpm -F @textile-erp/database db:push",
+    "db:deploy": "pnpm -F @textile-erp/database db:deploy",
     "db:generate": "pnpm -F @textile-erp/database db:generate",
-    "db:seed": "pnpm -F @textile-erp/database db:seed"
+    "db:seed": "pnpm -F @textile-erp/database db:seed",
+    "db:seed:prod": "pnpm -F @textile-erp/database db:seed:prod"
   },
   "devDependencies": {
     "prettier": "^3.3.3",

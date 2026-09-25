@@ -1,6 +1,16 @@
-import { IsString, IsNotEmpty, IsNumber, IsPositive, IsOptional, IsArray, ValidateNested, IsEnum, Min } from 'class-validator';
-import { Type } from 'class-transformer';
-import { RollStatus, FabricGradingOption } from '@textile-erp/database';
+import {
+  IsString,
+  IsNotEmpty,
+  IsNumber,
+  IsPositive,
+  IsOptional,
+  IsArray,
+  ValidateNested,
+  IsEnum,
+  Min,
+} from "class-validator";
+import { Type } from "class-transformer";
+import { RollStatus, FabricGradingOption } from "@textile-erp/database";
 
 export class CreateFabricRollDto {
   @IsString()

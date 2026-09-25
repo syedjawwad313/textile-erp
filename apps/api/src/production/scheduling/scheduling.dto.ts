@@ -6,8 +6,8 @@ import {
   IsDateString,
   IsEnum,
   Min,
-} from 'class-validator';
-import { ScheduleStatus } from '@textile-erp/database';
+} from "class-validator";
+import { ScheduleStatus } from "@textile-erp/database";
 
 export class CreateProductionScheduleDto {
   @IsUUID()

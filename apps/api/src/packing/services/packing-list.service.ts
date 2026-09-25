@@ -1,6 +1,16 @@
-import { Injectable, BadRequestException, NotFoundException, ConflictException } from '@nestjs/common';
-import { PrismaClient, Prisma, PackingListStatus, CartonStatus } from '@textile-erp/database';
-import { CreatePackingListDto, QueryPackingListsDto } from '../dto/packing.dto';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+  ConflictException,
+} from "@nestjs/common";
+import {
+  PrismaClient,
+  Prisma,
+  PackingListStatus,
+  CartonStatus,
+} from "@textile-erp/database";
+import { CreatePackingListDto, QueryPackingListsDto } from "../dto/packing.dto";
 
 const prisma = new PrismaClient();
 
@@ -16,7 +26,7 @@ export class PackingListService {
     dto: CreatePackingListDto,
   ) {
     if (!idempotencyKey) {
-      throw new BadRequestException('X-Idempotency-Key is required');
+      throw new BadRequestException("X-Idempotency-Key is required");
     }
 
     return prisma.$transaction(async (tx) => {
@@ -39,12 +49,16 @@ export class PackingListService {
 
       // 3. Validate BuyerPo if provided
       if (dto.buyerPoId) {
-        const po = await tx.buyerPo.findUnique({ where: { id: dto.buyerPoId } });
+        const po = await tx.buyerPo.findUnique({
+          where: { id: dto.buyerPoId },
+        });
         if (!po || po.tenantId !== tenantId) {
           throw new NotFoundException(`BuyerPo ${dto.buyerPoId} not found`);
         }
         if (po.buyerId !== buyer.id) {
-          throw new BadRequestException(`BuyerPo ${po.poNumber} does not belong to Buyer ${buyer.name}`);
+          throw new BadRequestException(
+            `BuyerPo ${po.poNumber} does not belong to Buyer ${buyer.name}`,
+          );
         }
       }
 
@@ -63,18 +77,30 @@ export class PackingListService {
         });
 
         if (cartons.length !== cartonIds.length) {
-          throw new BadRequestException('One or more specified carton IDs do not exist or belong to another tenant');
+          throw new BadRequestException(
+            "One or more specified carton IDs do not exist or belong to another tenant",
+          );
         }
 
         for (const carton of cartons) {
           if (carton.status === CartonStatus.CANCELLED) {
-            throw new BadRequestException(`Cannot include CANCELLED carton ${carton.cartonNumber} in packing list`);
+            throw new BadRequestException(
+              `Cannot include CANCELLED carton ${carton.cartonNumber} in packing list`,
+            );
           }
           if (carton.packingListId) {
-            throw new BadRequestException(`Carton ${carton.cartonNumber} is already assigned to packing list ${carton.packingListId}`);
+            throw new BadRequestException(
+              `Carton ${carton.cartonNumber} is already assigned to packing list ${carton.packingListId}`,
+            );
           }
-          if (dto.buyerPoId && carton.buyerPoId && carton.buyerPoId !== dto.buyerPoId) {
-            throw new BadRequestException(`Carton ${carton.cartonNumber} belongs to a different BuyerPo than specified`);
+          if (
+            dto.buyerPoId &&
+            carton.buyerPoId &&
+            carton.buyerPoId !== dto.buyerPoId
+          ) {
+            throw new BadRequestException(
+              `Carton ${carton.cartonNumber} belongs to a different BuyerPo than specified`,
+            );
           }
 
           totalCartons += 1;
@@ -88,7 +114,7 @@ export class PackingListService {
       // 5. Generate Packing List Number
       const packingListNumber =
         dto.packingListNumber?.trim() ||
-        `PL-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Date.now().toString().slice(-4)}`;
+        `PL-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${Date.now().toString().slice(-4)}`;
 
       // 6. Create PackingList
       const packingList = await tx.packingList.create({
@@ -100,8 +126,10 @@ export class PackingListService {
           status: PackingListStatus.DRAFT,
           totalCartons,
           totalUnits,
-          totalGrossWeightKg: totalGrossWeight > 0 ? new Prisma.Decimal(totalGrossWeight) : null,
-          totalNetWeightKg: totalNetWeight > 0 ? new Prisma.Decimal(totalNetWeight) : null,
+          totalGrossWeightKg:
+            totalGrossWeight > 0 ? new Prisma.Decimal(totalGrossWeight) : null,
+          totalNetWeightKg:
+            totalNetWeight > 0 ? new Prisma.Decimal(totalNetWeight) : null,
           totalCbm: totalCbm > 0 ? new Prisma.Decimal(totalCbm) : null,
           notes: dto.notes || null,
           idempotencyKey,
@@ -120,9 +148,9 @@ export class PackingListService {
       await tx.auditEvent.create({
         data: {
           tenantId,
-          actorId: actorId || 'SYSTEM',
-          action: 'PACKING_LIST_CREATED',
-          entity: 'PackingList',
+          actorId: actorId || "SYSTEM",
+          action: "PACKING_LIST_CREATED",
+          entity: "PackingList",
           entityId: packingList.id,
           newValues: {
             packingListNumber,
@@ -130,7 +158,7 @@ export class PackingListService {
             totalCartons,
             totalUnits,
           },
-          reason: dto.notes || 'Packing list created',
+          reason: dto.notes || "Packing list created",
         },
       });
 
@@ -162,7 +190,7 @@ export class PackingListService {
         buyerPo: true,
         cartons: { include: { items: true } },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       take: query?.limit || 50,
     });
   }
@@ -205,10 +233,14 @@ export class PackingListService {
         return pl;
       }
       if (pl.status === PackingListStatus.CANCELLED) {
-        throw new BadRequestException('Cannot finalize a CANCELLED packing list');
+        throw new BadRequestException(
+          "Cannot finalize a CANCELLED packing list",
+        );
       }
       if (pl.totalCartons <= 0 || pl.cartons.length === 0) {
-        throw new BadRequestException('Cannot finalize an empty packing list with 0 cartons');
+        throw new BadRequestException(
+          "Cannot finalize an empty packing list with 0 cartons",
+        );
       }
 
       const updated = await tx.packingList.update({
@@ -220,12 +252,12 @@ export class PackingListService {
         data: {
           tenantId,
           actorId,
-          action: 'PACKING_LIST_FINALIZED',
-          entity: 'PackingList',
+          action: "PACKING_LIST_FINALIZED",
+          entity: "PackingList",
           entityId: pl.id,
           oldValues: { status: pl.status },
           newValues: { status: PackingListStatus.FINALIZED },
-          reason: 'Packing list finalized by operator',
+          reason: "Packing list finalized by operator",
         },
       });
 
@@ -236,7 +268,12 @@ export class PackingListService {
   /**
    * Adds cartons to an existing packing list.
    */
-  async addCartonsToList(tenantId: string, actorId: string, id: string, cartonIds: string[]) {
+  async addCartonsToList(
+    tenantId: string,
+    actorId: string,
+    id: string,
+    cartonIds: string[],
+  ) {
     return prisma.$transaction(async (tx) => {
       const pl = await tx.packingList.findUnique({
         where: { id },
@@ -247,8 +284,13 @@ export class PackingListService {
         throw new NotFoundException(`Packing list ${id} not found`);
       }
 
-      if (pl.status === PackingListStatus.FINALIZED || pl.status === PackingListStatus.SHIPPED) {
-        throw new BadRequestException('Cannot add cartons to a FINALIZED or SHIPPED packing list');
+      if (
+        pl.status === PackingListStatus.FINALIZED ||
+        pl.status === PackingListStatus.SHIPPED
+      ) {
+        throw new BadRequestException(
+          "Cannot add cartons to a FINALIZED or SHIPPED packing list",
+        );
       }
 
       const cartons = await tx.carton.findMany({
@@ -256,15 +298,21 @@ export class PackingListService {
       });
 
       if (cartons.length !== cartonIds.length) {
-        throw new BadRequestException('One or more cartons not found or belong to another tenant');
+        throw new BadRequestException(
+          "One or more cartons not found or belong to another tenant",
+        );
       }
 
       for (const carton of cartons) {
         if (carton.status === CartonStatus.CANCELLED) {
-          throw new BadRequestException(`Cannot add CANCELLED carton ${carton.cartonNumber}`);
+          throw new BadRequestException(
+            `Cannot add CANCELLED carton ${carton.cartonNumber}`,
+          );
         }
         if (carton.packingListId && carton.packingListId !== pl.id) {
-          throw new BadRequestException(`Carton ${carton.cartonNumber} is already in another packing list`);
+          throw new BadRequestException(
+            `Carton ${carton.cartonNumber} is already in another packing list`,
+          );
         }
       }
 
@@ -280,16 +328,24 @@ export class PackingListService {
 
       const totalCartons = allCartons.length;
       const totalUnits = allCartons.reduce((sum, c) => sum + c.totalUnits, 0);
-      const totalGrossWeight = allCartons.reduce((sum, c) => sum + Number(c.grossWeightKg || 0), 0);
-      const totalNetWeight = allCartons.reduce((sum, c) => sum + Number(c.netWeightKg || 0), 0);
+      const totalGrossWeight = allCartons.reduce(
+        (sum, c) => sum + Number(c.grossWeightKg || 0),
+        0,
+      );
+      const totalNetWeight = allCartons.reduce(
+        (sum, c) => sum + Number(c.netWeightKg || 0),
+        0,
+      );
 
       return tx.packingList.update({
         where: { id },
         data: {
           totalCartons,
           totalUnits,
-          totalGrossWeightKg: totalGrossWeight > 0 ? new Prisma.Decimal(totalGrossWeight) : null,
-          totalNetWeightKg: totalNetWeight > 0 ? new Prisma.Decimal(totalNetWeight) : null,
+          totalGrossWeightKg:
+            totalGrossWeight > 0 ? new Prisma.Decimal(totalGrossWeight) : null,
+          totalNetWeightKg:
+            totalNetWeight > 0 ? new Prisma.Decimal(totalNetWeight) : null,
         },
         include: {
           cartons: { include: { items: true } },
@@ -303,7 +359,12 @@ export class PackingListService {
   /**
    * Removes a carton from a packing list.
    */
-  async removeCartonFromList(tenantId: string, actorId: string, id: string, cartonId: string) {
+  async removeCartonFromList(
+    tenantId: string,
+    actorId: string,
+    id: string,
+    cartonId: string,
+  ) {
     return prisma.$transaction(async (tx) => {
       const pl = await tx.packingList.findUnique({
         where: { id },
@@ -314,13 +375,24 @@ export class PackingListService {
         throw new NotFoundException(`Packing list ${id} not found`);
       }
 
-      if (pl.status === PackingListStatus.FINALIZED || pl.status === PackingListStatus.SHIPPED) {
-        throw new BadRequestException('Cannot modify cartons on a FINALIZED or SHIPPED packing list');
+      if (
+        pl.status === PackingListStatus.FINALIZED ||
+        pl.status === PackingListStatus.SHIPPED
+      ) {
+        throw new BadRequestException(
+          "Cannot modify cartons on a FINALIZED or SHIPPED packing list",
+        );
       }
 
       const carton = await tx.carton.findUnique({ where: { id: cartonId } });
-      if (!carton || carton.tenantId !== tenantId || carton.packingListId !== pl.id) {
-        throw new NotFoundException(`Carton ${cartonId} not found on packing list ${id}`);
+      if (
+        !carton ||
+        carton.tenantId !== tenantId ||
+        carton.packingListId !== pl.id
+      ) {
+        throw new NotFoundException(
+          `Carton ${cartonId} not found on packing list ${id}`,
+        );
       }
 
       await tx.carton.update({
@@ -334,17 +406,28 @@ export class PackingListService {
       });
 
       const totalCartons = remainingCartons.length;
-      const totalUnits = remainingCartons.reduce((sum, c) => sum + c.totalUnits, 0);
-      const totalGrossWeight = remainingCartons.reduce((sum, c) => sum + Number(c.grossWeightKg || 0), 0);
-      const totalNetWeight = remainingCartons.reduce((sum, c) => sum + Number(c.netWeightKg || 0), 0);
+      const totalUnits = remainingCartons.reduce(
+        (sum, c) => sum + c.totalUnits,
+        0,
+      );
+      const totalGrossWeight = remainingCartons.reduce(
+        (sum, c) => sum + Number(c.grossWeightKg || 0),
+        0,
+      );
+      const totalNetWeight = remainingCartons.reduce(
+        (sum, c) => sum + Number(c.netWeightKg || 0),
+        0,
+      );
 
       return tx.packingList.update({
         where: { id },
         data: {
           totalCartons,
           totalUnits,
-          totalGrossWeightKg: totalGrossWeight > 0 ? new Prisma.Decimal(totalGrossWeight) : null,
-          totalNetWeightKg: totalNetWeight > 0 ? new Prisma.Decimal(totalNetWeight) : null,
+          totalGrossWeightKg:
+            totalGrossWeight > 0 ? new Prisma.Decimal(totalGrossWeight) : null,
+          totalNetWeightKg:
+            totalNetWeight > 0 ? new Prisma.Decimal(totalNetWeight) : null,
         },
         include: {
           cartons: { include: { items: true } },

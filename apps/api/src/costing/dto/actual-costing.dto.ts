@@ -1,4 +1,4 @@
-import { IsNumber, IsOptional, IsString, IsPositive } from 'class-validator';
+import { IsNumber, IsOptional, IsString, IsPositive } from "class-validator";
 
 export class CalculateJobCostDto {
   @IsNumber()

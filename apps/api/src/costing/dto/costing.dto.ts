@@ -1,4 +1,4 @@
-import { IsString, IsNumber, IsOptional } from 'class-validator';
+import { IsString, IsNumber, IsOptional } from "class-validator";
 
 export class CreateCostingSheetDto {
   @IsString()
@@ -13,13 +13,13 @@ export class CreateCostingVersionDto {
 export class CreateBomLineDto {
   @IsString()
   materialId: string;
-  
+
   @IsNumber()
   consumption: number;
-  
+
   @IsNumber()
   wastagePercent: number;
-  
+
   @IsNumber()
   unitCost: number;
 }
@@ -27,13 +27,13 @@ export class CreateBomLineDto {
 export class CalculateCostingDto {
   @IsNumber()
   overheads: number;
-  
+
   @IsNumber()
   freight: number;
-  
+
   @IsNumber()
   rejectionBuffer: number;
-  
+
   @IsNumber()
   sellingPrice: number;
 }
