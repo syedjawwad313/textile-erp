@@ -1,4 +1,4 @@
-﻿##############################################################################
+##############################################################################
 # Render Blueprint - Textile & Apparel ERP + MES Platform
 ##############################################################################
 
@@ -17,7 +17,7 @@ services:
       pnpm --filter @textile-erp/database run db:deploy &&
       pnpm --filter @textile-erp/database run db:seed &&
       cd apps/api && pnpm run build
-    startCommand: cd apps/api && (node dist/main.js || node dist/src/main.js)
+    startCommand: pnpm --filter @textile-erp/database run db:generate && cd apps/api && (node dist/main.js || node dist/src/main.js)
 
     healthCheckPath: /health
 
