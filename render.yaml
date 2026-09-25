@@ -53,11 +53,10 @@ services:
     region: oregon
     plan: free
 
-    rootDir: .
-    buildCommand: pnpm install --frozen-lockfile && pnpm --filter web run build
-    startCommand: pnpm --filter web run start -- -p 10000 -H 0.0.0.0
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @textile-erp/database run db:generate && pnpm --filter web run build
+    startCommand: pnpm --filter web run start
 
-    healthCheckPath: /
+    healthCheckPath: /health
 
     envVars:
       - key: NODE_ENV
