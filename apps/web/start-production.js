@@ -1,4 +1,4 @@
-const { spawn } = require("child_process");
+const { spawn, execSync } = require("child_process");
 const path = require("path");
 const fs = require("fs");
 
@@ -33,7 +33,32 @@ process.env.INTERNAL_API_PORT = String(internalApiPort);
 console.log(`[Config] Public Web Port (Render): ${publicPort}`);
 console.log(`[Config] Internal API Port: ${internalApiPort}`);
 
-// 3. Locate and spawn backend API
+// 3. Ensure Prisma Client is generated in runtime environment
+const monorepoRoot = path.resolve(__dirname, "../..");
+try {
+  const schemaPath = path.resolve(__dirname, "../../packages/database/prisma/schema.prisma");
+  if (fs.existsSync(schemaPath)) {
+    console.log("[Startup] Initializing Prisma client in container...");
+    try {
+      execSync("pnpm --filter @textile-erp/database run db:generate", {
+        cwd: monorepoRoot,
+        stdio: "inherit",
+        env: process.env,
+      });
+    } catch {
+      execSync(`npx prisma generate --schema="${schemaPath}"`, {
+        cwd: monorepoRoot,
+        stdio: "inherit",
+        env: process.env,
+      });
+    }
+    console.log("[Startup] Prisma client initialized successfully.");
+  }
+} catch (err) {
+  console.warn("[Startup Warning] Prisma initialization check:", err.message);
+}
+
+// 4. Locate and spawn backend API
 const possibleApiPaths = [
   path.resolve(__dirname, "../api/dist/main.js"),
   path.resolve(__dirname, "../../apps/api/dist/main.js"),
@@ -97,7 +122,7 @@ if (apiPath) {
   );
 }
 
-// 4. Start Next.js Web on public port
+// 5. Start Next.js Web on public port
 const nextBin = require.resolve("next/dist/bin/next");
 console.log(`[Startup] Starting Next.js Web on 0.0.0.0:${publicPort}...`);
 
@@ -131,7 +156,7 @@ nextProcess.on("exit", (code) => {
   process.exit(code || 0);
 });
 
-// 5. Handle container termination signals
+// 6. Handle container termination signals
 const handleShutdown = (signal) => {
   console.log(`[Shutdown] Received ${signal}. Terminating services...`);
   if (nextProcess && !nextProcess.killed) {
