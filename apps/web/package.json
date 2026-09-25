@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "build": "pnpm --filter @textile-erp/database run db:generate && (pnpm --filter api run build || true) && next build",
+    "start": "node start-production.js",
     "lint": "next lint"
   },
   "dependencies": {
