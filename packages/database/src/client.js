@@ -16,12 +16,27 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.prisma = void 0;
 const client_1 = require("@prisma/client");
-const prismaClientSingleton = () => {
-    return new client_1.PrismaClient();
-};
-exports.prisma = globalThis.prisma ?? prismaClientSingleton();
-if (process.env.NODE_ENV !== 'production')
-    globalThis.prisma = exports.prisma;
+let _prisma = null;
+function getPrisma() {
+    if (!_prisma) {
+        if (globalThis.prisma) {
+            _prisma = globalThis.prisma;
+        } else {
+            _prisma = new client_1.PrismaClient();
+            if (process.env.NODE_ENV !== 'production') {
+                globalThis.prisma = _prisma;
+            }
+        }
+    }
+    return _prisma;
+}
+exports.prisma = new Proxy({}, {
+    get(_target, prop) {
+        const client = getPrisma();
+        const val = client[prop];
+        return typeof val === 'function' ? val.bind(client) : val;
+    }
+});
 if (typeof module !== 'undefined' && module.exports) {
     module.exports.prisma = exports.prisma;
 }

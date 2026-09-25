@@ -1,11 +1,21 @@
 import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
+import { execSync } from "child_process";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   const cwd = process.cwd();
+
+  let gitCommit = "unknown";
+  try {
+    gitCommit = execSync("git rev-parse --short HEAD", { cwd, timeout: 2000 })
+      .toString()
+      .trim();
+  } catch (e: any) {
+    gitCommit = e.message;
+  }
 
   const candidatePaths = [
     path.resolve(cwd, "../api/dist/main.js"),
@@ -46,6 +56,7 @@ export async function GET() {
 
   return NextResponse.json({
     status: "debug_info",
+    gitCommit,
     timestamp: new Date().toISOString(),
     cwd,
     internalPort,
