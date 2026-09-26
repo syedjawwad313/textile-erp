@@ -19,12 +19,28 @@ console.log("==================================================");
 recordLog("🚀 Starting Textile & Apparel ERP / MES Platform");
 
 // 1. Fallback for essential database & auth credentials if not set in cloud env
+const possibleEnvFiles = [
+  path.resolve(__dirname, "../../.env"),
+  path.resolve(__dirname, ".env"),
+  path.resolve(process.cwd(), ".env"),
+  path.resolve(process.cwd(), "../../.env"),
+];
+for (const envFile of possibleEnvFiles) {
+  if (fs.existsSync(envFile) && typeof process.loadEnvFile === "function") {
+    try {
+      process.loadEnvFile(envFile);
+      if (process.env.DATABASE_URL) break;
+    } catch {}
+  }
+}
+
 const DEFAULT_DB_URL =
-  "postgresql://neondb_owner:npg_zS4gpXTLHJQ3@ep-quiet-sea-b5ed7y79-pooler.c-7.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require";
+  process.env.DATABASE_URL ||
+  "postgresql://textileerp:tsSh2DKYMbSFBL34@127.0.0.1:5432/textileerp?schema=public";
 
 if (!process.env.DATABASE_URL) {
-  console.warn("[Config] DATABASE_URL unset in container. Injecting default Neon cloud database URL.");
-  recordLog("[Config] Injected default Neon cloud database URL");
+  console.log("[Config] Injecting default VPS PostgreSQL database URL.");
+  recordLog("[Config] Injected default VPS PostgreSQL database URL");
   process.env.DATABASE_URL = DEFAULT_DB_URL;
 }
 
