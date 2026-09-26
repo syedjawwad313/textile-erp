@@ -1,19 +1,12 @@
 ##############################################################################
 # Render Blueprint - Textile & Apparel ERP + MES Platform
 # Production Infrastructure as Code (IaC)
+# Target Architecture: Next.js Frontend + NestJS API (Separate Web Services)
+# External Managed Infrastructure: Neon PostgreSQL + External Redis
 ##############################################################################
 
-databases:
-  # -- 1. PostgreSQL Database ------------------------------------------------
-  - name: erp-mes-postgres
-    databaseName: textile_erp
-    user: postgres
-    region: oregon
-    plan: free
-    postgresMajorVersion: "16"
-
 services:
-  # -- 2. NestJS API Web Service ---------------------------------------------
+  # -- 1. NestJS API Web Service ---------------------------------------------
   - type: web
     name: erp-mes-api
     runtime: node
@@ -33,6 +26,8 @@ services:
         value: 10000
       - key: DATABASE_URL
         sync: false
+      - key: REDIS_URL
+        sync: false
       - key: FRONTEND_URL
         sync: false
       - key: CORS_ALLOWED_ORIGINS
@@ -46,13 +41,14 @@ services:
       - key: JWT_REFRESH_EXPIRES_IN
         value: 7d
 
-  # -- 3. Next.js Frontend Web Service ---------------------------------------
+  # -- 2. Next.js Frontend Web Service ---------------------------------------
   - type: web
     name: erp-mes-web
     runtime: node
     region: oregon
     plan: free
 
+    rootDir: .
     buildCommand: pnpm install --frozen-lockfile && pnpm --filter @textile-erp/database run db:generate && pnpm --filter web run build
     startCommand: pnpm --filter web run start
 
@@ -63,6 +59,12 @@ services:
         value: production
       - key: PORT
         value: 10000
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
       - key: API_URL
         sync: false
       - key: NEXT_PUBLIC_API_URL

@@ -43,12 +43,18 @@ export async function GET() {
   }
 
   let runtimeLogs = "";
+  const possibleLogPaths = [
+    path.resolve(cwd, "api-runtime.log"),
+    path.resolve(__dirname, "api-runtime.log"),
+    path.resolve(cwd, "apps/web/api-runtime.log"),
+    path.resolve(cwd, "../apps/web/api-runtime.log"),
+  ];
+  const foundLogPath = possibleLogPaths.find((p) => fs.existsSync(p));
   try {
-    const logPath = path.resolve(cwd, "api-runtime.log");
-    if (fs.existsSync(logPath)) {
-      runtimeLogs = fs.readFileSync(logPath, "utf-8");
+    if (foundLogPath) {
+      runtimeLogs = fs.readFileSync(foundLogPath, "utf-8");
     } else {
-      runtimeLogs = "api-runtime.log not found";
+      runtimeLogs = `api-runtime.log not found in: ${possibleLogPaths.join(", ")}`;
     }
   } catch (e: any) {
     runtimeLogs = `Error reading log: ${e.message}`;

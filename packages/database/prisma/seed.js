@@ -36,9 +36,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 process.env.DATABASE_URL =
     process.env.DATABASE_URL ||
         'postgresql://postgres:postgres@localhost:5432/textile_erp?schema=public';
-const client_1 = require("@prisma/client");
+const dbClient = require("../src/client");
 const argon2 = __importStar(require("argon2"));
-const prisma = new client_1.PrismaClient();
+const prisma = dbClient.prisma;
 async function main() {
     console.log('Seeding database...');
     // 1. Create Demo Tenant

@@ -18,12 +18,12 @@ async function bootstrap() {
       .map((o) => o.trim().replace(/\/+$/, ""))
       .filter(Boolean);
 
-    // In non-production, ensure localhost:3000 is always accessible
-    if (
-      process.env.NODE_ENV !== "production" &&
-      !origins.includes("http://localhost:3000")
-    ) {
-      origins.push("http://localhost:3000");
+    if (process.env.NODE_ENV === "production") {
+      origins.push(/https:\/\/.*\.onrender\.com$/);
+    } else {
+      if (!origins.includes("http://localhost:3000")) {
+        origins.push("http://localhost:3000");
+      }
     }
     corsOrigin = origins;
   } else if (process.env.NODE_ENV === "production") {
@@ -39,6 +39,16 @@ async function bootstrap() {
   app.enableCors({
     origin: corsOrigin,
     credentials: true,
+    methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE", "OPTIONS"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "x-tenant-id",
+      "Accept",
+      "Origin",
+      "X-Requested-With",
+    ],
+    exposedHeaders: ["Authorization"],
   });
 
   // Global prefix (excluding health/readiness checks so Render probe at /health succeeds)

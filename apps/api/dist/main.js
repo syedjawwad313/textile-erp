@@ -13,9 +13,12 @@ async function bootstrap() {
             .split(",")
             .map((o) => o.trim().replace(/\/+$/, ""))
             .filter(Boolean);
-        if (process.env.NODE_ENV !== "production" &&
-            !origins.includes("http://localhost:3000")) {
-            origins.push("http://localhost:3000");
+        if (process.env.NODE_ENV === "production") {
+            origins.push(/https:\/\/.*\.onrender\.com$/);
+        } else {
+            if (!origins.includes("http://localhost:3000")) {
+                origins.push("http://localhost:3000");
+            }
         }
         corsOrigin = origins;
     }
@@ -29,6 +32,16 @@ async function bootstrap() {
     app.enableCors({
         origin: corsOrigin,
         credentials: true,
+        methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE", "OPTIONS"],
+        allowedHeaders: [
+            "Content-Type",
+            "Authorization",
+            "x-tenant-id",
+            "Accept",
+            "Origin",
+            "X-Requested-With",
+        ],
+        exposedHeaders: ["Authorization"],
     });
     app.setGlobalPrefix("api/v1", {
         exclude: ["health", "health/readiness", "ready"],
